@@ -1,0 +1,22 @@
+[package]
+name = "yaffe-rs"
+version = "0.1.0"
+authors = ["allex"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sqlite3 = "0.24.0"
+piet = { version = "*", features = ["image"] }
+druid-shell = "*"
+lazy_static = "^1"
+image = "0.23.14" #required for images by piet... not sure why it isnt included in the feature...
+spmc = "^0.3"
+chrono = "^0.4"
+system_shutdown = "3.0.0"
+serde_json = "^1"
+serde = { version = "^1", features = ["derive"] }
+reqwest = { version = "^0.11", features = ["blocking"] }
+winapi = { version = "^0", features = ["libloaderapi", "winerror", "std", "taskschd", "impl-default", "oleauto", "objbase"] }
+backtrace = "0.3.59"
