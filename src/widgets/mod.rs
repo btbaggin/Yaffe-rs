@@ -55,12 +55,12 @@ macro_rules! get_widget_id {
 macro_rules! create_widget {
     ($name:ident, $($element:ident: $ty:ty = $value:expr),*) => {
         #[allow(unused_variables)]
-        pub struct $name { #[allow(dead_code)]queue: std::sync::Arc<crate::JobQueue>, $($element: $ty),* }
+        pub struct $name { #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, $($element: $ty),* }
         impl crate::widgets::WidgetName for $name {
             fn get_id(&self) -> crate::widgets::WidgetId { std::any::TypeId::of::<$name>() }
         }
         impl $name {
-            pub fn new(q: std::sync::Arc<crate::JobQueue>) -> $name {
+            pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>) -> $name {
                 $name { 
                     queue: q, 
                     $($element: $value),*

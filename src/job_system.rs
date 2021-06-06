@@ -127,9 +127,3 @@ pub enum JobType {
     SearchPlatform((RawDataPointer, String, String, String, String)),
     SearchGame((RawDataPointer, String, String, i64))
 }
-
-/// Does unsafe nonesense to get a mutable reference to the job queue that is shared
-/// by all widgets. This is currently safe because widget processing is single threaded
-pub fn get_queue_mut<'a>(queue: &std::sync::Arc<JobQueue>) -> &'a mut JobQueue {
-    unsafe { &mut *(std::sync::Arc::as_ptr(queue) as *mut JobQueue) }
-}

@@ -11,7 +11,7 @@ const ROM_OUTLINE_SIZE: f64 = 7.5;
 const VISIBLE_FLAG: u8 = 0x01;
 
 pub struct AppTile { 
-    queue: std::sync::Arc<crate::JobQueue>,
+    queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>,
     index: usize,
     focused: bool,
     time: f64,
@@ -20,7 +20,7 @@ pub struct AppTile {
     pub size: Size,
 }
 impl AppTile {
-    pub fn new(q: std::sync::Arc<crate::JobQueue>, index: usize) -> AppTile {
+    pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, index: usize) -> AppTile {
         AppTile { 
             queue: q,
             index: index,
@@ -92,10 +92,10 @@ impl AppTile {
         use crate::assets::{request_asset_image, request_image, Images};
 
         let slot = &mut exe.boxart.borrow_mut();
-        let queue = crate::get_queue_mut(&self.queue);
-        if let Some(i) = request_asset_image(piet, queue, slot) {
+        let mut queue = self.queue.borrow_mut();
+        if let Some(i) = request_asset_image(piet, &mut queue, slot) {
             i.render(piet, Rect::from((position, target_size)));
-        } else if let Some(i) = request_image(piet, queue, Images::Placeholder) {
+        } else if let Some(i) = request_image(piet, &mut queue, Images::Placeholder) {
             i.render(piet, Rect::from((position, target_size)));
         }
     }

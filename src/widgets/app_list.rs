@@ -85,7 +85,10 @@ impl super::Widget for AppList {
 }
 impl AppList {
     fn update(&mut self, state: &YaffeState, rect: &Rect) {
-        if self.cached_platform != state.selected_platform {
+        //Check the length of our cache vs actual in case a game was added
+        //to this platform while we were on it
+        if self.cached_platform != state.selected_platform ||
+            self.tiles.len() != state.get_platform().apps.len() {
             self.tiles.clear();
 
             for i in 0..state.get_platform().apps.len() {

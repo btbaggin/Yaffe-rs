@@ -29,10 +29,10 @@ impl super::Widget for InfoPane {
         if let Some(app) = state.get_executable() {
             //Banner image
             let mut height = 0.;
-            let queue = crate::get_queue_mut(&self.queue);
+            let mut queue = self.queue.borrow_mut();
             let slot = &mut app.banner.borrow_mut();
-            let mut image = request_asset_image(piet, queue, slot);
-            if let None = image { image = request_image(piet, queue, Images::PlaceholderBanner); }
+            let mut image = request_asset_image(piet, &mut queue, slot);
+            if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 height = (rect.width() / i.size().width) * i.size().height;
                 i.render(piet, Rect::new(rect.x0, rect.y0, rect.x1 ,rect.y0 + height));
@@ -48,7 +48,7 @@ impl super::Widget for InfoPane {
                 Rating::NotRated => None,
             };
             if let Some(image) = rating_image {
-                if let Some(i) = request_image(piet, queue, image) {
+                if let Some(i) = request_image(piet, &mut queue, image) {
                     //Size rating image according to banner height
                     let ratio = IMAGE_SIZE.height / height;
                     let rating_size = if ratio > 1. {

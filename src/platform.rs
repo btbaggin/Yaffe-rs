@@ -113,14 +113,13 @@ pub fn get_database_info(state: &mut YaffeState) {
     create_database().log_message_if_fail("Unable to create database");
     let mut platforms = get_all_platforms();
 
-    let queue = crate::get_queue_mut(&state.queue);
     for p in platforms.iter_mut() {
-        refresh_executable(state, queue, p);
+        refresh_executable(state, p);
     }
     state.platforms = platforms;
 }
 
-fn refresh_executable(state: &mut YaffeState, queue: &mut crate::JobQueue, platform: &mut Platform) {
+fn refresh_executable(state: &mut YaffeState, platform: &mut Platform) {
     match platform.kind {
         PlatformType::Enumlator => {
             for entry in std::fs::read_dir(std::path::Path::new(&platform.path)).log_if_fail() {
@@ -132,6 +131,8 @@ fn refresh_executable(state: &mut YaffeState, queue: &mut crate::JobQueue, platf
                     let name = path.file_stem().unwrap().to_string_lossy();
                     let name = clean_file_name(&name);
                     
+                    let state_ptr = crate::RawDataPointer::new(state);
+                    let mut queue = state.queue.borrow_mut();
                     if let Ok((name, overview, players, rating)) = get_game_info(platform, &file) {
 
                         let (boxart, banner) = crate::assets::get_asset_slot(&platform.name, &name);
@@ -152,7 +153,6 @@ fn refresh_executable(state: &mut YaffeState, queue: &mut crate::JobQueue, platf
                         //Comes back and A gets a modal
                         //Upon accepting A modal we refresh the screen
                         //Find B it needs to look up, but there is already a modal pending user action
-                        let state_ptr = crate::RawDataPointer::new(state);
                         queue.send_with_key(file.to_string(), crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), platform.id)));
                     }
                 }
@@ -208,7 +208,7 @@ pub fn insert_game(state: &mut YaffeState, data: &crate::database::GameData) {
     let plat_name = crate::database::get_platform_name(data.platform).unwrap();
 
     let (boxart, banner) = crate::assets::get_asset_path(&plat_name, &data.name);
-    let queue = crate::get_queue_mut(&mut state.queue);
+    let mut queue = state.queue.borrow_mut();
     queue.send(crate::JobType::DownloadUrl((data.boxart.clone(), boxart)));
     queue.send(crate::JobType::DownloadUrl((data.banner.clone(), banner)));
 

@@ -128,8 +128,9 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
             crate::database::add_new_application(&content.name, &content.exe, &content.args, &content.folder).display_failure("Unable to add application", state);
             state.refresh_list = true;
         } else {
-            let queue = crate::get_queue_mut(&state.queue);
-            queue.send(crate::JobType::SearchPlatform((crate::RawDataPointer::new(state), content.name.clone(), content.exe.clone(), content.args.clone(), content.folder.clone())));  
+            let state_ptr = crate::RawDataPointer::new(state);
+            let mut queue = state.queue.borrow_mut();
+            queue.send(crate::JobType::SearchPlatform((state_ptr, content.name.clone(), content.exe.clone(), content.args.clone(), content.folder.clone())));  
         }
     }
 }

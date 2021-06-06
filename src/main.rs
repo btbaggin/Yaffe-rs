@@ -3,6 +3,7 @@ use std::any::Any;
 use std::time::Instant;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::cell::RefCell;
 use druid_shell::kurbo::Size;
 use druid_shell::piet::Piet;
@@ -100,7 +101,7 @@ use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
 pub use modals::{display_modal};
-pub use job_system::{JobQueue, get_queue_mut, JobType, RawDataPointer};
+pub use job_system::{JobQueue, JobType, RawDataPointer};
 
 #[derive(Clone, Copy)]
 pub enum Actions {
@@ -213,7 +214,7 @@ pub struct YaffeState {
     restricted_mode: RestrictedMode,
     restricted_last_approve: Option<Instant>,
     modals: std::sync::Mutex<Vec<modals::Modal>>,
-    queue: std::sync::Arc<job_system::JobQueue>,
+    queue: Arc<RefCell<job_system::JobQueue>>,
     refresh_list: bool,
     controller: Option<controller::XInput>,
     settings: settings::SettingsFile,
@@ -221,7 +222,7 @@ pub struct YaffeState {
 impl YaffeState {
     fn new(overlay: *mut OverlayWindow, 
            settings: settings::SettingsFile, 
-           queue: std::sync::Arc<job_system::JobQueue>) -> YaffeState {
+           queue: Arc<RefCell<job_system::JobQueue>>) -> YaffeState {
         YaffeState {
             win: YaffeWin::default(),
             last_time: Instant::now(),
@@ -353,7 +354,7 @@ fn main() {
         },
     };
 
-    let q = std::sync::Arc::new(queue);
+    let q = Arc::new(RefCell::new(queue));
     let root = build_ui_tree(q.clone());
     let state = YaffeState::new(overlay::OverlayWindow::new(), settings, q.clone());
 
@@ -372,7 +373,7 @@ fn main() {
     app.run(None);
 }
 
-fn build_ui_tree(queue: std::sync::Arc<job_system::JobQueue>) -> WidgetContainer {
+fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
     let mut root = WidgetContainer::root(widgets::Background::new(queue.clone()));
     root.add_child(widgets::PlatformList::new(queue.clone()),Size::new(0.25, 1.))
         .with_child(widgets::AppList::new(queue.clone()), Size::new(0.75, 1.))
