@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::SystemTime;
-use piet::Color;
+use druid_shell::piet::Color;
 use crate::logger::{LogTypes, log_entry};
 use std::convert::AsRef;
 

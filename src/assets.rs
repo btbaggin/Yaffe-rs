@@ -2,10 +2,9 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::rc::Rc;
 use std::cell::RefCell;
-use druid_shell::piet::{Piet, PietImage, Image, ImageBuf, RenderContext, InterpolationMode};
+use druid_shell::piet::{Piet, Text, PietImage, Image, ImageBuf, RenderContext, InterpolationMode};
 use druid_shell::kurbo::{Rect, Size};
 use crate::job_system::JobQueue;
-use piet::Text;
 use crate::logger::LogEntry;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -32,7 +31,7 @@ pub enum Images {
     ErsbAdultOnly
 }
 
-static mut FONT: Option<piet::FontFamily> = None;
+static mut FONT: Option<druid_shell::piet::FontFamily> = None;
 
 const ASSET_STATE_UNLOADED: u8 = 0;
 const ASSET_STATE_PENDING: u8 = 1;
@@ -170,7 +169,7 @@ pub fn request_preloaded_image<'a>(piet: &mut Piet, image: Images) -> &'a YaffeT
     slot.image.as_ref().unwrap()  
 }
 
-pub fn request_font(piet: &mut Piet) -> piet::FontFamily {
+pub fn request_font(piet: &mut Piet) -> druid_shell::piet::FontFamily {
     if let None = unsafe { &FONT } {
         let data = std::fs::read("./Assets/Roboto-Regular.ttf").log_if_fail();
         let font = piet.text().load_font(&data).log_if_fail();
