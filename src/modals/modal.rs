@@ -1,6 +1,7 @@
 use druid_shell::kurbo::{Size, Rect, Point, RoundedRect};
 use druid_shell::piet::{Piet, RenderContext};
 use crate::{YaffeState, Actions};
+use crate::settings::SettingNames;
 use crate::colors::*;
 use crate::assets::{request_preloaded_image, Images};
 
@@ -201,7 +202,7 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rec
 
     //Titlebar
     let titlebar_color = get_accent_color(settings);
-    let titlebar_color = change_brightness(titlebar_color, *settings.get_f64("light_shade_factor", &0.3));
+    let titlebar_color = change_brightness(&titlebar_color, settings.get_f64(SettingNames::LightShadeFactor));
     let titlebar_pos = Point::new(window_position.x + 2., window_position.y + 2.);
     let titlebar = Rect::from((titlebar_pos, Size::new(size.width - 4., TITLEBAR_SIZE)));
     piet.fill(RoundedRect::from_rect(titlebar, 5.),  &titlebar_color);

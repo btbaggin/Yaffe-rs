@@ -11,6 +11,7 @@ use druid_shell::{
     Application, KeyEvent, Code,
     Region, WinHandler, WindowBuilder, WindowHandle,
 };
+pub use crate::settings::SettingNames;
 
 use crate::logger::{UserMessage, LogEntry};
 
@@ -27,23 +28,21 @@ pub mod colors {
     pub const MODAL_OVERLAY_COLOR: Color = Color::rgba8(0, 0, 0, 115);
     pub const MODAL_BACKGROUND: Color = Color::rgba8(26, 26, 26, 255);
     
-    const TEXT_FOCUSED: Color = Color::rgba8(242, 242, 242, 255);
     pub fn get_font_color(settings: &crate::settings::SettingsFile) -> Color {
-        let (r, g, b, a) = settings.get_color("font_color", &TEXT_FOCUSED).as_rgba();
+        let (r, g, b, a) = settings.get_color(crate::SettingNames::FontColor).as_rgba();
         Color::rgba(r, g, b, a)
     }
     pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
-        let color = settings.get_color("font_color", &TEXT_FOCUSED);
-        change_brightness(color, -0.4)
+        let color = settings.get_color(crate::SettingNames::FontColor);
+        change_brightness(&color, -0.4)
     }
     
-    const ACCENT_COLOR: Color = Color::rgba8(64, 77, 255, 255);
-    pub fn get_accent_color(settings: &crate::settings::SettingsFile) -> &Color {
-        settings.get_color("accent_color", &ACCENT_COLOR)
+    pub fn get_accent_color(settings: &crate::settings::SettingsFile) -> Color {
+        settings.get_color(crate::SettingNames::AccentColor)
     }
     pub fn get_accent_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
-        let color = settings.get_color("accent_color", &ACCENT_COLOR);
-        change_brightness(color, -0.3)
+        let color = settings.get_color(crate::SettingNames::AccentColor);
+        change_brightness(&color, -0.3)
     }
 
     pub fn change_brightness(color: &Color, factor: f64) -> Color {
@@ -65,14 +64,12 @@ pub mod colors {
 }
 
 pub mod font {
-    const INFO_FONT_SIZE: f64 = 18.;
-    const TITLE_SIZE: f64 = 32.;
     pub const FONT_SIZE: f64 = 24.;
     pub fn get_info_font_size(state: &crate::YaffeState) -> f64 {
-        *state.settings.get_f64("info_font_size", &INFO_FONT_SIZE)
+        state.settings.get_f64(crate::SettingNames::InfoFontSize)
     }
     pub fn get_title_font_size(state: &crate::YaffeState) -> f64 {
-        *state.settings.get_f64("title_font_size", &TITLE_SIZE)
+        state.settings.get_f64(crate::SettingNames::TitleFontSize)
     }
 }
 

@@ -1,7 +1,6 @@
 use crate::{YaffeState, modals::ModalContent, modals::ModalResult, modals::SetRestrictedModal, modals::VerifyRestrictedModal };
 
 pub const MAX_ATTEMPTS: u8 = 3;
-const APPROVAL_VALID_SEC: i32 = 3600;
 const PIN_SIZE: usize = 8;
 
 
@@ -68,7 +67,7 @@ pub fn verify_restricted_action(state: &mut YaffeState, action: fn(&mut dyn std:
     if let RestrictedMode::On(pass) = state.restricted_mode {
         //Only as for approval if its past the last approval is no longer valid
         let approve = match state.restricted_last_approve {
-            Some(t) => t.elapsed().as_secs() > *state.settings.get_i32("restricted_approval_valid_time", &APPROVAL_VALID_SEC) as u64,
+            Some(t) => t.elapsed().as_secs() > state.settings.get_i32(crate::SettingNames::RestrictedApprovalValidTime) as u64,
             None => true,
         };
         

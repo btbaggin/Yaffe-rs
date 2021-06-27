@@ -109,7 +109,7 @@ fn draw_field_with_label(piet: &mut Piet,
     let value_rect = Rect::new(rect.x0 + crate::ui::LABEL_SIZE, rect.y0, rect.x1, rect.y1);
     piet.fill(value_rect, &get_accent_unfocused_color(settings));
     if modal.selected_field == index {
-        piet.stroke(value_rect, get_accent_color(settings), 2.);
+        piet.stroke(value_rect, &get_accent_color(settings), 2.);
     }
   
     //Value

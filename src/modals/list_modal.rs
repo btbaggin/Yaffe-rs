@@ -73,7 +73,7 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
 
             if self.index == i {
                 let rect = Rect::new(pos.x, pos.y, rect.x1, pos.y + 30.);
-                piet.fill(rect, get_accent_color(settings));
+                piet.fill(rect, &get_accent_color(settings));
             }
 
             let item_label = crate::widgets::get_drawable_text(piet, crate::font::FONT_SIZE, &display, get_font_color(settings));

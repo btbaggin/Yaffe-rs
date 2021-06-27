@@ -38,11 +38,11 @@ impl ModalContent for SettingsModal {
         let checkbox = Rect::from((min, max));
         
         let base = crate::colors::get_accent_color(settings);
-        let factor = settings.get_f64("dark_shade_factor", &-0.6);
-        piet.fill(checkbox, &crate::colors::change_brightness(base, *factor));
+        let factor = settings.get_f64(crate::SettingNames::DarkShadeFactor);
+        piet.fill(checkbox, &crate::colors::change_brightness(&base, factor));
         if self.run_at_startup {
-            piet.stroke(Line::new(min, max), base, 2.);
-            piet.stroke(Line::new(Point::new(min.x, max.y), Point::new(max.x, min.y)), base, 2.);
+            piet.stroke(Line::new(min, max), &base, 2.);
+            piet.stroke(Line::new(Point::new(min.x, max.y), Point::new(max.x, min.y)), &base, 2.);
         }
     }
 

@@ -35,17 +35,61 @@ pub enum SettingValue {
     Color(Color),
 }
 
+macro_rules! stringy_enum {
+    (pub enum $name:ident {
+        $($value:ident($display:expr) = $default:expr,)+
+    }) => {
+        #[derive(Copy, Clone)]
+        pub enum $name {
+            $($value,)+
+        } 
+
+        impl $name {
+            pub fn to_string(value: $name) -> &'static str {
+                match value {
+                    $($name::$value => $display,)+
+                }
+            }
+
+            pub fn get_default(value: $name) -> SettingValue {
+                match value {
+                    $($name::$value => $default,)+
+                }
+            }
+        }
+    };
+}
+
+stringy_enum! {
+    pub enum SettingNames {
+        InfoFontSize("info_font_size") = SettingValue::F64(18.),
+        TitleFontSize("title_font_size") = SettingValue::F64(32.),
+        LightShadeFactor("light_shade_factor") = SettingValue::F64(0.3),
+        DarkShadeFactor("dark_shade_factor") = SettingValue::F64(-0.6),
+        InfoScrollSpeed("info_scroll_speed") = SettingValue::F64(20.),
+        RestrictedApprovalValidTime("restricted_approval_valid_time") = SettingValue::I32(3600),
+        ItemsPerRow("items_per_row") = SettingValue::I32(4),
+        ItemsPerColumn("items_per_column") = SettingValue::I32(3),
+        FontColor("font_color") = SettingValue::Color(Color::rgba8(242, 242, 242, 255)),
+        AccentColor("accent_color") = SettingValue::Color(Color::rgba8(64, 77, 255, 255)),
+    }
+}
+
 macro_rules! settings_get {
     ($name:ident, $ty:ty, $setting:path) => {
         #[allow(dead_code)]
-        pub fn $name<'a>(&'a self, key: &str, default: &'a $ty) -> &'a $ty {
+        pub fn $name(&self, setting: crate::settings::SettingNames) -> $ty {
+            let key = crate::settings::SettingNames::to_string(setting);
             if let Some(f) = self.settings.get(key) {
                 if let $setting(value) = f {
-                    return value;
+                    return value.clone();
                 }
                 log_entry(LogTypes::Warning, format!("Attemted to retrieve setting {} but type expected type {}", key, stringify!($ty)));
             }
-            default
+            if let $setting(value) = crate::settings::SettingNames::get_default(setting) {
+                return value;
+            }
+            panic!("Accessed setting using incorrect type");
         }
     };
 }

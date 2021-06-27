@@ -56,7 +56,7 @@ impl super::Widget for PlatformList {
             let height = name_label.size().height;
             if i == selected_index {
                 let rect = Rect::new(rect.x0, y, right, y + height);
-                if state.is_widget_focused(self) { piet.fill(rect, get_accent_color(&state.settings)); }
+                if state.is_widget_focused(self) { piet.fill(rect, &get_accent_color(&state.settings)); }
                 else { piet.fill(rect, &get_accent_unfocused_color(&state.settings)); }
             }
             

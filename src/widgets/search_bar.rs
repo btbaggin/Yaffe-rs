@@ -140,7 +140,7 @@ impl super::Widget for SearchBar {
         //Filter option name
         let filter_rect = Rect::from((Point::new(rect.x0, rect.y0), Size::new(NAME_WIDTH, rect.height())));
         if search.index < 0 {
-            piet.fill(filter_rect, get_accent_color(&state.settings));
+            piet.fill(filter_rect, &get_accent_color(&state.settings));
         }
 
         let name_label = super::get_drawable_text(piet, crate::font::FONT_SIZE, &name, focused_color.clone());
@@ -168,7 +168,7 @@ impl super::Widget for SearchBar {
             //Heighlight
             if search.index + start as isize == i as isize {
                 let r = Rect::new(item_start, rect.y0, item_start + item_size, rect.y1);
-                piet.fill(r, get_accent_color(&state.settings));
+                piet.fill(r, &get_accent_color(&state.settings));
             }
 
             //Filter item

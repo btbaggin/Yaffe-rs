@@ -68,7 +68,7 @@ impl super::Widget for InfoPane {
                 if name_label.size().height + height > rect.height() {
                     self.scroll_timer -= state.delta_time;
                     if self.scroll_timer < 0. { 
-                        self.y_offset -= state.delta_time * state.settings.get_f64("info_scroll_speed", &20.); 
+                        self.y_offset -= state.delta_time * state.settings.get_f64(crate::SettingNames::InfoScrollSpeed); 
                         self.y_offset = f64::max(self.y_offset, rect.height() - height - name_label.size().height); 
                     }
                 }

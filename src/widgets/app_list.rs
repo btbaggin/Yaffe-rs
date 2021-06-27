@@ -162,11 +162,11 @@ impl AppList {
 
                 if bitmap_size.width > bitmap_size.height {
                     let aspect = bitmap_size.height / bitmap_size.width;
-                    width = menu_size.width / *state.settings.get_i32("items_per_row", &4) as f64;
+                    width = menu_size.width / state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f64;
                     height= aspect * width;
                 } else {
                     let aspect = bitmap_size.width / bitmap_size.height;
-                    height = menu_size.height / *state.settings.get_i32("items_per_column", &3) as f64;
+                    height = menu_size.height / state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f64;
                     width = aspect * height;
                 }
                 tiles_x = (menu_size.width / width) as isize;
