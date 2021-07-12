@@ -5,7 +5,7 @@ use druid_shell::{
 use druid_shell::kurbo::Size;
 use druid_shell::piet::Piet;
 use std::any::Any;
-use crate::{modals, SystemActions, controller};
+use crate::modals;
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
@@ -14,18 +14,20 @@ pub struct OverlayWindow {
     size: Size,
     modal: modals::Modal,
     process: Option<std::process::Child>,
-    controller: Option<controller::XInput>,
+    showing: bool,
+    settings: crate::settings::SettingsFile,
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
-    pub fn new() -> *mut OverlayWindow {
+    pub fn new(settings: crate::settings::SettingsFile) -> *mut OverlayWindow {
 
         let window = OverlayWindow {
             handle: WindowHandle::default(),
             size: Size::default(),
             modal: modals::Modal::overlay(Box::new(modals::OverlayModal::default())),
             process: None,
-            controller: controller::load_xinput(),
+            showing: false,
+            settings: settings,
         };
 
         let mut overlay = WindowBuilder::new(Application::global().clone());
@@ -34,11 +36,11 @@ impl OverlayWindow {
         let handler_ptr = &mut *handler as *mut OverlayWindow;
         
         overlay.set_handler(handler);
-        //overlay.set_transparent(true);
+        overlay.set_transparent(true);
         overlay.resizable(false);
         
         let mut handle = overlay.build().unwrap();
-        handle.set_window_state(WindowState::MAXIMIZED); 
+        handle.set_window_state(WindowState::Maximized); 
         handle.show_titlebar(false);
 
         handler_ptr
@@ -76,19 +78,25 @@ impl OverlayWindow {
     }
 
     /// Shows the overlay if possible
-    pub fn show(&self) {
-        if let Some(_) = self.process {
-            self.handle.show();
-            self.handle.bring_to_front_and_focus();
+    pub fn toggle_visibility(&mut self) {
+        if self.showing {
+            self.handle.set_window_state(WindowState::Minimized);
+
+        } else {
+            if let Some(_) = self.process {
+                self.handle.show();
+                self.handle.bring_to_front_and_focus();
+                self.showing = true;
+            }
         }
+        self.showing = !self.showing;
     }
 
-    /// Hides the overlay
-    pub fn hide(&mut self) {
-        self.handle.set_window_state(WindowState::MINIMIZED);
+    fn hide(&mut self) {
+        self.handle.set_window_state(WindowState::Minimized);
+        self.showing = false;
     }
 }
-
 
 impl WinHandler for OverlayWindow {
     fn connect(&mut self, handle: &WindowHandle) { 
@@ -100,10 +108,8 @@ impl WinHandler for OverlayWindow {
         let size = self.size;
         let window_rect = size.to_rect();
 
-        check_controller_input(self);
-
         //TODO read in settings for overlay
-        modals::render_modal(&crate::settings::SettingsFile::default(), &self.modal, &window_rect, piet);
+        modals::render_modal(&self.settings, &self.modal, &window_rect, piet);
         self.handle.request_anim_frame();
     }
 
@@ -115,20 +121,11 @@ impl WinHandler for OverlayWindow {
     fn as_any(&mut self) -> &mut dyn Any { self }
 }
 
-fn check_controller_input(tree: &mut OverlayWindow) {
-    if let Some(controller) = &mut tree.controller {
-        if controller.update(0).is_ok() {
-            for e in controller.get_actions() {
-                handle_input(tree, None, Some(e));
-            }
-        }
-    }   
-}
-
-fn handle_input(tree: &mut OverlayWindow, code: Option<Code>, button: Option<u16>) -> bool {
-    if let Some(SystemActions::ShowOverlay) = crate::SYSTEM_ACTION_MAP.get(code, button) { 
-        tree.handle.set_window_state(WindowState::MINIMIZED); //TODO hide instead of minimize
-    }
+pub fn handle_input(tree: &mut OverlayWindow, code: Option<Code>, button: Option<u16>) -> bool {
+    if let Some(crate::SystemActions::ToggleOverlay) = crate::SYSTEM_ACTION_MAP.get(code, button) { 
+        tree.toggle_visibility(); 
+        return true;
+    };
 
     let action = crate::ACTION_MAP.get(code, button);
     let mut handler = crate::modals::modal::DeferredModalAction::new();
@@ -141,7 +138,8 @@ fn handle_input(tree: &mut OverlayWindow, code: Option<Code>, button: Option<u16
                 crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to kill running process");
             }
             tree.process = None;
-            tree.handle.set_window_state(WindowState::MINIMIZED);
+            tree.hide();
+            return true;
         }
     }
 

@@ -95,29 +95,31 @@ impl XInput {
         }
     }
 
-    pub fn get_actions(&mut self) -> Vec<u16> {
+    pub fn get_actions(&mut self, user_index: u32) -> Vec<u16> {
         let mut result = Vec::new();
 
-        let now = Instant::now();
-        if (now - self.last_button_time).as_millis() > 100 {
-            for action in [CONTROLLER_DPAD_UP, CONTROLLER_DPAD_DOWN, CONTROLLER_DPAD_LEFT, CONTROLLER_DPAD_RIGHT, CONTROLLER_START, CONTROLLER_BACK,
-                        CONTROLLER_LEFT_THUMB, CONTROLLER_RIGHT_THUMB, CONTROLLER_LEFT_SHOULDER, CONTROLLER_RIGHT_SHOULDER, CONTROLLER_GUIDE,
-                        CONTROLLER_A, CONTROLLER_B, CONTROLLER_X, CONTROLLER_Y].iter() {
-                if self.is_pressed(*action) { 
-                    result.push(*action); 
-                    self.last_button_time = now;
+        if self.update(user_index).is_ok() {
+            let now = Instant::now();
+            if (now - self.last_button_time).as_millis() > 100 {
+                for action in [CONTROLLER_DPAD_UP, CONTROLLER_DPAD_DOWN, CONTROLLER_DPAD_LEFT, CONTROLLER_DPAD_RIGHT, CONTROLLER_START, CONTROLLER_BACK,
+                            CONTROLLER_LEFT_THUMB, CONTROLLER_RIGHT_THUMB, CONTROLLER_LEFT_SHOULDER, CONTROLLER_RIGHT_SHOULDER, CONTROLLER_GUIDE,
+                            CONTROLLER_A, CONTROLLER_B, CONTROLLER_X, CONTROLLER_Y].iter() {
+                    if self.is_pressed(*action) { 
+                        result.push(*action); 
+                        self.last_button_time = now;
+                    }
                 }
             }
-        }
 
-        if (now - self.last_stick_time).as_millis() > 100 {
-            for action in [CONTROLLER_UP, CONTROLLER_DOWN, CONTROLLER_LEFT, CONTROLLER_RIGHT].iter() {
-                if self.stick_is_pressed(*action) { 
-                    result.push(*action); 
-                    self.last_stick_time = now;
+            if (now - self.last_stick_time).as_millis() > 100 {
+                for action in [CONTROLLER_UP, CONTROLLER_DOWN, CONTROLLER_LEFT, CONTROLLER_RIGHT].iter() {
+                    if self.stick_is_pressed(*action) { 
+                        result.push(*action); 
+                        self.last_stick_time = now;
+                    }
                 }
             }
-        }
+    }
 
         result
     }

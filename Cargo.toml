@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 sqlite3 = "0.24.0"
-druid-shell = { version = "*", features = ["image", "image_png", "jpeg"] }
+druid-shell = { git = "https://github.com/linebender/druid.git", features = ["image", "image_png", "jpeg"] }
 lazy_static = "^1"
 spmc = "^0.3"
 chrono = "^0.4"

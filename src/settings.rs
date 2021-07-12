@@ -28,6 +28,7 @@ impl From<std::num::ParseFloatError> for SettingLoadError {
     }
 }
 
+#[derive(Clone)]
 pub enum SettingValue {
     String(String),
     F64(f64),
@@ -95,6 +96,7 @@ macro_rules! settings_get {
 }
 
 type SettingsResult<T> = Result<T, SettingLoadError>;
+#[derive(Clone)]
 pub struct SettingsFile {
     settings: HashMap<String, SettingValue>,
     path: std::path::PathBuf,

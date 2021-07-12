@@ -116,7 +116,7 @@ pub enum Actions {
 
 #[derive(Clone, Copy)]
 pub enum SystemActions {
-    ShowOverlay,
+    ToggleOverlay,
     ShowMenu,
 }
 
@@ -167,7 +167,7 @@ lazy_static! {
     static ref SYSTEM_ACTION_MAP: InputMap<Code, u16, SystemActions> = {
         let mut m = InputMap::new();
         m.insert(Code::F1, controller::CONTROLLER_START, SystemActions::ShowMenu);
-        m.insert(Code::KeyO, controller::CONTROLLER_GUIDE, SystemActions::ShowOverlay);
+        m.insert(Code::KeyO, controller::CONTROLLER_GUIDE, SystemActions::ToggleOverlay);
         m
     };
 }
@@ -280,10 +280,14 @@ impl WinHandler for WidgetTree {
             logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
         }
 
-        if !self.data.get_overlay().process_is_running() {
-            assets::load_texture_atlas(piet);
+        assets::load_texture_atlas(piet);
 
-            check_controller_input(self);
+        if !self.data.get_overlay().process_is_running() {
+            if let Some(controller) = &mut self.data.controller {
+                for e in controller.get_actions(0) {
+                    handle_input(self, None, Some(e));
+                }
+            }  
 
             let now = Instant::now();
             self.data.delta_time = (now - self.data.last_time).as_millis() as f64 / 1000.;
@@ -306,6 +310,12 @@ impl WinHandler for WidgetTree {
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
                 modals::modal::render_modal(&self.data.settings, m, &window_rect, piet);
+            }
+        } else {
+            if let Some(controller) = &mut self.data.controller {
+                for e in controller.get_actions(0) {
+                    overlay::handle_input(self.data.get_overlay(), None, Some(e));
+                }
             }
         }
 
@@ -353,7 +363,7 @@ fn main() {
 
     let q = Arc::new(RefCell::new(queue));
     let root = build_ui_tree(q.clone());
-    let state = YaffeState::new(overlay::OverlayWindow::new(), settings, q.clone());
+    let state = YaffeState::new(overlay::OverlayWindow::new(settings.clone()), settings, q.clone());
 
     assets::initialize_asset_cache();
 
@@ -417,16 +427,6 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
     }
 }
 
-fn check_controller_input(tree: &mut WidgetTree) {
-    if let Some(controller) = &mut tree.data.controller {
-        if controller.update(0).is_ok() {
-            for e in controller.get_actions() {
-                handle_input(tree, None, Some(e));
-            }
-        }
-    }   
-}
-
 fn handle_input(tree: &mut WidgetTree, code: Option<Code>, button: Option<u16>) -> bool {
     if let Some(action) = SYSTEM_ACTION_MAP.get(code, button) { 
         match action {
@@ -445,10 +445,7 @@ fn handle_input(tree: &mut WidgetTree, code: Option<Code>, button: Option<u16>) 
     
                 display_modal(&mut tree.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
             },
-            SystemActions::ShowOverlay => {
-                let o = tree.data.get_overlay();
-                o.show(); 
-            },
+            SystemActions::ToggleOverlay => { /* Overlay handles this */ }
         }
         return true;
     }
