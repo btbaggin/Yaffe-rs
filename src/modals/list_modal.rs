@@ -1,6 +1,6 @@
-use druid_shell::kurbo::{Rect};
-use druid_shell::piet::{Piet, RenderContext};
-use crate::Actions;
+use crate::{Rect, V2, Actions};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
 use crate::colors::*;
 use crate::modals::{ModalResult, ModalContent, default_modal_action, DeferredModalAction};
 
@@ -35,12 +35,12 @@ impl ListItem for String {
 
 impl<T: 'static + ListItem> ModalContent for ListModal<T> {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f64 {
+    fn get_height(&self) -> f32 {
         let mut count = self.items.len();
         if let Some(_) = self.title {
             count += 1;
         }
-        count as f64 * 30.
+        count as f32 * 30.
     }
 
     fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
@@ -57,13 +57,13 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
         }
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Piet) {
-        let mut pos = druid_shell::kurbo::Point::new(rect.x0, rect.y0);
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+        let mut pos = *rect.top_left();
 
         //Title
         if let Some(t) = &self.title {
-            let title_label = crate::widgets::get_drawable_text(piet, crate::font::FONT_SIZE, &t, get_font_color(settings));
-            piet.draw_text(&title_label, pos);
+            let title_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &t);
+            piet.draw_text(pos, get_font_color(settings), &title_label);
             pos.y += 30.;
         }
 
@@ -72,12 +72,12 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
             let display = item.to_display();
 
             if self.index == i {
-                let rect = Rect::new(pos.x, pos.y, rect.x1, pos.y + 30.);
-                piet.fill(rect, &get_accent_color(settings));
+                let rect = Rect::point_and_size(pos, V2::new(rect.width(), 30.));
+                piet.draw_rectangle(rect, get_accent_color(settings));
             }
 
-            let item_label = crate::widgets::get_drawable_text(piet, crate::font::FONT_SIZE, &display, get_font_color(settings));
-            piet.draw_text(&item_label, pos);
+            let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &display);
+            piet.draw_text(pos, get_font_color(settings), &item_label);
             pos.y += 30.;
         }
     }

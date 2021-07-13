@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::SystemTime;
-use druid_shell::piet::Color;
+use speedy2d::color::Color;
 use crate::logger::{LogTypes, log_entry};
 use std::convert::AsRef;
 
@@ -31,7 +31,7 @@ impl From<std::num::ParseFloatError> for SettingLoadError {
 #[derive(Clone)]
 pub enum SettingValue {
     String(String),
-    F64(f64),
+    F32(f32),
     I32(i32),
     Color(Color),
 }
@@ -63,16 +63,16 @@ macro_rules! stringy_enum {
 
 stringy_enum! {
     pub enum SettingNames {
-        InfoFontSize("info_font_size") = SettingValue::F64(18.),
-        TitleFontSize("title_font_size") = SettingValue::F64(32.),
-        LightShadeFactor("light_shade_factor") = SettingValue::F64(0.3),
-        DarkShadeFactor("dark_shade_factor") = SettingValue::F64(-0.6),
-        InfoScrollSpeed("info_scroll_speed") = SettingValue::F64(20.),
+        InfoFontSize("info_font_size") = SettingValue::F32(18.),
+        TitleFontSize("title_font_size") = SettingValue::F32(32.),
+        LightShadeFactor("light_shade_factor") = SettingValue::F32(0.3),
+        DarkShadeFactor("dark_shade_factor") = SettingValue::F32(-0.6),
+        InfoScrollSpeed("info_scroll_speed") = SettingValue::F32(20.),
         RestrictedApprovalValidTime("restricted_approval_valid_time") = SettingValue::I32(3600),
         ItemsPerRow("items_per_row") = SettingValue::I32(4),
         ItemsPerColumn("items_per_column") = SettingValue::I32(3),
-        FontColor("font_color") = SettingValue::Color(Color::rgba8(242, 242, 242, 255)),
-        AccentColor("accent_color") = SettingValue::Color(Color::rgba8(64, 77, 255, 255)),
+        FontColor("font_color") = SettingValue::Color(Color::from_rgba(0.95, 0.95, 0.95, 1.)),
+        AccentColor("accent_color") = SettingValue::Color(Color::from_rgba(0.25, 0.3, 1., 1.)),
     }
 }
 
@@ -107,7 +107,7 @@ impl SettingsFile {
         SettingsFile { settings: HashMap::default(), path: std::path::PathBuf::default(), last_write: SystemTime::now() }
     }
 
-    settings_get!(get_f64, f64, SettingValue::F64);
+    settings_get!(get_f32, f32, SettingValue::F32);
     settings_get!(get_i32, i32, SettingValue::I32);
     settings_get!(get_str, String, SettingValue::String);
     settings_get!(get_color, Color, SettingValue::Color);
@@ -155,7 +155,7 @@ fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResul
             //First character will be : or =, dont include that
             let value = value[1..].trim();
             let value = match ty[1..].trim() {
-                "f64" => SettingValue::F64(value.parse::<f64>()?),
+                "f32" => SettingValue::F32(value.parse::<f32>()?),
                 "i32" => SettingValue::I32(value.parse::<i32>()?),
                 "str" => SettingValue::String(String::from(value)),
                 "color" => SettingValue::Color(color_from_string(value)?),
@@ -170,8 +170,8 @@ fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResul
 
 fn color_from_string(value: &str) -> SettingsResult<Color> {
     let values: Vec<&str> = value.split(',').collect();
-    Ok(Color::rgba(values[0].trim().parse::<f64>()?, 
-                values[1].trim().parse::<f64>()?, 
-                values[2].trim().parse::<f64>()?, 
-                values[3].trim().parse::<f64>()?))
+    Ok(Color::from_rgba(values[0].trim().parse::<f32>()?, 
+                values[1].trim().parse::<f32>()?, 
+                values[2].trim().parse::<f32>()?, 
+                values[3].trim().parse::<f32>()?))
 }

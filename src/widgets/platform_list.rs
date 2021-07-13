@@ -1,6 +1,6 @@
-use druid_shell::kurbo::{Rect, Line, Point, Size};
-use druid_shell::piet::{RenderContext, Piet, TextLayout};
-use crate::{YaffeState, Actions, DeferredAction, create_widget};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use crate::{YaffeState, Actions, DeferredAction, create_widget, V2, Rect};
 use crate::{colors::*, ui::*, font::*};
 use crate::modals::{PlatformDetailModal, ModalSize, display_modal};
 
@@ -29,19 +29,19 @@ impl super::Widget for PlatformList {
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, piet: &mut Piet) {
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D) {
         //Background
-        piet.fill(rect, &MENU_BACKGROUND);
-        piet.stroke(Line::new((rect.x1, rect.y0), (rect.x1, rect.y1)), &MODAL_BACKGROUND, 1.0);
+        piet.draw_rectangle(rect.clone(), MENU_BACKGROUND);
+        piet.draw_line(V2::new(rect.right(), rect.top()), (rect.right(), rect.bottom()), 1., MODAL_BACKGROUND);
 
         //Title
-        let title = crate::widgets::get_drawable_text(piet, get_title_font_size(state), "Yaffe", get_font_color(&state.settings));
-        piet.draw_text(&title, Point::new(rect.width() - title.size().width - 30., MARGIN));
+        let title = crate::widgets::get_drawable_text(get_title_font_size(state), "Yaffe");
+        piet.draw_text(V2::new(rect.width() - title.width() - 30., MARGIN), get_font_color(&state.settings), &title);
 
         let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         let selected_index = state.selected_platform;
-        let right = rect.max_x();
+        let right = rect.right();
         let mut y = 10.;
         let plat_kind = -1;
         for (i, p) in state.platforms.iter().enumerate() {
@@ -50,28 +50,28 @@ impl super::Widget for PlatformList {
                 y = draw_header(piet, state, y, rect.width(), p.kind, 28.);
             }
 
-            let name_label = super::get_drawable_text(piet, FONT_SIZE, &p.name, text_color.clone());
+            let name_label = super::get_drawable_text(FONT_SIZE, &p.name);
             
             //Highlight bar
-            let height = name_label.size().height;
+            let height = name_label.height();
             if i == selected_index {
-                let rect = Rect::new(rect.x0, y, right, y + height);
-                if state.is_widget_focused(self) { piet.fill(rect, &get_accent_color(&state.settings)); }
-                else { piet.fill(rect, &get_accent_unfocused_color(&state.settings)); }
+                let rect = Rectangle::from_tuples((rect.left(), y), (right, y + height));
+                if state.is_widget_focused(self) { piet.draw_rectangle(rect, get_accent_color(&state.settings)); }
+                else { piet.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
             }
             
             //Label
-            piet.draw_text(&name_label, (crate::ui::MARGIN, y));
+            piet.draw_text(V2::new(crate::ui::MARGIN, y), text_color, &name_label);
     
             //Count
-            let num_label = super::get_drawable_text(piet, FONT_SIZE, &p.apps.len().to_string(), text_color.clone());
-            piet.draw_text(&num_label, (right - num_label.size().width - MARGIN, y));
+            let num_label = super::get_drawable_text(FONT_SIZE, &p.apps.len().to_string());
+            piet.draw_text(V2::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
             y += height;
         }
     }
 }
 
-fn draw_header(piet: &mut Piet, state: &YaffeState, y: f64, width: f64, kind: crate::platform::PlatformType, icon_size: f64) -> f64 {
+fn draw_header(piet: &mut Graphics2D, state: &YaffeState, y: f32, width: f32, kind: crate::platform::PlatformType, icon_size: f32) -> f32 {
     let image = match kind {
         crate::platform::PlatformType::Enumlator => crate::assets::Images::Emulator,
         crate::platform::PlatformType::App => crate::assets::Images::App,
@@ -80,10 +80,10 @@ fn draw_header(piet: &mut Piet, state: &YaffeState, y: f64, width: f64, kind: cr
 
     let y = y + MARGIN * 2.;
     let i = crate::assets::request_preloaded_image(piet, image);
-    i.render(piet, Rect::from((Point::new(MARGIN, y), Size::new(icon_size, icon_size))));
+    i.render(piet, Rect::point_and_size(V2::new(MARGIN, y), V2::new(icon_size, icon_size)));
     
     let y = y + icon_size;
-    piet.stroke(Line::new(Point::new(icon_size + MARGIN * 2., y), Point::new(width - MARGIN, y)), &get_font_color(&state.settings), 2.);
+    piet.draw_line(V2::new(icon_size + MARGIN * 2., y), V2::new(width - MARGIN, y), 2., get_font_color(&state.settings));
     
     y + MARGIN
 }

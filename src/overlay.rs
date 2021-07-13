@@ -1,17 +1,12 @@
-use druid_shell::{
-    Application, KeyEvent, Code,
-    Region, WinHandler, WindowBuilder, WindowHandle, WindowState,
-};
-use druid_shell::kurbo::Size;
-use druid_shell::piet::Piet;
-use std::any::Any;
-use crate::modals;
+use speedy2d::{Graphics2D, Window};
+use speedy2d::shape::Rectangle;
+use speedy2d::window::*;
+use crate::{modals};
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
 pub struct OverlayWindow {
-    handle: WindowHandle,
-    size: Size,
+    size: speedy2d::dimen::Vector2<u32>,
     modal: modals::Modal,
     process: Option<std::process::Child>,
     showing: bool,
@@ -19,32 +14,56 @@ pub struct OverlayWindow {
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
-    pub fn new(settings: crate::settings::SettingsFile) -> *mut OverlayWindow {
-
-        let window = OverlayWindow {
-            handle: WindowHandle::default(),
-            size: Size::default(),
+    pub fn new(settings: crate::settings::SettingsFile) -> std::rc::Rc<std::cell::RefCell<OverlayWindow>> {
+        let overlay = OverlayWindow {
+            size: speedy2d::dimen::Vector2::new(0, 0),
             modal: modals::Modal::overlay(Box::new(modals::OverlayModal::default())),
             process: None,
             showing: false,
             settings: settings,
         };
 
-        let mut overlay = WindowBuilder::new(Application::global().clone());
-        let mut handler = Box::new(window);
+        // let event_loop = EventLoop::new();
+        // let context_builder = glutin::ContextBuilder::new()
+        // .with_gl_debug_flag(true)
+        // .with_multisampling(0)
+        // .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (2, 0)));
 
-        let handler_ptr = &mut *handler as *mut OverlayWindow;
-        
-        overlay.set_handler(handler);
-        overlay.set_transparent(true);
-        overlay.resizable(false);
-        
-        let mut handle = overlay.build().unwrap();
-        handle.set_window_state(WindowState::Maximized); 
-        handle.show_titlebar(false);
+        // #[cfg(not(target_os = "linux"))]
+        // let context = context_builder
+        //     .build_windowed(
+        //         glutin::window::WindowBuilder::new()
+        //             .with_inner_size(PhysicalSize::new(width, height)),
+        //         &event_loop
+        //     )
+        //     .unwrap();
 
-        handler_ptr
+        // #[cfg(target_os = "linux")]
+        // let context = context_builder
+        //     .with_vsync(false)
+        //     .build_headless(&event_loop, PhysicalSize::new(width, height))
+        //     .unwrap();
+
+        // let context = unsafe { context.make_current().unwrap() };
+
+        // // Used for glReadPixels/etc
+        // gl::load_with(|ptr| context.get_proc_address(ptr) as *const _);
+
+        // let mut renderer = unsafe {
+        //     GLRenderer::new_for_gl_context((width, height), |name| {
+        //         context.get_proc_address(name) as *const _
+        //     })
+        //     .unwrap()
+        // };
+        // let mut renderer = unsafe {
+        //     GLRenderer::new_for_gl_context((640, 480), |fn_name| {
+        //         window_context.get_proc_address(fn_name) as *const _
+        //     })
+        // }.unwrap();
+
+        std::rc::Rc::new(std::cell::RefCell::new(overlay))
     }
+
 
     /// Sets the currently running process
     pub fn set_process(&mut self, process: std::process::Child) {
@@ -80,12 +99,12 @@ impl OverlayWindow {
     /// Shows the overlay if possible
     pub fn toggle_visibility(&mut self) {
         if self.showing {
-            self.handle.set_window_state(WindowState::Minimized);
+            //TODO self.handle.set_window_state(WindowState::Minimized);
 
         } else {
             if let Some(_) = self.process {
-                self.handle.show();
-                self.handle.bring_to_front_and_focus();
+                //TODO self.handle.show();
+                //TODO self.handle.bring_to_front_and_focus();
                 self.showing = true;
             }
         }
@@ -93,35 +112,30 @@ impl OverlayWindow {
     }
 
     fn hide(&mut self) {
-        self.handle.set_window_state(WindowState::Minimized);
+        //TODO self.handle.set_window_state(WindowState::Minimized);
         self.showing = false;
     }
 }
 
-impl WinHandler for OverlayWindow {
-    fn connect(&mut self, handle: &WindowHandle) { 
-        self.handle = handle.clone(); 
-    }
-    fn prepare_paint(&mut self) { self.handle.invalidate(); }
-
-    fn paint(&mut self, piet: &mut Piet, _: &Region) {
+impl WindowHandler for OverlayWindow {
+    fn on_draw(&mut self, helper: &mut WindowHelper, graphics: &mut Graphics2D) {
         let size = self.size;
-        let window_rect = size.to_rect();
+        let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
-        //TODO read in settings for overlay
-        modals::render_modal(&self.settings, &self.modal, &window_rect, piet);
-        self.handle.request_anim_frame();
+        modals::render_modal(&self.settings, &self.modal, &window_rect, graphics);
+        helper.request_redraw();
     }
 
-    fn key_down(&mut self, event: KeyEvent) -> bool {
-        handle_input(self, Some(event.code), None)
+    fn on_key_down(&mut self, _: &mut WindowHelper, virtual_key_code: Option<VirtualKeyCode>, _: KeyScancode) {
+        handle_input(self, virtual_key_code, None);
     }
 
-    fn size(&mut self, size: Size) { self.size = size; }
-    fn as_any(&mut self) -> &mut dyn Any { self }
+    fn on_resize(&mut self, _: &mut WindowHelper, size_pixels: speedy2d::dimen::Vector2<u32>) { 
+        self.size = size_pixels
+    }
 }
 
-pub fn handle_input(tree: &mut OverlayWindow, code: Option<Code>, button: Option<u16>) -> bool {
+pub fn handle_input(tree: &mut OverlayWindow, code: Option<VirtualKeyCode>, button: Option<u16>) -> bool {
     if let Some(crate::SystemActions::ToggleOverlay) = crate::SYSTEM_ACTION_MAP.get(code, button) { 
         tree.toggle_visibility(); 
         return true;

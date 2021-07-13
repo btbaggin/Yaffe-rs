@@ -1,19 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::any::Any;
 use std::time::Instant;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
-use druid_shell::kurbo::Size;
-use druid_shell::piet::Piet;
-use druid_shell::{
-    Application, KeyEvent, Code,
-    Region, WinHandler, WindowBuilder, WindowHandle,
-};
+use speedy2d::*;
+use speedy2d::window::*;
+use speedy2d::shape::Rectangle;
+use speedy2d::dimen::Vector2;
 pub use crate::settings::SettingNames;
 
 use crate::logger::{UserMessage, LogEntry};
+
+type V2 = Vector2<f32>;
 
 /*
     TODO:
@@ -23,14 +22,13 @@ use crate::logger::{UserMessage, LogEntry};
 */
 
 pub mod colors {
-    use druid_shell::piet::{Color};
-    pub const MENU_BACKGROUND: Color = Color::rgba8(64, 64, 64, 128);
-    pub const MODAL_OVERLAY_COLOR: Color = Color::rgba8(0, 0, 0, 115);
-    pub const MODAL_BACKGROUND: Color = Color::rgba8(26, 26, 26, 255);
+    use speedy2d::color::Color;
+    pub const MENU_BACKGROUND: Color = Color::from_rgba(0.25, 0.25, 0.25, 0.5);
+    pub const MODAL_OVERLAY_COLOR: Color = Color::from_rgba(0., 0., 0., 0.6);
+    pub const MODAL_BACKGROUND: Color = Color::from_rgba(0.1, 0.1, 0.1, 1.);
     
     pub fn get_font_color(settings: &crate::settings::SettingsFile) -> Color {
-        let (r, g, b, a) = settings.get_color(crate::SettingNames::FontColor).as_rgba();
-        Color::rgba(r, g, b, a)
+        settings.get_color(crate::SettingNames::FontColor).clone()
     }
     pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
         let color = settings.get_color(crate::SettingNames::FontColor);
@@ -45,8 +43,11 @@ pub mod colors {
         change_brightness(&color, -0.3)
     }
 
-    pub fn change_brightness(color: &Color, factor: f64) -> Color {
-        let (mut r, mut g, mut b, a) = color.as_rgba();
+    pub fn change_brightness(color: &Color, factor: f32) -> Color {
+        let mut r = color.r();
+        let mut g = color.g();
+        let mut b = color.b();
+        let a = color.a();
 
         if factor < 0. {
             let factor = 1. + factor;
@@ -59,23 +60,47 @@ pub mod colors {
             b  = (1. - b) * factor + b;
         }
 
-        return Color::rgba(r, g, b, a);
+        return Color::from_rgba(r, g, b, a);
     }
 }
 
 pub mod font {
-    pub const FONT_SIZE: f64 = 24.;
-    pub fn get_info_font_size(state: &crate::YaffeState) -> f64 {
-        state.settings.get_f64(crate::SettingNames::InfoFontSize)
+    pub const FONT_SIZE: f32 = 24.;
+    pub fn get_info_font_size(state: &crate::YaffeState) -> f32 {
+        state.settings.get_f32(crate::SettingNames::InfoFontSize)
     }
-    pub fn get_title_font_size(state: &crate::YaffeState) -> f64 {
-        state.settings.get_f64(crate::SettingNames::TitleFontSize)
+    pub fn get_title_font_size(state: &crate::YaffeState) -> f32 {
+        state.settings.get_f32(crate::SettingNames::TitleFontSize)
     }
 }
 
 pub mod ui {
-    pub const MARGIN: f64 = 10.;
-    pub const LABEL_SIZE: f64 = 200.;
+    pub const MARGIN: f32 = 10.;
+    pub const LABEL_SIZE: f32 = 200.;
+}
+
+trait Rect {
+    fn left(&self) -> f32;
+    fn right(&self) -> f32;
+    fn top(&self) -> f32;
+    fn bottom(&self) -> f32;
+    fn point_and_size(pos: V2, size: V2) -> Self;
+}
+impl Rect for speedy2d::shape::Rectangle {
+    fn left(&self) -> f32 { self.top_left().x }
+    fn right(&self) -> f32 { self.bottom_right().x }
+    fn top(&self) -> f32 { self.top_left().y }
+    fn bottom(&self) -> f32 { self.bottom_right().y }
+    fn point_and_size(pos: V2, size: V2) -> Self { speedy2d::shape::Rectangle::new(pos, pos + size) }
+}
+
+trait Transparent {
+    fn with_alpha(&self, alpha: f32) -> Self;
+}
+impl Transparent for speedy2d::color::Color {
+    fn with_alpha(&self, alpha: f32) -> Self {
+        speedy2d::color::Color::from_rgba(self.r(), self.g(), self.b(), alpha)
+    }
 }
 
 #[macro_use]
@@ -86,7 +111,7 @@ mod assets;
 mod database;
 mod modals;
 mod platform;
-mod platform_code;
+mod platform_layer;
 mod overlay;
 mod restrictions;
 mod server;
@@ -149,25 +174,25 @@ impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
 }
 
 lazy_static! {
-    static ref ACTION_MAP: InputMap<Code, u16, Actions> = {
+    static ref ACTION_MAP: InputMap<VirtualKeyCode, u16, Actions> = {
         let mut m = InputMap::new();
-        m.insert(Code::KeyI, controller::CONTROLLER_X, Actions::Info);
-        m.insert(Code::KeyF, controller::CONTROLLER_Y, Actions::Filter);
-        m.insert(Code::Enter, controller::CONTROLLER_A, Actions::Accept);
-        m.insert(Code::Escape, controller::CONTROLLER_B, Actions::Back);
-        m.insert(Code::ArrowUp, controller::CONTROLLER_UP, Actions::Up);
-        m.insert(Code::ArrowDown, controller::CONTROLLER_DOWN, Actions::Down);
-        m.insert(Code::ArrowRight, controller::CONTROLLER_RIGHT, Actions::Right);
-        m.insert(Code::ArrowLeft, controller::CONTROLLER_LEFT, Actions::Left);
-        m.insert(Code::Tab, controller::CONTROLLER_START, Actions::Select);
+        m.insert(VirtualKeyCode::I, controller::CONTROLLER_X, Actions::Info);
+        m.insert(VirtualKeyCode::F, controller::CONTROLLER_Y, Actions::Filter);
+        m.insert(VirtualKeyCode::Return, controller::CONTROLLER_A, Actions::Accept);
+        m.insert(VirtualKeyCode::Escape, controller::CONTROLLER_B, Actions::Back);
+        m.insert(VirtualKeyCode::Up, controller::CONTROLLER_UP, Actions::Up);
+        m.insert(VirtualKeyCode::Down, controller::CONTROLLER_DOWN, Actions::Down);
+        m.insert(VirtualKeyCode::Right, controller::CONTROLLER_RIGHT, Actions::Right);
+        m.insert(VirtualKeyCode::Left, controller::CONTROLLER_LEFT, Actions::Left);
+        m.insert(VirtualKeyCode::Tab, controller::CONTROLLER_START, Actions::Select);
         m
     };
 }
 lazy_static! {
-    static ref SYSTEM_ACTION_MAP: InputMap<Code, u16, SystemActions> = {
+    static ref SYSTEM_ACTION_MAP: InputMap<VirtualKeyCode, u16, SystemActions> = {
         let mut m = InputMap::new();
-        m.insert(Code::F1, controller::CONTROLLER_START, SystemActions::ShowMenu);
-        m.insert(Code::KeyO, controller::CONTROLLER_GUIDE, SystemActions::ToggleOverlay);
+        m.insert(VirtualKeyCode::F1, controller::CONTROLLER_START, SystemActions::ShowMenu);
+        m.insert(VirtualKeyCode::O, controller::CONTROLLER_GUIDE, SystemActions::ToggleOverlay);
         m
     };
 }
@@ -192,17 +217,15 @@ pub struct Executable {
     banner: Rc<RefCell<assets::AssetSlot>>,
 }
 
-#[derive(Default)]
 struct YaffeWin {
-    size: Size,
-    handle: WindowHandle,
+    size: speedy2d::dimen::Vector2<u32>,
 }
 
 pub struct YaffeState {
     win: YaffeWin,
     last_time: Instant,
-    delta_time: f64,
-    overlay: *mut OverlayWindow,
+    delta_time: f32,
+    overlay: Rc<RefCell<OverlayWindow>>,
     selected_platform: usize,
     selected_app: usize,
     platforms: Vec<Platform>,
@@ -215,13 +238,14 @@ pub struct YaffeState {
     refresh_list: bool,
     controller: Option<controller::XInput>,
     settings: settings::SettingsFile,
+    running: bool,
 }
 impl YaffeState {
-    fn new(overlay: *mut OverlayWindow, 
+    fn new(overlay: Rc<RefCell<OverlayWindow>>, 
            settings: settings::SettingsFile, 
            queue: Arc<RefCell<job_system::JobQueue>>) -> YaffeState {
         YaffeState {
-            win: YaffeWin::default(),
+            win: YaffeWin { size: speedy2d::dimen::Vector2::new(0, 0) },
             last_time: Instant::now(),
             delta_time: 0.,
             overlay: overlay,
@@ -237,6 +261,7 @@ impl YaffeState {
             refresh_list: true,
             controller: controller::load_xinput(),
             settings: settings,
+            running: true,
         }
     }
 
@@ -252,37 +277,42 @@ impl YaffeState {
         None
     }
 
-    pub fn get_overlay(&self) -> &mut OverlayWindow {
-        unsafe { &mut *self.overlay }
-    }
-
     fn is_widget_focused(&self, widget: &impl WidgetName) -> bool {
         if self.focused_widget == widget.get_id() {
             return true;
         }
         false
     }
+
+    fn overlay_is_active(&self) -> bool {
+        let mut overlay = self.overlay.borrow_mut();
+        overlay.process_is_running()
+    }
 }
 
-impl WinHandler for WidgetTree {
-    fn connect(&mut self, handle: &WindowHandle) { 
-        self.data.win.handle = handle.clone(); 
+impl WindowHandler  for WidgetTree {
+    fn on_start(&mut self, _: &mut WindowHelper, info: WindowStartupInfo) {
+        self.data.win.size = *info.viewport_size_pixels();
         server::start_up();
-
+    
         //Attempt to start COM here since it doesnt work in the settings modal?
         #[cfg(windows)]
 	    unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
-}
-    fn prepare_paint(&mut self) { self.data.win.handle.invalidate(); }
+    }
 
-    fn paint(&mut self, piet: &mut Piet, _: &Region) {
+    fn on_draw(&mut self, helper: &mut WindowHelper, graphics: &mut Graphics2D) {
         if let Err(e) = settings::update_settings(&mut self.data.settings) {
             logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
         }
 
-        assets::load_texture_atlas(piet);
+        if !self.data.running {
+            shutdown(helper);
+            return;
+        }
 
-        if !self.data.get_overlay().process_is_running() {
+        assets::load_texture_atlas(graphics);
+
+        if !self.data.overlay_is_active() {
             if let Some(controller) = &mut self.data.controller {
                 for e in controller.get_actions(0) {
                     handle_input(self, None, Some(e));
@@ -290,11 +320,11 @@ impl WinHandler for WidgetTree {
             }  
 
             let now = Instant::now();
-            self.data.delta_time = (now - self.data.last_time).as_millis() as f64 / 1000.;
+            self.data.delta_time = (now - self.data.last_time).as_millis() as f32 / 1000.;
             self.data.last_time = now;
 
             let size = self.data.win.size;
-            let window_rect = size.to_rect();
+            let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
             if self.data.refresh_list {
                 platform::get_database_info(&mut self.data);
@@ -302,53 +332,39 @@ impl WinHandler for WidgetTree {
             }
 
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(window_rect, piet, !self.layout_valid);
+            self.render_all(window_rect.clone(), graphics, !self.layout_valid);
             self.layout_valid = true;
 
             crate::widgets::run_animations(self, self.data.delta_time);
 
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
-                modals::modal::render_modal(&self.data.settings, m, &window_rect, piet);
+                modals::modal::render_modal(&self.data.settings, m, &window_rect, graphics);
             }
-        } else {
-            if let Some(controller) = &mut self.data.controller {
-                for e in controller.get_actions(0) {
-                    overlay::handle_input(self.data.get_overlay(), None, Some(e));
-                }
+
+        } else if let Some(controller) = &mut self.data.controller {
+            let mut overlay = self.data.overlay.borrow_mut();
+            for e in controller.get_actions(0) {
+                overlay::handle_input(&mut overlay, None, Some(e));
             }
         }
 
-        self.data.win.handle.request_anim_frame();
+        helper.request_redraw();
     }
 
-    fn key_down(&mut self, event: KeyEvent) -> bool {
-        if self.data.get_overlay().process_is_running() { return false; }
-        handle_input(self, Some(event.code), None)
+    fn on_key_down(&mut self, _: &mut WindowHelper, virtual_key_code: Option<VirtualKeyCode>, _: KeyScancode) {
+        if self.data.overlay_is_active() { return; }
+        handle_input(self, virtual_key_code, None);
     }
 
-    fn size(&mut self, size: Size) { 
-        self.data.win.size = size; 
+    fn on_resize(&mut self, _: &mut WindowHelper, size_pixels: Vector2<u32>) { 
+        self.data.win.size = size_pixels; 
         self.layout_valid = false;
     }
-    // fn got_focus(&mut self) { println!("Got focus"); }
-    // fn lost_focus(&mut self) { println!("Lost focus"); }
-    fn request_close(&mut self) { 
-        self.data.win.handle.close(); 
-
-        #[cfg(windows)]
-        unsafe { winapi::um::combaseapi::CoUninitialize() };
-
-    }
-    fn destroy(&mut self) { 
-        server::shutdown();
-        Application::global().quit() 
-    }
-    fn as_any(&mut self) -> &mut dyn Any { self }
 }
 
 fn main() {
-    let app = Application::new().unwrap();
+    let window = Window::new_fullscreen_borderless("Yaffe").unwrap();
 
     logger::initialize_log();
     let queue = job_system::start_job_system();
@@ -370,26 +386,26 @@ fn main() {
     let mut ui = widgets::WidgetTree::new(root, state);
     ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
 
-    let mut builder = WindowBuilder::new(app.clone());
-    builder.set_handler(Box::new(ui));
-    builder.set_title("Yaffe");
-
-    let window = builder.build().unwrap();
-    window.show();
-
-    app.run(None);
+    window.run_loop(ui);
 }
 
 fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
     let mut root = WidgetContainer::root(widgets::Background::new(queue.clone()));
-    root.add_child(widgets::PlatformList::new(queue.clone()),Size::new(0.25, 1.))
-        .with_child(widgets::AppList::new(queue.clone()), Size::new(0.75, 1.))
-            .add_child(widgets::SearchBar::new(queue.clone()), Size::new(1., 0.05))
-            .add_child(widgets::Toolbar::new(queue.clone()), Size::new(1., 0.075))
-            .add_child(widgets::InfoPane::new(queue.clone()), Size::new(0.33, 1.))
+    root.add_child(widgets::PlatformList::new(queue.clone()), V2::new(0.25, 1.))
+        .with_child(widgets::AppList::new(queue.clone()), V2::new(0.75, 1.))
+            .add_child(widgets::SearchBar::new(queue.clone()), V2::new(1., 0.05))
+            .add_child(widgets::Toolbar::new(queue.clone()), V2::new(1., 0.075))
+            .add_child(widgets::InfoPane::new(queue.clone()), V2::new(0.33, 1.))
             .orientation(ContainerOrientation::Floating);
             
     root
+}
+
+fn shutdown(helper: &mut WindowHelper) {
+    server::shutdown();
+    #[cfg(windows)]
+    unsafe { winapi::um::combaseapi::CoUninitialize() };
+    helper.terminate_loop();
 }
 
 fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &Box<dyn modals::ModalContent>) {
@@ -420,14 +436,17 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
                 let content = Box::new(modals::SetRestrictedModal::new());
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, modals::ModalSize::Third, Some(restrictions::on_restricted_modal_close))
             },
-            "Exit Yaffe" => state.win.handle.close(), //This causes issues. not sure why
-            "Shut Down" => { system_shutdown::shutdown().display_failure("Failed to shut down", state); },
+            "Exit Yaffe" => state.running = false, 
+            "Shut Down" => { 
+                state.running = false;
+                crate::platform_layer::shutdown().display_failure("Failed to shut down", state); 
+            },
             _ => panic!("Unknown menu option"),
         }
     }
 }
 
-fn handle_input(tree: &mut WidgetTree, code: Option<Code>, button: Option<u16>) -> bool {
+fn handle_input(tree: &mut WidgetTree, code: Option<VirtualKeyCode>, button: Option<u16>) -> bool {
     if let Some(action) = SYSTEM_ACTION_MAP.get(code, button) { 
         match action {
             SystemActions::ShowMenu => {

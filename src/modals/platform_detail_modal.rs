@@ -1,6 +1,6 @@
-use druid_shell::kurbo::{Rect, Point};
-use druid_shell::piet::{Piet, RenderContext};
-use crate::{font, widgets::get_drawable_text, YaffeState, Actions};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use crate::{font, widgets::get_drawable_text, YaffeState, Actions, Rect, V2};
 use crate::modals::*;
 use crate::colors::*;
 use crate::logger::{LogEntry, UserMessage};
@@ -57,7 +57,7 @@ impl PlatformDetailModal {
 
 impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f64 {
+    fn get_height(&self) -> f32 {
         (crate::font::FONT_SIZE + crate::ui::MARGIN) * 4.
     }
 
@@ -84,8 +84,8 @@ impl ModalContent for PlatformDetailModal {
         }
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Piet) {
-        let draw_rect = Rect::new(rect.x0, rect.y0, rect.x1, rect.y0 + crate::font::FONT_SIZE);
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+        let draw_rect = Rect::point_and_size(*rect.top_left(), V2::new(rect.right(), rect.top() + crate::font::FONT_SIZE));
         let draw_rect = draw_field_with_label(piet, self, settings, "Name", &self.name, 0, draw_rect);
         let draw_rect = draw_field_with_label(piet, self, settings, "Executable", &self.exe, 1, draw_rect);
         let draw_rect = draw_field_with_label(piet, self, settings, "Args", &self.args, 2, draw_rect);
@@ -93,31 +93,31 @@ impl ModalContent for PlatformDetailModal {
     }
 }
 
-fn draw_field_with_label(piet: &mut Piet, 
+fn draw_field_with_label(piet: &mut Graphics2D, 
                          modal: &PlatformDetailModal, 
                          settings: &crate::settings::SettingsFile, 
                          caption: &str, 
                          field: &str, 
                          index: u32, 
-                         rect: Rect) -> Rect {
+                         rect: Rectangle) -> Rectangle {
     //Caption
-    let position = rect.origin();
-    let label = get_drawable_text(piet, font::FONT_SIZE, caption, get_font_color(settings));
-    piet.draw_text(&label, position); 
+    let position = rect.top_left();
+    let label = get_drawable_text(font::FONT_SIZE, caption);
+    piet.draw_text(*position, get_font_color(settings), &label); 
     
     //Background rect
-    let value_rect = Rect::new(rect.x0 + crate::ui::LABEL_SIZE, rect.y0, rect.x1, rect.y1);
-    piet.fill(value_rect, &get_accent_unfocused_color(settings));
+    let value_rect = Rectangle::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
+    piet.draw_rectangle(value_rect.clone(), get_accent_unfocused_color(settings));
     if modal.selected_field == index {
-        piet.stroke(value_rect, &get_accent_color(settings), 2.);
+        modal::outline_rectangle(piet, &value_rect, 2., get_accent_color(settings));
     }
   
     //Value
-    let value = get_drawable_text(piet, font::FONT_SIZE, field, get_font_color(settings));
-    piet.draw_text(&value, Point::new(position.x + crate::ui::LABEL_SIZE, position.y));
+    let value = get_drawable_text(font::FONT_SIZE, field);
+    piet.draw_text(V2::new(position.x + crate::ui::LABEL_SIZE, position.y), get_font_color(settings), &value);
     
     //Return drawing rect for next field
-    Rect::new(rect.x0, rect.y1 + crate::ui::MARGIN, rect.x1, rect.y1 + crate::font::FONT_SIZE + crate::ui::MARGIN)
+    Rectangle::from_tuples((rect.left(), rect.bottom() + crate::ui::MARGIN), (rect.right(), rect.bottom() + crate::font::FONT_SIZE + crate::ui::MARGIN))
 }
 
 pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {

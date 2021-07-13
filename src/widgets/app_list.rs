@@ -1,11 +1,12 @@
-use druid_shell::kurbo::{Rect, Size, Point};
-use druid_shell::piet::{Piet};
-use crate::{YaffeState, Actions, DeferredAction, create_widget};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use crate::{YaffeState, Actions, DeferredAction, create_widget, V2};
 use crate::widgets::AppTile;
+use crate::Rect;
 use crate::logger::{LogEntry, UserMessage};
 
 const APPS_PER_ROW: usize = 4;
-const MARGIN: f64 = 0.1;
+const MARGIN: f32 = 0.1;
 
 create_widget!(AppList, 
     cached_platform: usize = 99999, 
@@ -64,7 +65,7 @@ impl super::Widget for AppList {
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, piet: &mut Piet) {
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D) {
         self.update(state, &rect);
 
         let plat = state.get_platform();
@@ -84,7 +85,7 @@ impl super::Widget for AppList {
     }
 }
 impl AppList {
-    fn update(&mut self, state: &YaffeState, rect: &Rect) {
+    fn update(&mut self, state: &YaffeState, rect: &Rectangle) {
         //Check the length of our cache vs actual in case a game was added
         //to this platform while we were on it
         if self.cached_platform != state.selected_platform ||
@@ -105,13 +106,13 @@ impl AppList {
         self.update_tiles(state, rect);
     }
 
-    fn update_tiles(&mut self, state: &YaffeState,  rect: &Rect) {
+    fn update_tiles(&mut self, state: &YaffeState,  rect: &Rectangle) {
         let platform = state.get_platform();
 
         //Calculate total size for inner list
         let margin_x = rect.width() * MARGIN;
         let margin_y = rect.height() * MARGIN;
-        let list_rect = Rect::new(rect.x0 + margin_x, rect.y0 + margin_y, rect.x1 - margin_x, rect.y1 - margin_y);
+        let list_rect = Rectangle::from_tuples((rect.left() + margin_x, rect.top() + margin_y), (rect.right() - margin_x, rect.bottom() - margin_y));
 
         //Get size each tile should try to stretch to
         let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state, platform.kind != crate::platform::PlatformType::Enumlator, &list_rect);
@@ -125,33 +126,33 @@ impl AppList {
             //Size each tile according to its aspect ratio and the ideal size
             AppList::size_individual_tile(state, exe, &ideal_tile_size);
 
-            let x = (effective_i % self.tiles_x) as f64;
-            let y = ((effective_i / self.tiles_x) - (self.first_visible / self.tiles_x)) as f64;
+            let x = (effective_i % self.tiles_x) as f32;
+            let y = ((effective_i / self.tiles_x) - (self.first_visible / self.tiles_x)) as f32;
 
             let offset = (ideal_tile_size - exe.size) / 2.0;
 
-            let position = Point::new(ideal_tile_size.width * x + offset.width + list_rect.x0, 
-                                   ideal_tile_size.height * y + offset.height + list_rect.y0);
+            let position = V2::new(ideal_tile_size.x * x + offset.x + list_rect.left(), 
+                                   ideal_tile_size.y * y + offset.y + list_rect.top());
             exe.position = position;
 
             if exe.is_visible() { effective_i += 1; }
         }
     }
 
-    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &Rect) -> (isize, isize, Size) {
+    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &Rectangle) -> (isize, isize, V2) {
         let mut width = 0.;
         let mut height = 0.;
         let mut tiles_x = 1;
         let mut tiles_y = 1;
-        let mut bitmap_size = Size::ZERO;
+        let mut bitmap_size = V2::new(0., 0.);
         if self.tiles.len() > 0 {
             //Get widest boxart image
             let mut max_width = 0.;
             for exe in self.tiles.iter() {
                 let size = exe.get_image_size(state);
-                if size.width > max_width {
+                if size.x > max_width {
                     bitmap_size = size;
-                    max_width = size.width;
+                    max_width = size.x;
                     if !max { break; }
                 }
             }
@@ -160,37 +161,37 @@ impl AppList {
             if max_width > 0. {
                 let menu_size = rect.size();
 
-                if bitmap_size.width > bitmap_size.height {
-                    let aspect = bitmap_size.height / bitmap_size.width;
-                    width = menu_size.width / state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f64;
+                if bitmap_size.x > bitmap_size.y {
+                    let aspect = bitmap_size.y / bitmap_size.x;
+                    width = menu_size.x / state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32;
                     height= aspect * width;
                 } else {
-                    let aspect = bitmap_size.width / bitmap_size.height;
-                    height = menu_size.height / state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f64;
+                    let aspect = bitmap_size.x / bitmap_size.y;
+                    height = menu_size.y / state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32;
                     width = aspect * height;
                 }
-                tiles_x = (menu_size.width / width) as isize;
-                tiles_y = (menu_size.height / height) as isize;
+                tiles_x = (menu_size.x / width) as isize;
+                tiles_y = (menu_size.y / height) as isize;
             }
         }
 
-        (tiles_x, tiles_y, Size::new(width, height))
+        (tiles_x, tiles_y, V2::new(width, height))
     }
 
-    fn size_individual_tile(state: &YaffeState, tile: &mut AppTile, size: &Size) {
+    fn size_individual_tile(state: &YaffeState, tile: &mut AppTile, size: &V2) {
         let mut tile_size = *size;
 
         //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
 		//We wouldn't want vertical boxart to stretch to the horizontal dimensions
 		//This will scale boxart that is different aspect to fit within the tile_size.Height
         let bitmap_size = tile.get_image_size(state);
-        let real_aspect = bitmap_size.width / bitmap_size.height;
-        let tile_aspect = tile_size.width / tile_size.height;
+        let real_aspect = bitmap_size.x / bitmap_size.y;
+        let tile_aspect = tile_size.x / tile_size.y;
 
         //If an aspect is wider than it is tall, it is > 1
 		//If the two aspect ratios are on other sides of one, it means we need to scale
-		if f64::is_sign_positive(real_aspect - 1.) != f64::is_sign_positive(tile_aspect - 1.) {
-			tile_size.width = tile_size.height * real_aspect;
+		if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
+			tile_size.x = tile_size.y * real_aspect;
 		}
 
 		tile.size = tile_size;
@@ -249,7 +250,8 @@ fn start_game(state: &mut YaffeState) {
         }
 
         if let Some(process) = process.spawn().display_failure("Unable to start game", state) {
-            state.get_overlay().set_process(process);
+            let mut overlay = state.overlay.borrow_mut();
+            overlay.set_process(process);
             //We could refresh so our recent games page updates, but I dont think that's desirable
         }
     }

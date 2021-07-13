@@ -1,6 +1,7 @@
-use druid_shell::kurbo::{Rect};
-use druid_shell::piet::{Piet, RenderContext};
-use crate::Actions;
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use crate::Rect;
+use crate::{Actions, V2};
 use crate::colors::*;
 use crate::modals::{ModalResult, ModalContent, DeferredModalAction};
 use crate::restrictions::{RestrictedPasscode, PasscodeEquality, passcodes_equal};
@@ -20,7 +21,7 @@ impl SetRestrictedModal {
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f64 { crate::font::FONT_SIZE + crate::ui::MARGIN }
+    fn get_height(&self) -> f32 { crate::font::FONT_SIZE + crate::ui::MARGIN }
 
     fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
         let code = match action {
@@ -33,10 +34,10 @@ impl ModalContent for SetRestrictedModal {
         ModalResult::None
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Piet) {
-        let item_label = crate::widgets::get_drawable_text(piet, crate::font::FONT_SIZE, "*", get_font_color(settings));
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+        let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "*");
         for i in 0..self.pass.len() {
-            piet.draw_text(&item_label, (rect.x0 + i as f64 * crate::font::FONT_SIZE, rect.y0));
+            piet.draw_text(V2::new(rect.left() + i as f32 * crate::font::FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
 
         }
     }
@@ -68,7 +69,7 @@ impl VerifyRestrictedModal {
 
 impl ModalContent for VerifyRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f64 { crate::font::FONT_SIZE + crate::ui::MARGIN }
+    fn get_height(&self) -> f32 { crate::font::FONT_SIZE + crate::ui::MARGIN }
 
     fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
         //Get the key (or action which can be translated to a key)
@@ -92,10 +93,10 @@ impl ModalContent for VerifyRestrictedModal {
         ModalResult::None
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Piet) {
-        let item_label = crate::widgets::get_drawable_text(piet, crate::font::FONT_SIZE, "*", get_font_color(settings));
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+        let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "*");
         for i in 0..self.pass.len() {
-            piet.draw_text(&item_label, (rect.x0 + i as f64 * crate::font::FONT_SIZE, rect.y0));
+            piet.draw_text(V2::new(rect.left() + i as f32 * crate::font::FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }
