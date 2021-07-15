@@ -211,6 +211,7 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
 
     asset_slot.data = Some((dimensions, bytes_rgba8));
     asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::Relaxed);
+    //TODO i could write something to indicate we need to draw a new frame?
 }
 
 pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
@@ -261,8 +262,8 @@ fn read_texture_atlas(path: &str) -> Vec<(String, Rectangle)> {
 
     let file = std::fs::read(path).log_if_fail();
     let mut index = 0;
-    let _width = read_type!(i32, file, index);
-    let _height = read_type!(i32, file, index);
+    let total_width = read_type!(i32, file, index);
+    let total_height = read_type!(i32, file, index);
     let count = read_type!(i32, file, index);
 
     let mut result = vec!();
@@ -280,7 +281,11 @@ fn read_texture_atlas(path: &str) -> Vec<(String, Rectangle)> {
         let x = read_type!(i32, file, index);
         let y = read_type!(i32, file, index);
 
-        result.push((name, Rectangle::from_tuples((x as f32, y as f32), ((x + image_width) as f32, (y + image_height) as f32))));
+        let width = (x + image_width) as f32 / total_width as f32;
+        let height = (y + image_height) as f32 / total_height as f32;
+        let x = x as f32 / total_width as f32;
+        let y = y as f32 / total_height as f32;
+        result.push((name, Rectangle::from_tuples((x, y), (width, height))));
     }
 
     result

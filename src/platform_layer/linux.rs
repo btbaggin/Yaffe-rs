@@ -13,3 +13,7 @@ fn(super) shutdown() -> ShutdownResult {
         Err(error) => Err(error),
     }
 }
+
+pub(super) get_input() -> bool {
+	true
+}

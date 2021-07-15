@@ -69,6 +69,7 @@ impl DeferredModalAction {
         self.file_action = Some(ModalFileAction::OpenDirectory);
     }
 
+    //TODO i can get rid of this in favor of WindowHelper
     pub fn resolve(self, state: &mut YaffeState) {
         match self.file_action {
             Some(ModalFileAction::OpenFile) =>  { Some(1) } //TODO state.win.handle.open_file(druid_shell::FileDialogOptions::new()),

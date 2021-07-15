@@ -64,7 +64,7 @@ pub fn start_job_system() -> JobQueue {
 
 fn poll_pending_jobs(queue: spmc::Receiver<JobType>) {
     loop {
-        let msg = queue.recv().unwrap();
+        let msg = queue.recv().log_if_fail();
         match msg {
             JobType::LoadImage(slot) => crate::assets::load_image_async(slot),
     

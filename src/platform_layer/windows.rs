@@ -2,27 +2,30 @@ use winapi::um::taskschd::*;
 use winapi::um::combaseapi::*;
 use winapi::shared::rpcdce::{RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IMPERSONATE};
 use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
+use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE};
+use winapi::shared::winerror::{ERROR_DEVICE_NOT_CONNECTED, ERROR_SUCCESS};
+use winapi::shared::wtypes::{BSTR, VARIANT_TRUE};
 use winapi::{Interface, Class};
 use winapi::um::unknwnbase::IUnknown;
-use winapi::shared::wtypes::{BSTR, VARIANT_TRUE};
-use winapi::shared::minwindef::FALSE;
 use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcessToken};
-use winapi::um::reason::{
-    SHTDN_REASON_FLAG_PLANNED, SHTDN_REASON_MAJOR_OPERATINGSYSTEM, SHTDN_REASON_MINOR_UPGRADE,
-};
+use winapi::um::reason::SHTDN_REASON_FLAG_PLANNED;
 use winapi::um::securitybaseapi::AdjustTokenPrivileges;
 use winapi::um::winbase::LookupPrivilegeValueW;
 use winapi::um::winnt::{
-    HANDLE, LPWSTR, SE_PRIVILEGE_ENABLED, SE_SHUTDOWN_NAME, TOKEN_ADJUST_PRIVILEGES,
+    HANDLE, SHORT, LPWSTR, SE_PRIVILEGE_ENABLED, SE_SHUTDOWN_NAME, TOKEN_ADJUST_PRIVILEGES,
     TOKEN_PRIVILEGES, TOKEN_QUERY,
 };
+use winapi::um::xinput::*;
 use winapi::um::winuser::{
     ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
 };
+use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
+
+use std::time::Instant;
 use std::os::windows::ffi::OsStrExt;
 use std::ops::Deref;
 use std::convert::TryInto;
-
+use glutin::event::VirtualKeyCode;
 use super::{StartupResult, ShutdownResult};
 
 struct ComString { string: BSTR }
@@ -263,4 +266,154 @@ pub(super) fn shutdown() -> ShutdownResult {
     }
 
     Ok(())
+}
+
+pub fn initialize_input() {
+	let mut handle = None;
+    for lib_name in ["xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll"].iter() {
+        handle = load(lib_name);
+        if handle.is_some() { break; }
+    }
+	unsafe { XINPUT = handle };
+}
+
+pub(super) fn get_input() -> (Vec<VirtualKeyCode>, Vec<super::ControllerInput>) {
+    let xinput = unsafe { XINPUT.as_mut().unwrap() };
+	(vec!(), xinput.get_actions(0))
+}
+
+
+pub enum XInputError {
+    InvalidControllerID,
+    DeviceNotConnected,
+    UnknownError(u32),
+}
+
+const CONTROLLER_GUIDE: u16 = 0x0400;
+static mut XINPUT: Option<XInput> = None;
+
+type XInputGetStateFunc = unsafe extern "system" fn(DWORD, *mut XInputGamepadEx) -> DWORD;
+
+#[repr(C)] #[derive(Default, Copy, Clone)]
+struct XInputGamepadEx {
+	event_count: DWORD,
+	w_buttons: WORD,
+	b_left_trigger: BYTE,
+	b_right_trigger: BYTE,
+	s_thumb_lx: SHORT,
+	s_thumb_ly: SHORT,
+	s_thumb_rx: SHORT,
+	s_thumb_ry: SHORT,
+}
+
+struct XInput {
+    get_state: XInputGetStateFunc,
+    previous_state: XInputGamepadEx,
+    current_state: XInputGamepadEx,
+    last_stick_time: Instant,
+    last_button_time: Instant,
+}
+
+impl XInput {
+    pub fn update(&mut self, user_index: u32) -> Result<(), XInputError> {
+        if user_index >= 4 {
+            Err(XInputError::InvalidControllerID)
+        } else {
+            let mut output: XInputGamepadEx = unsafe { ::std::mem::zeroed() };
+            let return_status = unsafe { (self.get_state)(user_index as DWORD, &mut output) };
+            match return_status {
+                ERROR_SUCCESS => {
+                    self.previous_state = self.current_state;
+                    self.current_state = output;
+                    return Ok(());
+                }
+                ERROR_DEVICE_NOT_CONNECTED => Err(XInputError::DeviceNotConnected),
+                s => { Err(XInputError::UnknownError(s)) }
+            }
+        }
+    }
+
+	fn is_pressed(&self, button: u16) -> bool {
+		self.current_state.w_buttons & button != 0 && self.previous_state.w_buttons & button == 0
+	}
+
+    pub fn get_actions(&mut self, user_index: u32) -> Vec<super::ControllerInput> {
+        let mut result = Vec::new();
+
+		//NOT USED
+		//XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, 
+		//XINPUT_GAMEPAD_DPAD_RIGHT, XINPUT_GAMEPAD_RIGHT_SHOULDER,
+		//XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB, XINPUT_GAMEPAD_LEFT_SHOULDER, 
+
+        if self.update(user_index).is_ok() {
+			
+
+            let now = Instant::now();
+            if (now - self.last_button_time).as_millis() > 100 {
+				let count = result.len();
+				if self.is_pressed(XINPUT_GAMEPAD_START) { result.push(super::ControllerInput::ButtonStart); }
+				if self.is_pressed(XINPUT_GAMEPAD_BACK) { result.push(super::ControllerInput::ButtonBack); }
+				if self.is_pressed(CONTROLLER_GUIDE) { result.push(super::ControllerInput::ButtonGuide); }
+				if self.is_pressed(XINPUT_GAMEPAD_A) { result.push(super::ControllerInput::ButtonSouth); }
+				if self.is_pressed(XINPUT_GAMEPAD_B) { result.push(super::ControllerInput::ButtonEast); }
+				if self.is_pressed(XINPUT_GAMEPAD_X) { result.push(super::ControllerInput::ButtonWest); }
+				if self.is_pressed(XINPUT_GAMEPAD_Y) { result.push(super::ControllerInput::ButtonNorth); }
+				if result.len() > count { self.last_button_time = now; }
+            }
+
+			let x = self.current_state.s_thumb_lx as i32;
+			let y = self.current_state.s_thumb_ly as i32;
+			if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 { 
+				if (now - self.last_stick_time).as_millis() > 100 {
+					let count = result.len();
+					if x < 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionLeft); }
+					if y > 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionUp); }
+					if y < 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionDown); }
+					if x > 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionRight); }
+					if result.len() > count { self.last_stick_time = now; }
+				}
+			}
+    	}
+
+        result
+    }
+}
+
+
+fn load<S: AsRef<str>>(s: S) -> Option<XInput> {
+    fn wide_null<S: AsRef<str>>(s: S) -> [u16; ::winapi::shared::minwindef::MAX_PATH] {
+        let mut output: [u16; ::winapi::shared::minwindef::MAX_PATH] = [0; ::winapi::shared::minwindef::MAX_PATH];
+        let mut i = 0;
+        for u in s.as_ref().encode_utf16() {
+            if i == output.len() - 1 { break; } 
+            else { output[i] = u; }
+            i += 1;
+        }
+        output[i] = 0;
+        output
+      }
+
+    let lib_name = wide_null(s);
+    // It's always safe to call `LoadLibraryW`, the worst that can happen is
+    // that we get a null pointer back.
+    let xinput_handle = unsafe { LoadLibraryW(lib_name.as_ptr()) };
+    if xinput_handle.is_null() { return None; }
+
+    let mut opt_xinput_get_state = None;
+    // using transmute is so dodgy we'll put that in its own unsafe block.
+    unsafe {
+        let get_state_ptr = GetProcAddress(xinput_handle, 100 as *mut i8);
+        // let get_state_ptr = GetProcAddress(xinput_handle, b"XInputGetState\0".as_ptr() as *mut i8);
+        if !get_state_ptr.is_null() {
+            opt_xinput_get_state = Some(::std::mem::transmute(get_state_ptr));
+        }
+    }
+
+    unsafe { FreeLibrary(xinput_handle); }
+
+    Some(XInput { get_state: opt_xinput_get_state.unwrap(), 
+                  current_state: XInputGamepadEx::default(), 
+                  previous_state: XInputGamepadEx::default(),
+                  last_stick_time: Instant::now(), 
+                  last_button_time: Instant::now() })
 }

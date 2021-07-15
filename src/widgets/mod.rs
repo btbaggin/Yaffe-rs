@@ -370,7 +370,7 @@ pub fn right_aligned_text(piet: &mut Graphics2D, right: V2, image: Option<crate:
     if let Some(i) = image {
         right.x -= size.y;
         let i = crate::assets::request_preloaded_image(piet, i);
-        i.render(piet, Rectangle::new(right, right + V2::new(size.x, size.x)));
+        i.render(piet, Rectangle::new(right, right + V2::new(size.y, size.y)));
     }
 
     right
