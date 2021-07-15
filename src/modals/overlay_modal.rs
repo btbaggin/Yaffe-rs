@@ -34,9 +34,9 @@ impl ModalContent for OverlayModal {
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
         //TODO this doesnt work because it was loaded with the Piet of another window?
-        // let image_rect = Rect::new(rect.x0, rect.y0, rect.x0 + 32., rect.y0 + 32.);
+        // let image_rect = Rectangle::from_tuples((rect.left(), rect.top()), (rect.left() + 32., rect.top() + 32.));
         // let i = crate::assets::request_preloaded_image(piet, crate::assets::Images::Speaker);
-        //i.render(piet, image_rect);
+        // i.render(piet, image_rect);
 
         let rect = Rectangle::from_tuples((rect.left() + 35., rect.top()), (rect.right(), rect.bottom()));
         crate::modals::modal::outline_rectangle(piet, &rect, 2., Color::GRAY);
