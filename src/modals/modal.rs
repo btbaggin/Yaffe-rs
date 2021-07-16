@@ -12,6 +12,7 @@ pub enum ModalResult {
     Cancel,
 }
 
+#[allow(dead_code)]
 #[repr(u8)]
 #[derive(Copy, Clone)]
 pub enum ModalSize {
@@ -45,42 +46,8 @@ pub trait ModalContent {
     fn as_any(&self) -> &dyn std::any::Any;
     fn get_height(&self) -> f32;
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D);
-    fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult { 
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult { 
         default_modal_action(action)
-    }
-}
-
-#[repr(u8)]
-enum ModalFileAction {
-    OpenFile,
-    OpenDirectory,
-}
-pub struct DeferredModalAction {
-    file_action: Option<ModalFileAction>,
-}
-impl DeferredModalAction {
-    pub fn new() -> DeferredModalAction {
-        DeferredModalAction { file_action: None }
-    }
-    pub fn open_file(&mut self) {
-        self.file_action = Some(ModalFileAction::OpenFile);
-    }
-    pub fn open_directory(&mut self) {
-        self.file_action = Some(ModalFileAction::OpenDirectory);
-    }
-
-    //TODO i can get rid of this in favor of WindowHelper
-    pub fn resolve(self, state: &mut YaffeState) {
-        match self.file_action {
-            Some(ModalFileAction::OpenFile) =>  { Some(1) } //TODO state.win.handle.open_file(druid_shell::FileDialogOptions::new()),
-            Some(ModalFileAction::OpenDirectory) => { None
-                //TODO
-                // let options = druid_shell::FileDialogOptions::new();
-                // let options = options.select_directories();
-                // state.win.handle.open_file(options)
-            }
-            None => None,
-        };
     }
 }
 
@@ -142,15 +109,14 @@ pub fn display_modal_with_icon(state: &mut YaffeState,
     modals.push(m);
 }
 
-pub(crate) fn update_modal(state: &mut YaffeState, action: &Actions) {
+pub(crate) fn update_modal(state: &mut YaffeState, helper: &mut crate::windowing::WindowHelper, action: &Actions) {
     //This method can call into display_modal above, which locks the mutex
     //If we lock here that call will wait infinitely
     //We can get_mut here to ensure compile time exclusivity instead of locking
     //That allows us to call display_modal in close() below
-    let mut handler = DeferredModalAction::new();
     let modals = state.modals.get_mut().unwrap();
     if let Some(modal) = modals.last_mut() {
-        let result = modal.content.action(&action, &mut handler);
+        let result = modal.content.action(&action, helper);
 
         match result {
             ModalResult::Ok | ModalResult::Cancel => {
@@ -163,7 +129,6 @@ pub(crate) fn update_modal(state: &mut YaffeState, action: &Actions) {
             ModalResult::None => {},
         }
     }
-    handler.resolve(state);
 }
 
 pub(crate) fn is_modal_open(state: &YaffeState) -> bool {

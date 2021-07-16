@@ -4,6 +4,7 @@ use crate::modals::{ListModal, display_modal, ModalSize, on_platform_found_close
 use crate::logger::*;
 use std::collections::HashSet;
 
+
 //This is used to pass a raw pointer to the assetslot between threads
 //Since PietImage isnt marked Send we just pass the raw pointer, we don't touch the image off the main thread
 #[derive(Clone, Copy)]
@@ -48,21 +49,23 @@ impl JobQueue {
 
 /// Starts a single producer multiple consumer job threading system
 /// Jobs can be sent to this system using the returned JobQueue
-pub fn start_job_system() -> JobQueue {
+pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
     const NUM_THREADS: u32 = 4;
 
     let (tx, rx) = spmc::channel();
+    let (notify_tx, notify_rx) = std::sync::mpsc::channel();
     for _ in 0..NUM_THREADS {
         let rx = rx.clone();
+        let notify_tx = notify_tx.clone();
         thread::spawn(move || {
-            poll_pending_jobs(rx)
+            poll_pending_jobs(rx, notify_tx)
         });
     }
 
-    JobQueue { queue: tx, set: HashSet::new() }
+    (JobQueue { queue: tx, set: HashSet::new() }, notify_rx)
 }
 
-fn poll_pending_jobs(queue: spmc::Receiver<JobType>) {
+fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Sender<u8>) {
     loop {
         let msg = queue.recv().log_if_fail();
         match msg {
@@ -117,6 +120,10 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>) {
                     }
                 }
             }
+        }
+
+        if let Err(e) = notify.send(0) {
+            log_entry_with_message(LogTypes::Warning, e, "Unable to notify main loop about finished job");
         }
     }
 }

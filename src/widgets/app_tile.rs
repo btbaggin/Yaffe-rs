@@ -5,7 +5,7 @@ use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
 
-const ANIMATION_TIME: f32 = 0.25;
+pub const ANIMATION_TIME: f32 = 0.25;
 const SELECTED_SCALAR: f32 = 0.2;
 const ROM_OUTLINE_SIZE: f32 = 7.5;
 
@@ -54,6 +54,7 @@ impl AppTile {
         let mut position = self.position;
 
         if self.focused && focused {
+            //TODO this should move to animation
             let animation_remainder = (ANIMATION_TIME - self.time) / ANIMATION_TIME;
             //Have alpha fade in as the time grows to full size
             let alpha = f32::powf(animation_remainder, 2.);

@@ -2,7 +2,7 @@ use speedy2d::{Graphics2D, color::Color};
 use speedy2d::shape::Rectangle;
 use crate::Rect;
 use crate::{Actions, V2};
-use crate::modals::{ModalResult, ModalContent, DeferredModalAction};
+use crate::modals::{ModalResult, ModalContent};
 
 #[derive(Default)]
 pub struct OverlayModal {
@@ -15,7 +15,7 @@ impl ModalContent for OverlayModal {
         32.
     }
 
-    fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Left => {
                 //crate::restrictions::verify_restricted_action_with_data(state, change_volume, &mut (self.volume, -0.05));

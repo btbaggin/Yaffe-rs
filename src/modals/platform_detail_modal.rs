@@ -61,7 +61,7 @@ impl ModalContent for PlatformDetailModal {
         (crate::font::FONT_SIZE + crate::ui::MARGIN) * 4.
     }
 
-    fn action(&mut self, action: &Actions, handler: &mut DeferredModalAction) -> modal::ModalResult {
+    fn action(&mut self, action: &Actions, handler: &mut crate::windowing::WindowHelper) -> modal::ModalResult {
         match action {
             Actions::Select => {
                 match self.selected_field {

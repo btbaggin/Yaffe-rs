@@ -4,7 +4,7 @@ mod overlay_modal;
 mod restricted_modal;
 mod platform_detail_modal;
 mod settings_modal;
-pub use modal::{display_modal, default_modal_action, Modal, ModalSize, ModalContent, ModalResult, render_modal, MessageModalContent, DeferredModalAction};
+pub use modal::{display_modal, default_modal_action, Modal, ModalSize, ModalContent, ModalResult, render_modal, MessageModalContent};
 pub use list_modal::{ListItem, ListModal};
 pub use overlay_modal::OverlayModal;
 pub use restricted_modal::{SetRestrictedModal, VerifyRestrictedModal};

@@ -212,6 +212,7 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
     asset_slot.data = Some((dimensions, bytes_rgba8));
     asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::Relaxed);
     //TODO i could write something to indicate we need to draw a new frame?
+    //use std::sync::mpsc
 }
 
 pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {

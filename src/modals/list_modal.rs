@@ -2,7 +2,7 @@ use crate::{Rect, V2, Actions};
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::colors::*;
-use crate::modals::{ModalResult, ModalContent, default_modal_action, DeferredModalAction};
+use crate::modals::{ModalResult, ModalContent, default_modal_action};
 
 pub struct ListModal<T: ListItem> {
     items: Vec<T>,
@@ -43,7 +43,7 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
         count as f32 * 30.
     }
 
-    fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Down => {
                 if self.index < self.items.len() - 1 { self.index += 1; }

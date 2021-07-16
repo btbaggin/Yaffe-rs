@@ -2,8 +2,8 @@ use winapi::um::taskschd::*;
 use winapi::um::combaseapi::*;
 use winapi::shared::rpcdce::{RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IMPERSONATE};
 use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
-use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE};
-use winapi::shared::winerror::{ERROR_DEVICE_NOT_CONNECTED, ERROR_SUCCESS};
+use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE, HKL};
+use winapi::shared::winerror::{ERROR_SUCCESS};
 use winapi::shared::wtypes::{BSTR, VARIANT_TRUE};
 use winapi::{Interface, Class};
 use winapi::um::unknwnbase::IUnknown;
@@ -17,8 +17,9 @@ use winapi::um::winnt::{
 };
 use winapi::um::xinput::*;
 use winapi::um::winuser::{
-    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
+    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN, GetKeyboardState,
 };
+use winapi::um::winuser;
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
 
 use std::time::Instant;
@@ -268,30 +269,17 @@ pub(super) fn shutdown() -> ShutdownResult {
     Ok(())
 }
 
-pub fn initialize_input() {
-	let mut handle = None;
+pub fn initialize_input() -> impl crate::input::PlatformInput {
     for lib_name in ["xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll"].iter() {
-        handle = load(lib_name);
-        if handle.is_some() { break; }
+        let handle = load(lib_name);
+        if let Some(h) = handle { 
+			return h; 
+		}
     }
-	unsafe { XINPUT = handle };
-}
-
-pub(super) fn get_input() -> (Vec<VirtualKeyCode>, Vec<super::ControllerInput>) {
-    let xinput = unsafe { XINPUT.as_mut().unwrap() };
-	(vec!(), xinput.get_actions(0))
-}
-
-
-pub enum XInputError {
-    InvalidControllerID,
-    DeviceNotConnected,
-    UnknownError(u32),
+	panic!("change me eventually");
 }
 
 const CONTROLLER_GUIDE: u16 = 0x0400;
-static mut XINPUT: Option<XInput> = None;
-
 type XInputGetStateFunc = unsafe extern "system" fn(DWORD, *mut XInputGamepadEx) -> DWORD;
 
 #[repr(C)] #[derive(Default, Copy, Clone)]
@@ -306,81 +294,215 @@ struct XInputGamepadEx {
 	s_thumb_ry: SHORT,
 }
 
-struct XInput {
+struct WindowsInput {
     get_state: XInputGetStateFunc,
-    previous_state: XInputGamepadEx,
-    current_state: XInputGamepadEx,
+    previous_state: (XInputGamepadEx, [u8; 256]),
+    current_state: (XInputGamepadEx, [u8; 256]),
     last_stick_time: Instant,
     last_button_time: Instant,
+	hkl: HKL
 }
 
-impl XInput {
-    pub fn update(&mut self, user_index: u32) -> Result<(), XInputError> {
-        if user_index >= 4 {
-            Err(XInputError::InvalidControllerID)
-        } else {
+impl crate::input::PlatformInput for WindowsInput {
+    fn update(&mut self, user_index: u32) {
+		self.previous_state = self.current_state;
+        if user_index < 4 {
             let mut output: XInputGamepadEx = unsafe { ::std::mem::zeroed() };
             let return_status = unsafe { (self.get_state)(user_index as DWORD, &mut output) };
-            match return_status {
-                ERROR_SUCCESS => {
-                    self.previous_state = self.current_state;
-                    self.current_state = output;
-                    return Ok(());
-                }
-                ERROR_DEVICE_NOT_CONNECTED => Err(XInputError::DeviceNotConnected),
-                s => { Err(XInputError::UnknownError(s)) }
+            if return_status == ERROR_SUCCESS {
+				self.current_state.0 = output;
+				return;
+                // ERROR_DEVICE_NOT_CONNECTED => { },
+                // s => { Err(XInputError::UnknownError(s)) }
             }
         }
+
+		let mut output: [u8; 256] = [0; 256];
+		let result = unsafe { GetKeyboardState(output.as_mut_ptr()) };
+		if result != 0 {
+			self.current_state.1 = output;
+		}
     }
 
-	fn is_pressed(&self, button: u16) -> bool {
-		self.current_state.w_buttons & button != 0 && self.previous_state.w_buttons & button == 0
-	}
+    fn get_gamepad(&mut self) -> Vec<super::ControllerInput> {
+		fn is_pressed(input: &WindowsInput, button: u16) -> bool {
+			input.current_state.0.w_buttons & button != 0 && input.previous_state.0.w_buttons & button == 0
+		}
+		let mut result = Vec::new();
 
-    pub fn get_actions(&mut self, user_index: u32) -> Vec<super::ControllerInput> {
-        let mut result = Vec::new();
+		let now = Instant::now();
+		if (now - self.last_button_time).as_millis() > 100 {
+			let count = result.len();
+			if is_pressed(self, XINPUT_GAMEPAD_START) { result.push(super::ControllerInput::ButtonStart); }
+			if is_pressed(self, XINPUT_GAMEPAD_BACK) { result.push(super::ControllerInput::ButtonBack); }
+			if is_pressed(self, CONTROLLER_GUIDE) { result.push(super::ControllerInput::ButtonGuide); }
+			if is_pressed(self, XINPUT_GAMEPAD_A) { result.push(super::ControllerInput::ButtonSouth); }
+			if is_pressed(self, XINPUT_GAMEPAD_B) { result.push(super::ControllerInput::ButtonEast); }
+			if is_pressed(self, XINPUT_GAMEPAD_X) { result.push(super::ControllerInput::ButtonWest); }
+			if is_pressed(self, XINPUT_GAMEPAD_Y) { result.push(super::ControllerInput::ButtonNorth); }
+			if result.len() > count { self.last_button_time = now; }
+		}
 
-		//NOT USED
-		//XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, 
-		//XINPUT_GAMEPAD_DPAD_RIGHT, XINPUT_GAMEPAD_RIGHT_SHOULDER,
-		//XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB, XINPUT_GAMEPAD_LEFT_SHOULDER, 
-
-        if self.update(user_index).is_ok() {
-			
-
-            let now = Instant::now();
-            if (now - self.last_button_time).as_millis() > 100 {
+		let x = self.current_state.0.s_thumb_lx as i32;
+		let y = self.current_state.0.s_thumb_ly as i32;
+		if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 { 
+			if (now - self.last_stick_time).as_millis() > 100 {
 				let count = result.len();
-				if self.is_pressed(XINPUT_GAMEPAD_START) { result.push(super::ControllerInput::ButtonStart); }
-				if self.is_pressed(XINPUT_GAMEPAD_BACK) { result.push(super::ControllerInput::ButtonBack); }
-				if self.is_pressed(CONTROLLER_GUIDE) { result.push(super::ControllerInput::ButtonGuide); }
-				if self.is_pressed(XINPUT_GAMEPAD_A) { result.push(super::ControllerInput::ButtonSouth); }
-				if self.is_pressed(XINPUT_GAMEPAD_B) { result.push(super::ControllerInput::ButtonEast); }
-				if self.is_pressed(XINPUT_GAMEPAD_X) { result.push(super::ControllerInput::ButtonWest); }
-				if self.is_pressed(XINPUT_GAMEPAD_Y) { result.push(super::ControllerInput::ButtonNorth); }
-				if result.len() > count { self.last_button_time = now; }
-            }
-
-			let x = self.current_state.s_thumb_lx as i32;
-			let y = self.current_state.s_thumb_ly as i32;
-			if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 { 
-				if (now - self.last_stick_time).as_millis() > 100 {
-					let count = result.len();
-					if x < 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionLeft); }
-					if y > 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionUp); }
-					if y < 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionDown); }
-					if x > 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionRight); }
-					if result.len() > count { self.last_stick_time = now; }
-				}
+				if x < 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionLeft); }
+				if y > 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionUp); }
+				if y < 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionDown); }
+				if x > 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionRight); }
+				if result.len() > count { self.last_stick_time = now; }
 			}
-    	}
+		}
 
         result
     }
+
+	fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, char)> {
+		let mut result = Vec::new();
+		let now = Instant::now();
+
+		for i in 0..255 {
+			if (self.current_state.1[i] & 0x80) != 0 &&
+			   (self.previous_state.1[i] & 0x80) == 0 {
+				   self.last_button_time = now;
+
+				   let key = match i as i32 {
+					winuser::VK_BACK => Some(VirtualKeyCode::Back),
+					winuser::VK_TAB => Some(VirtualKeyCode::Tab),
+					winuser::VK_RETURN => Some(VirtualKeyCode::Return),
+					winuser::VK_LSHIFT => Some(VirtualKeyCode::LShift),
+					winuser::VK_RSHIFT => Some(VirtualKeyCode::RShift),
+					winuser::VK_LCONTROL => Some(VirtualKeyCode::LControl),
+					winuser::VK_RCONTROL => Some(VirtualKeyCode::RControl),
+					winuser::VK_LMENU => Some(VirtualKeyCode::LAlt),
+					winuser::VK_RMENU => Some(VirtualKeyCode::RAlt),
+					winuser::VK_PAUSE => Some(VirtualKeyCode::Pause),
+					winuser::VK_ESCAPE => Some(VirtualKeyCode::Escape),
+					winuser::VK_SPACE => Some(VirtualKeyCode::Space),
+					winuser::VK_PRIOR => Some(VirtualKeyCode::PageUp),
+					winuser::VK_NEXT => Some(VirtualKeyCode::PageDown),
+					winuser::VK_END => Some(VirtualKeyCode::End),
+					winuser::VK_HOME => Some(VirtualKeyCode::Home),
+					winuser::VK_LEFT => Some(VirtualKeyCode::Left),
+					winuser::VK_UP => Some(VirtualKeyCode::Up),
+					winuser::VK_RIGHT => Some(VirtualKeyCode::Right),
+					winuser::VK_DOWN => Some(VirtualKeyCode::Down),
+					winuser::VK_INSERT => Some(VirtualKeyCode::Insert),
+					winuser::VK_DELETE => Some(VirtualKeyCode::Delete),
+					0x30 => Some(VirtualKeyCode::Key0),
+					0x31 => Some(VirtualKeyCode::Key1),
+					0x32 => Some(VirtualKeyCode::Key2),
+					0x33 => Some(VirtualKeyCode::Key3),
+					0x34 => Some(VirtualKeyCode::Key4),
+					0x35 => Some(VirtualKeyCode::Key5),
+					0x36 => Some(VirtualKeyCode::Key6),
+					0x37 => Some(VirtualKeyCode::Key7),
+					0x38 => Some(VirtualKeyCode::Key8),
+					0x39 => Some(VirtualKeyCode::Key9),
+					0x41 => Some(VirtualKeyCode::A),
+					0x42 => Some(VirtualKeyCode::B),
+					0x43 => Some(VirtualKeyCode::C),
+					0x44 => Some(VirtualKeyCode::D),
+					0x45 => Some(VirtualKeyCode::E),
+					0x46 => Some(VirtualKeyCode::F),
+					0x47 => Some(VirtualKeyCode::G),
+					0x48 => Some(VirtualKeyCode::H),
+					0x49 => Some(VirtualKeyCode::I),
+					0x4A => Some(VirtualKeyCode::J),
+					0x4B => Some(VirtualKeyCode::K),
+					0x4C => Some(VirtualKeyCode::L),
+					0x4D => Some(VirtualKeyCode::M),
+					0x4E => Some(VirtualKeyCode::N),
+					0x4F => Some(VirtualKeyCode::O),
+					0x50 => Some(VirtualKeyCode::P),
+					0x51 => Some(VirtualKeyCode::Q),
+					0x52 => Some(VirtualKeyCode::R),
+					0x53 => Some(VirtualKeyCode::S),
+					0x54 => Some(VirtualKeyCode::T),
+					0x55 => Some(VirtualKeyCode::U),
+					0x56 => Some(VirtualKeyCode::V),
+					0x57 => Some(VirtualKeyCode::W),
+					0x58 => Some(VirtualKeyCode::X),
+					0x59 => Some(VirtualKeyCode::Y),
+					0x5A => Some(VirtualKeyCode::Z),
+					winuser::VK_LWIN => Some(VirtualKeyCode::LWin),
+					winuser::VK_RWIN => Some(VirtualKeyCode::RWin),
+					winuser::VK_NUMPAD0 => Some(VirtualKeyCode::Numpad0),
+					winuser::VK_NUMPAD1 => Some(VirtualKeyCode::Numpad1),
+					winuser::VK_NUMPAD2 => Some(VirtualKeyCode::Numpad2),
+					winuser::VK_NUMPAD3 => Some(VirtualKeyCode::Numpad3),
+					winuser::VK_NUMPAD4 => Some(VirtualKeyCode::Numpad4),
+					winuser::VK_NUMPAD5 => Some(VirtualKeyCode::Numpad5),
+					winuser::VK_NUMPAD6 => Some(VirtualKeyCode::Numpad6),
+					winuser::VK_NUMPAD7 => Some(VirtualKeyCode::Numpad7),
+					winuser::VK_NUMPAD8 => Some(VirtualKeyCode::Numpad8),
+					winuser::VK_NUMPAD9 => Some(VirtualKeyCode::Numpad9),
+					winuser::VK_MULTIPLY => Some(VirtualKeyCode::NumpadMultiply),
+					winuser::VK_ADD => Some(VirtualKeyCode::NumpadAdd),
+					winuser::VK_SUBTRACT => Some(VirtualKeyCode::NumpadSubtract),
+					winuser::VK_DECIMAL => Some(VirtualKeyCode::NumpadDecimal),
+					winuser::VK_DIVIDE => Some(VirtualKeyCode::NumpadDivide),
+					winuser::VK_F1 => Some(VirtualKeyCode::F1),
+					winuser::VK_F2 => Some(VirtualKeyCode::F2),
+					winuser::VK_F3 => Some(VirtualKeyCode::F3),
+					winuser::VK_F4 => Some(VirtualKeyCode::F4),
+					winuser::VK_F5 => Some(VirtualKeyCode::F5),
+					winuser::VK_F6 => Some(VirtualKeyCode::F6),
+					winuser::VK_F7 => Some(VirtualKeyCode::F7),
+					winuser::VK_F8 => Some(VirtualKeyCode::F8),
+					winuser::VK_F9 => Some(VirtualKeyCode::F9),
+					winuser::VK_F10 => Some(VirtualKeyCode::F10),
+					winuser::VK_F11 => Some(VirtualKeyCode::F11),
+					winuser::VK_F12 => Some(VirtualKeyCode::F12),
+					winuser::VK_NUMLOCK => Some(VirtualKeyCode::Numlock),
+					winuser::VK_OEM_PLUS => Some(VirtualKeyCode::Equals),
+					winuser::VK_OEM_COMMA => Some(VirtualKeyCode::Comma),
+					winuser::VK_OEM_MINUS => Some(VirtualKeyCode::Minus),
+					winuser::VK_OEM_PERIOD => Some(VirtualKeyCode::Period),
+					winuser::VK_OEM_1 => Some(VirtualKeyCode::Colon),
+					winuser::VK_OEM_2 => Some(VirtualKeyCode::Slash),
+					winuser::VK_OEM_3 => Some(VirtualKeyCode::Grave),
+					winuser::VK_OEM_4 => Some(VirtualKeyCode::LBracket),
+					winuser::VK_OEM_5 => Some(VirtualKeyCode::Backslash),
+					winuser::VK_OEM_6 => Some(VirtualKeyCode::RBracket),
+					winuser::VK_OEM_7 => Some(VirtualKeyCode::Apostrophe),
+					_ => None,
+					};
+					if let Some(k) = key {
+						let c = unsafe { get_char(&self.current_state.1, i as u32, self.hkl) };
+						result.push((k, c));
+					}
+			    }
+		}
+
+		result
+	}
+}
+
+unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> char {
+    let mut unicode_bytes = [0u16; 5];
+    let len = winuser::ToUnicodeEx(
+        v_key,
+        0,
+        keyboard_state.as_ptr(),
+        unicode_bytes.as_mut_ptr(),
+        unicode_bytes.len() as _,
+        0,
+        hkl,
+    );
+    if len >= 1 {
+        std::char::decode_utf16(unicode_bytes.iter().cloned())
+            .next()
+            .and_then(|c| c.ok()).unwrap()
+    } else {
+        ' '
+    }
 }
 
 
-fn load<S: AsRef<str>>(s: S) -> Option<XInput> {
+fn load<S: AsRef<str>>(s: S) -> Option<WindowsInput> {
     fn wide_null<S: AsRef<str>>(s: S) -> [u16; ::winapi::shared::minwindef::MAX_PATH] {
         let mut output: [u16; ::winapi::shared::minwindef::MAX_PATH] = [0; ::winapi::shared::minwindef::MAX_PATH];
         let mut i = 0;
@@ -403,7 +525,6 @@ fn load<S: AsRef<str>>(s: S) -> Option<XInput> {
     // using transmute is so dodgy we'll put that in its own unsafe block.
     unsafe {
         let get_state_ptr = GetProcAddress(xinput_handle, 100 as *mut i8);
-        // let get_state_ptr = GetProcAddress(xinput_handle, b"XInputGetState\0".as_ptr() as *mut i8);
         if !get_state_ptr.is_null() {
             opt_xinput_get_state = Some(::std::mem::transmute(get_state_ptr));
         }
@@ -411,9 +532,11 @@ fn load<S: AsRef<str>>(s: S) -> Option<XInput> {
 
     unsafe { FreeLibrary(xinput_handle); }
 
-    Some(XInput { get_state: opt_xinput_get_state.unwrap(), 
-                  current_state: XInputGamepadEx::default(), 
-                  previous_state: XInputGamepadEx::default(),
+	let hkl = unsafe { winuser::GetKeyboardLayout(0) };
+    Some(WindowsInput { get_state: opt_xinput_get_state.unwrap(), 
+                  current_state: (XInputGamepadEx::default(), [0; 256]), 
+                  previous_state: (XInputGamepadEx::default(), [0; 256]),
                   last_stick_time: Instant::now(), 
-                  last_button_time: Instant::now() })
+                  last_button_time: Instant::now(),
+				  hkl: hkl })
 }

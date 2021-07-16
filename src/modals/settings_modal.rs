@@ -46,7 +46,7 @@ impl ModalContent for SettingsModal {
         }
     }
 
-    fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Select => {
                 self.run_at_startup = !self.run_at_startup;

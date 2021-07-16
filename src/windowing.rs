@@ -3,7 +3,9 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{V2, ControllerInput};
+use crate::{V2, input::ControllerInput};
+use std::time::Instant;
+
 
 pub trait Rect {
     fn left(&self) -> f32;
@@ -29,30 +31,66 @@ impl Transparent for speedy2d::color::Color {
     }
 }
 
+#[repr(u8)]
 enum WindowVisibility {
     Visible,
     Hide,
-    None,
+}
+
+#[repr(u8)]
+enum ModalFileAction {
+    OpenFile,
+    OpenDirectory,
 }
 
 pub struct WindowHelper {
-    visible: WindowVisibility,
+    visible: Option<WindowVisibility>,
+    file_action: Option<ModalFileAction>,
 }
 
 impl WindowHelper {
     pub fn set_visibility(&mut self, visible: bool) {
-        if visible { self.visible = WindowVisibility::Visible; }
-        else { self.visible = WindowVisibility::Hide; }
+        if visible { self.visible = Some(WindowVisibility::Visible); }
+        else { self.visible = Some(WindowVisibility::Hide); }
+    }
+
+    pub fn open_file(&mut self) {
+        self.file_action = Some(ModalFileAction::OpenFile);
+    }
+    pub fn open_directory(&mut self) {
+        self.file_action = Some(ModalFileAction::OpenDirectory);
+    }
+
+    pub fn resolve(self, window: &glutin::window::Window) {
+        match self.visible {
+            Some(WindowVisibility::Hide) => window.set_visible(false),
+            Some(WindowVisibility::Visible) => window.set_visible(true),
+            None => {},
+        }
+
+        match self.file_action {
+            Some(ModalFileAction::OpenFile) =>  { Some(1) } //TODO state.win.handle.open_file(druid_shell::FileDialogOptions::new()),
+            Some(ModalFileAction::OpenDirectory) => { None
+                //TODO
+                // let options = druid_shell::FileDialogOptions::new();
+                // let options = options.select_directories();
+                // state.win.handle.open_file(options)
+            }
+            None => None,
+        };
     }
 }
 
 pub(crate) trait WindowHandler {
     fn on_start(&mut self) { }
-    fn on_frame_start(&mut self, _: &mut WindowHelper) { }
-    fn on_frame(&mut self, graphics: &mut Graphics2D, size: Vector2<u32>) -> bool;
-    fn on_input(&mut self, helper: &mut WindowHelper, key: Option<VirtualKeyCode>, button: Option<ControllerInput>) -> bool;
+    fn on_fixed_update(&mut self, _: &mut WindowHelper) { }
+    fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool;
+    fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_resize(&mut self, _: u32, _: u32) { }
     fn on_stop(&mut self) { }
+    fn is_window_dirty(&self) -> bool {
+        false
+    }
 }
 
 struct YaffeWindow {
@@ -77,7 +115,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
         .with_fullscreen(fullscreen.clone())
         .with_visible(visible)
         .with_transparent(transparent)
-        .with_always_on_top(transparent);//TODO look at this
+        .with_always_on_top(transparent);
 
     let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
@@ -97,10 +135,13 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
     windows.insert(id, window);
 }
 
-pub(crate) fn create_yaffe_windows(handler: std::rc::Rc<RefCell<impl WindowHandler + 'static>>,
+pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
+                                   mut input: impl crate::input::PlatformInput + 'static,
+                                   input_map: crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>,
+                                   handler: std::rc::Rc<RefCell<impl WindowHandler + 'static>>,
                                    overlay: std::rc::Rc<RefCell<impl WindowHandler + 'static>>) -> ! {
     let el = EventLoop::new();
-    
+
     let mut ct = context_tracker::ContextTracker::default();
     let mut windows = std::collections::HashMap::new();
 
@@ -111,9 +152,13 @@ pub(crate) fn create_yaffe_windows(handler: std::rc::Rc<RefCell<impl WindowHandl
     for (_, val) in windows.iter_mut() {
         val.handler.borrow_mut().on_start();
     }
+
+    let mut delta_time = 0f32;
+    let mut last_time = Instant::now();
+    
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
-
+        
         match event {
             Event::LoopDestroyed => *control_flow = ControlFlow::Exit,
 
@@ -138,40 +183,55 @@ pub(crate) fn create_yaffe_windows(handler: std::rc::Rc<RefCell<impl WindowHandl
                 _ => {}
             },
             Event::RedrawRequested(id) => {
-                //TODO frame limit
                 let window = windows.get_mut(&id).unwrap();
                 let context = ct.get_current(window.context_id).unwrap();
+                
                 let size = window.size;
                 let mut handle = window.handler.borrow_mut();
                 window.renderer.draw_frame(|graphics| {
-                    if !handle.on_frame(graphics, size) {
+                    if !handle.on_frame(graphics, delta_time, size) {
                         *control_flow = ControlFlow::Exit;
                     }
                 });
                 context.windowed().swap_buffers().unwrap();
             },
 
-            Event::RedrawEventsCleared => {
-                //TODO only request if animations are playing?
-                for (_, val) in windows.iter_mut() {
-                    let context = ct.get_current(val.context_id).unwrap();
-                    context.windowed().window().request_redraw();
-                }
-            }
-
             Event::MainEventsCleared => {
-                //TODO need to take out keys if on_input returns true
-                let (keyboard, gamepad) = crate::platform_layer::get_input();
+                let now = Instant::now();
+                delta_time = (now - last_time).as_millis() as f32 / 1000.;
+                last_time = now;
+
+                //Get input
+                input.update(0);
+                
+                //Convert our input to actions we will propogate through the UI
+                let mut actions = input_to_action(&input_map, input.get_keyboard(), input.get_gamepad());
+                let input_this_frame = actions.len() > 0;
+                let asset_loaded = notify.try_recv().is_ok();
+
                 for (_, val) in windows.iter_mut() {
-                    let mut helper = WindowHelper { visible: WindowVisibility::None };
+                    let mut helper = WindowHelper { visible: None, file_action: None };
                     let context = ct.get_current(val.context_id).unwrap();
                     let mut handle = val.handler.borrow_mut();
 
-                    for k in keyboard.iter() { handle.on_input(&mut helper, Some(*k), None); }
-                    for g in gamepad.iter() { handle.on_input(&mut helper, None, Some(*g)); }
+                    //Send an action, if its handled remove it so a different window doesnt respond to it
+                    let mut handled_actions = Vec::with_capacity(actions.len());
+                    for action in actions.iter() {
+                        if handle.on_input(&mut helper, action) {
+                            handled_actions.push(action.clone());
+                        }
+                    }
+                    for action in handled_actions {
+                        actions.remove(&action);
+                    }
 
-                    handle.on_frame_start(&mut helper);
-                    resolve_window_helper(helper, &context.windowed().window());
+                    //Method that is always called so we can perform actions always
+                    handle.on_fixed_update(&mut helper);
+                    helper.resolve(&context.windowed().window());
+
+                    if asset_loaded || input_this_frame || handle.is_window_dirty() {
+                        context.windowed().window().request_redraw();
+                    }
                 }
             }
 
@@ -180,18 +240,29 @@ pub(crate) fn create_yaffe_windows(handler: std::rc::Rc<RefCell<impl WindowHandl
     });
 }
 
-fn resolve_window_helper(helper: WindowHelper, window: &glutin::window::Window) {
-    match helper.visible {
-        WindowVisibility::Hide => {
-            window.set_visible(false);
-        }
-        WindowVisibility::Visible => {
-            window.set_visible(true);
-        }
-        WindowVisibility::None => { }
-    }
-}
+fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>, 
+                   keyboard: Vec<(VirtualKeyCode, char)>, 
+                   gamepad: Vec<ControllerInput>) -> std::collections::HashSet<crate::Actions> {
 
+    let mut result = std::collections::HashSet::new();
+    for k in keyboard {
+        if let Some(action) = input_map.get(Some(k.0), None) {
+            result.insert(*action);
+        } else {
+            result.insert(crate::Actions::KeyPress(k.1));
+        }
+    }
+
+    for g in gamepad {
+        if let Some(action) = input_map.get(None, Some(g)) {
+            result.insert(*action);
+        } else {
+            result.insert(crate::Actions::KeyPress(g as u8 as char));
+        }
+    }
+
+    result
+}
 
 mod context_tracker {
     use glutin::{

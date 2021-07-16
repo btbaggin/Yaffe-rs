@@ -1,10 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use std::time::Instant;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
-use glutin::event::VirtualKeyCode;
 use speedy2d::shape::Rectangle;
 use speedy2d::dimen::Vector2;
 pub use crate::settings::SettingNames;
@@ -78,9 +76,6 @@ pub mod ui {
     pub const LABEL_SIZE: f32 = 200.;
 }
 
-#[macro_use]
-extern crate lazy_static;
-
 mod widgets;
 mod assets;
 mod database;
@@ -94,86 +89,14 @@ mod job_system;
 mod logger;
 mod settings;
 mod windowing;
+mod input;
 use windowing::{Rect, Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
-pub use modals::{display_modal};
-pub use job_system::{JobQueue, JobType, RawDataPointer};
-pub use platform_layer::ControllerInput;
-
-#[derive(Clone, Copy)]
-pub enum Actions {
-    Info,
-    Accept,
-    Select,
-    Back,
-    Up,
-    Down,
-    Left,
-    Right,
-    Filter,
-    KeyPress(u32),
-}
-
-#[derive(Clone, Copy)]
-pub enum SystemActions {
-    ToggleOverlay,
-    ShowMenu,
-}
-
-use std::hash::Hash;
-struct InputMap<A: Eq + Hash, B: Eq + Hash, T: Clone> {
-    keys: HashMap<A, T>,
-    cont: HashMap<B, T>,
-}
-impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
-    fn new() -> InputMap<A, B, T> {
-        InputMap {
-            keys: HashMap::new(),
-            cont: HashMap::new(),
-        }
-    }
-
-    fn insert(&mut self, code: A, button: B, action: T) {
-        self.keys.insert(code, action.clone());
-        self.cont.insert(button, action);
-    }
-
-    fn get(&self, code: Option<A>, button: Option<B>) -> Option<&T> {
-        if let Some(c) = code {
-            return self.keys.get(&c);
-        } else if let Some(b) = button {
-            return self.cont.get(&b);
-        }
-        return None;
-    }
-}
-
-lazy_static! {
-    static ref ACTION_MAP: InputMap<VirtualKeyCode, ControllerInput, Actions> = {
-        let mut m = InputMap::new();
-        m.insert(VirtualKeyCode::I, ControllerInput::ButtonWest, Actions::Info);
-        m.insert(VirtualKeyCode::F, ControllerInput::ButtonNorth, Actions::Filter);
-        m.insert(VirtualKeyCode::Return, ControllerInput::ButtonSouth, Actions::Accept);
-        m.insert(VirtualKeyCode::Escape, ControllerInput::ButtonEast, Actions::Back);
-        m.insert(VirtualKeyCode::Up, ControllerInput::DirectionUp, Actions::Up);
-        m.insert(VirtualKeyCode::Down, ControllerInput::DirectionDown, Actions::Down);
-        m.insert(VirtualKeyCode::Right, ControllerInput::DirectionRight, Actions::Right);
-        m.insert(VirtualKeyCode::Left, ControllerInput::DirectionLeft, Actions::Left);
-        m.insert(VirtualKeyCode::Tab, ControllerInput::ButtonBack, Actions::Select);
-        m
-    };
-}
-lazy_static! {
-    static ref SYSTEM_ACTION_MAP: InputMap<VirtualKeyCode, ControllerInput, SystemActions> = {
-        let mut m = InputMap::new();
-        m.insert(VirtualKeyCode::F1, ControllerInput::ButtonStart, SystemActions::ShowMenu);
-        m.insert(VirtualKeyCode::O, ControllerInput::ButtonGuide, SystemActions::ToggleOverlay);
-        m
-    };
-}
-
+use modals::{display_modal};
+use job_system::{JobQueue, JobType, RawDataPointer};
+use input::Actions;
 
 pub struct Platform {
     id: i64,
@@ -195,7 +118,6 @@ pub struct Executable {
 }
 
 pub struct YaffeState {
-    last_time: Instant,
     delta_time: f32,
     overlay: Rc<RefCell<OverlayWindow>>,
     selected_platform: usize,
@@ -216,7 +138,6 @@ impl YaffeState {
            settings: settings::SettingsFile, 
            queue: Arc<RefCell<job_system::JobQueue>>) -> YaffeState {
         YaffeState {
-            last_time: Instant::now(),
             delta_time: 0.,
             overlay: overlay,
             selected_platform: 0,
@@ -261,7 +182,6 @@ impl YaffeState {
 
 impl windowing::WindowHandler for WidgetTree {
     fn on_start(&mut self) {
-        // self.data.win.size = Vector2::new(width, height);
         server::start_up();
     
         //Attempt to start COM here since it doesnt work in the settings modal?
@@ -269,18 +189,16 @@ impl windowing::WindowHandler for WidgetTree {
 	    unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
     }
 
-    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, size: Vector2<u32>) -> bool {
+    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
         if let Err(e) = settings::update_settings(&mut self.data.settings) {
             logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
         }
 
+        //TODO pass through to everything?
+        self.data.delta_time = delta_time;
         assets::load_texture_atlas(graphics);
 
         if !self.data.overlay_is_active() {
-            let now = Instant::now();
-            self.data.delta_time = (now - self.data.last_time).as_millis() as f32 / 1000.;
-            self.data.last_time = now;
-
             let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
             if self.data.refresh_list {
@@ -292,7 +210,7 @@ impl windowing::WindowHandler for WidgetTree {
             self.render_all(window_rect.clone(), graphics, !self.layout_valid);
             self.layout_valid = true;
 
-            crate::widgets::run_animations(self, self.data.delta_time);
+            crate::widgets::run_animations(self, delta_time);
 
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
@@ -304,51 +222,38 @@ impl windowing::WindowHandler for WidgetTree {
         self.data.running
     }
 
-    fn on_input(&mut self, _: &mut windowing::WindowHelper, key: Option<VirtualKeyCode>, button: Option<ControllerInput>) -> bool {
+    fn on_input(&mut self, helper: &mut windowing::WindowHelper, action: &Actions) -> bool {
         if self.data.overlay.borrow().is_showing() { return false; }
 
-        if let Some(action) = SYSTEM_ACTION_MAP.get(key, button) { 
-            match action {
-                SystemActions::ShowMenu => {
-                    let mut l = Box::new(modals::ListModal::new(None));
-                    l.add_item(String::from("Exit Yaffe"));
-                    l.add_item(String::from("Shut Down"));
-                    l.add_item(String::from("Settings"));
-                    match self.data.restricted_mode {
-                        RestrictedMode::On(_) => l.add_item(String::from("Disable Restricted Mode")),
-                        RestrictedMode::Off => l.add_item(String::from("Enable Restricted Mode")),
-                        RestrictedMode::Pending => {},
-                    }
-                    l.add_item(String::from("Add Emulator"));
-                    l.add_item(String::from("Add Application"));
+        match action {
+            Actions::ShowMenu => {
+                let mut l = Box::new(modals::ListModal::new(None));
+                l.add_item(String::from("Exit Yaffe"));
+                l.add_item(String::from("Shut Down"));
+                l.add_item(String::from("Settings"));
+                match self.data.restricted_mode {
+                    RestrictedMode::On(_) => l.add_item(String::from("Disable Restricted Mode")),
+                    RestrictedMode::Off => l.add_item(String::from("Enable Restricted Mode")),
+                    RestrictedMode::Pending => {},
+                }
+                l.add_item(String::from("Add Emulator"));
+                l.add_item(String::from("Add Application"));
+    
+                display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
+            },
+            Actions::ToggleOverlay => { /* Overlay handles this */ }
+            _ => {
+                if !modals::modal::is_modal_open(&self.data) {
+                    let mut handler = DeferredAction::new();
+                    let focus = self.focus.last().log_if_fail();
         
-                    display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
-                },
-                SystemActions::ToggleOverlay => { /* Overlay handles this */ }
+                    self.root.action(&mut self.data, &action, focus, &mut handler);
+                    handler.resolve(self);
+                } else {
+                    modals::modal::update_modal(&mut self.data, helper, &action);
+                }
+                return true;
             }
-            return true;
-        }
-    
-        let action_code = match ACTION_MAP.get(key, button) {
-                        Some(a) => Some(*a),
-                        None => {
-                            if let Some(c) = key { Some(Actions::KeyPress(c as u32)) }
-                            else if let Some(b) = button { Some(Actions::KeyPress(b as u32)) }
-                            else { None }
-                        }
-        };
-    
-        if let Some(action) = action_code {
-            if !modals::modal::is_modal_open(&self.data) {
-                let mut handler = DeferredAction::new();
-                let focus = self.focus.last().log_if_fail();
-    
-                self.root.action(&mut self.data, &action, focus, &mut handler);
-                handler.resolve(self);
-            } else {
-                modals::modal::update_modal(&mut self.data, &action);
-            }
-            return true;
         }
 
         false
@@ -364,12 +269,15 @@ impl windowing::WindowHandler for WidgetTree {
     fn on_resize(&mut self, _: u32, _: u32) { 
         self.layout_valid = false;
     }
+
+    fn is_window_dirty(&self) -> bool {
+        self.anims.len() > 0
+    }
 }
 
 fn main() {
     logger::initialize_log();
-    platform_layer::initialize_input();
-    let queue = job_system::start_job_system();
+    let (queue, notify) = job_system::start_job_system();
 
     let settings = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
@@ -389,7 +297,9 @@ fn main() {
     let mut ui = widgets::WidgetTree::new(root, state);
     ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
  
-    windowing::create_yaffe_windows(Rc::new(RefCell::new(ui)), overlay);
+    let input_map = input::get_input_map();
+    let input = platform_layer::initialize_input();
+    windowing::create_yaffe_windows(notify, input, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
 fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {

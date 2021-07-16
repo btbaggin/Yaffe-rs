@@ -6,11 +6,11 @@ const PIN_SIZE: usize = 8;
 
 #[derive(Default, Copy, Clone)]
 pub struct RestrictedPasscode {
-    code: [u32; PIN_SIZE],
+    code: [char; PIN_SIZE],
     length: usize,
 }
 impl RestrictedPasscode {
-    pub fn add_digit(&mut self, code: u32) {
+    pub fn add_digit(&mut self, code: char) {
         if self.length < PIN_SIZE {
             self.code[self.length] = code;
             self.length += 1;

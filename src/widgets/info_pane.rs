@@ -35,7 +35,7 @@ impl super::Widget for InfoPane {
             if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 height = (rect.width() / i.size().x as f32) * i.size().y;
-                i.render(piet, Rect::point_and_size(*rect.top_left(), V2::new(rect.right() ,rect.top() + height)));
+                i.render(piet, Rect::point_and_size(*rect.top_left(), V2::new(rect.width() ,rect.top() + height)));
             }
 
             //Rating image
@@ -76,7 +76,7 @@ impl super::Widget for InfoPane {
                 //Clip text so when it scrolls it wont render above the banner
                 //piet.save().unwrap();
                 //TODO piet.clip(Rectangle::from_tuples((rect.top_left().x, rect.top_left().y + height), (rect.bottom_right().x, rect.bottom_right().y)));
-                piet.draw_text(V2::new(rect.top_left().x + crate::ui::MARGIN, rect.top_left().x + self.y_offset + height), get_font_color(&state.settings), &name_label);
+                piet.draw_text(V2::new(rect.top_left().x + crate::ui::MARGIN, rect.top_left().y + self.y_offset + height), get_font_color(&state.settings), &name_label);
                 //piet.restore().unwrap();
             }
         }

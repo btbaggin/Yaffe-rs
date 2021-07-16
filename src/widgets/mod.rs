@@ -270,10 +270,16 @@ impl WidgetContainer {
 //
 // Actions/animations
 //
+enum AnimationType {
+    Position(V2),
+    Placeholder,
+}
+
 pub struct Animation {
-    pub widget: WidgetId,
-    to: V2,
+    widget: WidgetId,
+    anim: AnimationType,
     duration: f32,
+    remaining: f32,
 }
 
 #[repr(u8)]
@@ -319,8 +325,18 @@ impl DeferredAction {
     pub fn animate(&mut self, widget: &impl WidgetName, to: V2, duration: f32) {
         self.anims.push(Animation {
             widget: widget.get_id(),
-            to: to,
+            anim: AnimationType::Position(to),
             duration: duration,
+            remaining: duration,
+        });
+    }
+
+    pub fn animate_placeholder(&mut self, duration: f32) {
+        self.anims.push(Animation {
+            widget: std::any::TypeId::of::<crate::widgets::app_tile::AppTile>(),
+            anim: AnimationType::Placeholder,
+            duration: duration,
+            remaining: duration,
         });
     }
 }
@@ -334,21 +350,28 @@ pub fn run_animations(tree: &mut WidgetTree, delta_time: f32) {
         V2::new(from.x + amount * (to.x - from.x), from.y + amount * (to.y - from.y))
     }
 
-    fn distance(from: V2, to: V2) -> f32 {
-        f32::powf(to.x - from.x, 2.) + f32::powf(to.y - from.y, 2.)
-    }
-    
     //Run animations, if it completes, mark it for removal
-    for (k, a) in tree.anims.iter_mut() {
-        if let Some(widget) = tree.root.find_widget(a.widget) {
-            let from = widget.pos;
-            widget.pos = lerp(from, a.to, delta_time / a.duration);
+    for (k, animation) in tree.anims.iter_mut() {
+        if animation.remaining > 0. { animation.remaining = f32::max(0., animation.remaining - delta_time);}
+        else if animation.remaining == 0. { animation.remaining -= delta_time; }
+        
+        match animation.anim {
+            AnimationType::Position(to) => {
+                if let Some(widget) = tree.root.find_widget(animation.widget) {
 
-            if distance(from, a.to) < 1. * 1.{
-               widget.pos = a.to;
-               keys.push(k.clone());
-            }
+                    let from = widget.pos;
+                    widget.pos = lerp(from, to, delta_time / animation.duration); //TODO the lerping causes some jank at the end of animations
+            
+                    if animation.remaining == 0. { widget.pos = to; }
+                }
+            },
+
+            AnimationType::Placeholder => { }
         }
+
+        if animation.remaining < 0. {
+            keys.push(k.clone());
+         }
     }
 
     for k in keys {
