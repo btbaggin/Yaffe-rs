@@ -105,18 +105,8 @@ struct YaffeWindow {
 fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowId, YaffeWindow>,
                  event_loop: &EventLoop<()>, 
                  tracker: &mut context_tracker::ContextTracker, 
-                 title: &str,
-                 visible: bool,
-                 transparent: bool,
-                 handler: Rc<RefCell<impl WindowHandler + 'static>>) {
-    let fullscreen = Some(Fullscreen::Borderless(event_loop.primary_monitor()));
-    let builder = WindowBuilder::new()
-        .with_title(title)  
-        .with_fullscreen(fullscreen.clone())
-        .with_visible(visible)
-        .with_transparent(transparent)
-        .with_always_on_top(transparent);
-
+                 builder: WindowBuilder,
+                 handler: Rc<RefCell<impl WindowHandler + 'static>>) -> Vector2<u32> {
     let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
@@ -131,8 +121,10 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
         context_tracker::ContextWrapper::Windowed(windowed_context),
     ));
 
-    let window = YaffeWindow { context_id, renderer, size: Vector2::new(size.width, size.height), handler: handler};
+    let size = Vector2::new(size.width, size.height);
+    let window = YaffeWindow { context_id, renderer, size, handler};
     windows.insert(id, window);
+    size
 }
 
 pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
@@ -145,9 +137,25 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
     let mut ct = context_tracker::ContextTracker::default();
     let mut windows = std::collections::HashMap::new();
 
-    // //https://github.com/rust-windowing/glutin/blob/master/glutin_examples/examples/multiwindow.rs
-    create_window(&mut windows, &el, &mut ct, "Yaffe", true, false, handler);
-    create_window(&mut windows, &el, &mut ct, "Overlay", false, true, overlay);
+    //https://github.com/rust-windowing/glutin/blob/master/glutin_examples/examples/multiwindow.rs
+    let monitor = el.primary_monitor();
+    let fullscreen = Some(Fullscreen::Borderless(monitor));
+    let builder = WindowBuilder::new()
+        .with_title("Yaffe")  
+        .with_fullscreen(fullscreen.clone())
+        .with_visible(true);
+    let size = create_window(&mut windows, &el, &mut ct, builder, handler);
+
+     //Doing full size seems to make it fullscreen and it loses transparency
+    let builder = WindowBuilder::new()
+        .with_title("Overlay")
+        .with_inner_size(glutin::dpi::PhysicalSize::new(size.x - 1, size.y - 1)) 
+        .with_position(glutin::dpi::PhysicalPosition::new(1, 1))
+        .with_visible(false)
+        .with_always_on_top(true)
+        .with_transparent(true)
+        .with_decorations(false);
+    create_window(&mut windows, &el, &mut ct, builder, overlay);
 
     for (_, val) in windows.iter_mut() {
         val.handler.borrow_mut().on_start();
@@ -208,7 +216,6 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = input_to_action(&input_map, input.get_keyboard(), input.get_gamepad());
-                let input_this_frame = actions.len() > 0;
                 let asset_loaded = notify.try_recv().is_ok();
 
                 for (_, val) in windows.iter_mut() {
@@ -221,6 +228,9 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     for action in actions.iter() {
                         if handle.on_input(&mut helper, action) {
                             handled_actions.push(action.clone());
+
+                            //If the window responded to the action, set it to redraw
+                            context.windowed().window().request_redraw();
                         }
                     }
                     for action in handled_actions {
@@ -231,7 +241,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     handle.on_fixed_update(&mut helper);
                     helper.resolve(&context.windowed().window());
 
-                    if asset_loaded || input_this_frame || handle.is_window_dirty() {
+                    if asset_loaded || handle.is_window_dirty() {
                         context.windowed().window().request_redraw();
                     }
                 }

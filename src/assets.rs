@@ -35,20 +35,31 @@ pub enum Images {
     ErsbAdultOnly
 }
 
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub enum Fonts {
+    Regular,
+}
+
 const ASSET_STATE_UNLOADED: u8 = 0;
 const ASSET_STATE_PENDING: u8 = 1;
 const ASSET_STATE_LOADED: u8 = 2;
 
-// pub enum AssetType {
-//     Image(YaffeTexture),
-//     Font(Font),
-// }
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub enum AssetTypes {
+    Image(Images),
+    Font(Fonts),
+}
+
+pub enum AssetData {
+    Image(YaffeTexture),
+    Font(Font),
+}
 
 pub struct AssetSlot {
     state: AtomicU8,
     path: String,
     data: Option<((u32, u32), Vec<u8>)>,
-    image: Option<YaffeTexture>,
+    image: Option<AssetData>,
 }
 impl AssetSlot {
     pub fn new(path: &str) -> AssetSlot {
@@ -65,13 +76,27 @@ impl AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
             path: String::from(path),
             data: None,
-            image: Some(image),
+            image: Some(AssetData::Image(image)),
+        }
+    }
+
+    pub fn font(path: &str) -> AssetSlot {
+        let data = std::fs::read(path).log_if_fail();
+        let font = speedy2d::font::Font::new(&data).log_if_fail();
+
+        AssetSlot {
+            state: AtomicU8::new(ASSET_STATE_LOADED),
+            path: String::from(path),
+            data: None,
+            image: Some(AssetData::Font(font)),
         }
     }
 
     pub fn get_image_size(&self) -> Option<V2> {
-        if let Some(i) = &self.image {
-            return Some(i.size());
+        if let Some(texture) = &self.image {
+            if let AssetData::Image(i) = texture {
+                return Some(i.size());
+            }
         }
         None
     }
@@ -97,14 +122,16 @@ impl YaffeTexture {
     pub fn get_handle(&self) -> &Rc<ImageHandle> { &self.image }
 }
 
-static mut ASSET_MAP: Option<HashMap<Images, AssetSlot>> = None;
+static mut ASSET_MAP: Option<HashMap<AssetTypes, AssetSlot>> = None;
 static mut FILE_ASSET_MAP: Option<HashMap<String, Rc<RefCell<AssetSlot>>>> = None;
 
 pub fn initialize_asset_cache() {
     let mut map = HashMap::new();
-    map.insert(Images::Placeholder, AssetSlot::new(r"./Assets/placeholder.jpg"));
-    map.insert(Images::PlaceholderBanner, AssetSlot::new(r"./Assets/banner.png"));
-    map.insert(Images::Background, AssetSlot::new(r"./Assets/background.jpg"));
+    map.insert(AssetTypes::Image(Images::Placeholder), AssetSlot::new(r"./Assets/placeholder.jpg"));
+    map.insert(AssetTypes::Image(Images::PlaceholderBanner), AssetSlot::new(r"./Assets/banner.png"));
+    map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(r"./Assets/background.jpg"));
+
+    map.insert(AssetTypes::Font(Fonts::Regular), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
     
     unsafe { ASSET_MAP = Some(map); }
 
@@ -113,7 +140,7 @@ pub fn initialize_asset_cache() {
 
 pub fn load_texture_atlas(piet: &mut Graphics2D) {
     let map = unsafe { ASSET_MAP.as_mut().unwrap() };
-    if let None = map.get(&Images::Error) {
+    if let None = map.get(&AssetTypes::Image(Images::Error)) {
         let data = piet.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_if_fail();
         let image = Rc::new(data);
 
@@ -141,9 +168,13 @@ pub fn load_texture_atlas(piet: &mut Graphics2D) {
             };
 
             let texture = YaffeTexture { image: image.clone(), bounds: Some(tex.1) };
-            map.insert(image_type, AssetSlot::packed_texture("./Assets/packed.png", texture));
+            map.insert(AssetTypes::Image(image_type), AssetSlot::packed_texture("./Assets/packed.png", texture));
         }
     }
+}
+
+fn get_slot_mut(t: AssetTypes) -> &'static mut AssetSlot {
+    unsafe { ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_if_fail("Invalid asset slot reqeust") }
 }
 
 pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot: &'a mut AssetSlot) -> Option<&'a YaffeTexture> {
@@ -159,21 +190,25 @@ pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot
     if let None = slot.image {
         if let Some((dimension, data)) = &slot.data {
             let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimension, data).log_if_fail();
-            slot.image = Some(YaffeTexture { image: Rc::new(image), bounds: None });
+            slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
         }
     }
 
-    slot.image.as_ref()  
+    if let Some(AssetData::Image(image)) = slot.image.as_ref() {
+        Some(image)
+    } else {
+        None
+    }
 }
 
 pub fn request_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, image: Images) -> Option<&'a YaffeTexture> {
-    let slot = unsafe { ASSET_MAP.as_mut().unwrap().get_mut(&image).log_message_if_fail("Requesting image that was never added to asset map") };
+    let slot = get_slot_mut(AssetTypes::Image(image));
 
     request_asset_image(piet, queue, slot)
 }
 
 pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a YaffeTexture {
-    let slot = unsafe { ASSET_MAP.as_mut().unwrap().get_mut(&image).log_message_if_fail("Requesting image that was never added to asset map") };
+    let slot = get_slot_mut(AssetTypes::Image(image));
 
     assert_eq!(std::path::Path::new(&slot.path).exists(), true);
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
@@ -181,24 +216,34 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
     if let None = slot.image {
         if let Some((dimension, data)) = &slot.data {
             let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimension, data).log_if_fail();
-            slot.image = Some(YaffeTexture { image: Rc::new(image), bounds: None });
+            slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
         }
     }
 
-    slot.image.as_ref().unwrap()  
+    if let Some(AssetData::Image(image)) = slot.image.as_ref() {
+        return image;
+    }
+    panic!();
 }
 
 //TODO font families?
-static mut FONT: Option<Font> = None;
-pub fn request_font() -> Font {
-    //TODO load?
-    if let None = unsafe { &FONT } {
-        let data = std::fs::read("./Assets/Roboto-Regular.ttf").log_if_fail();
-        let font = speedy2d::font::Font::new(&data).log_if_fail();
-        unsafe { FONT = Some(font); }
+pub fn request_font(font: Fonts) -> &'static Font {
+    let slot = get_slot_mut(AssetTypes::Font(font));
+
+    assert_eq!(std::path::Path::new(&slot.path).exists(), true);
+    assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
+
+    if let None = slot.image {
+        if let Some((_, data)) = &slot.data {
+            let font = speedy2d::font::Font::new(&data).log_if_fail();
+            slot.image = Some(AssetData::Font(font));
+        }
     }
 
-    unsafe { FONT.as_ref().unwrap().clone() }
+    if let Some(AssetData::Font(font)) = slot.image.as_ref() {
+        return font;
+    }
+    panic!(); //TODO panics
 }
 
 pub fn load_image_async(slot: crate::RawDataPointer) {

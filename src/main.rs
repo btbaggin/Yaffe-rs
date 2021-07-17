@@ -171,11 +171,6 @@ impl YaffeState {
         }
         false
     }
-
-    fn overlay_is_active(&self) -> bool {
-        let mut overlay = self.overlay.borrow_mut();
-        overlay.process_is_running()
-    }
 }
 
 impl windowing::WindowHandler for WidgetTree {
@@ -194,7 +189,7 @@ impl windowing::WindowHandler for WidgetTree {
 
         assets::load_texture_atlas(graphics);
 
-        if !self.data.overlay_is_active() {
+        if !self.data.overlay.borrow().is_showing() {
             let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
             if self.data.refresh_list {

@@ -3,7 +3,7 @@ use winapi::um::combaseapi::*;
 use winapi::shared::rpcdce::{RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IMPERSONATE};
 use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
 use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE, HKL};
-use winapi::shared::winerror::{ERROR_SUCCESS};
+use winapi::shared::winerror::{ERROR_SUCCESS, ERROR_DEVICE_NOT_CONNECTED};
 use winapi::shared::wtypes::{BSTR, VARIANT_TRUE};
 use winapi::{Interface, Class};
 use winapi::um::unknwnbase::IUnknown;
@@ -309,10 +309,11 @@ impl crate::input::PlatformInput for WindowsInput {
         if user_index < 4 {
             let mut output: XInputGamepadEx = unsafe { ::std::mem::zeroed() };
             let return_status = unsafe { (self.get_state)(user_index as DWORD, &mut output) };
-            if return_status == ERROR_SUCCESS {
-				self.current_state.0 = output;
-                // ERROR_DEVICE_NOT_CONNECTED => { },
-            } else { return Err(return_status); }
+            match return_status {
+				ERROR_SUCCESS => self.current_state.0 = output,
+				ERROR_DEVICE_NOT_CONNECTED => {},
+				s => return Err(s),
+            } 
         }
 
 		let mut output: [u8; 256] = [0; 256];

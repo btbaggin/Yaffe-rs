@@ -401,13 +401,13 @@ pub fn right_aligned_text(piet: &mut Graphics2D, right: V2, image: Option<crate:
 
 /// Simple helper method to get a text object
 pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
-    let font = crate::assets::request_font();
+    let font = crate::assets::request_font(crate::assets::Fonts::Regular);
     font.layout_text(text, size, TextOptions::new())
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
 fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
-    let font = crate::assets::request_font();
+    let font = crate::assets::request_font(crate::assets::Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);
     font.layout_text(text, size, option)

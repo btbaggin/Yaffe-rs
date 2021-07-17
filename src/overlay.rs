@@ -35,13 +35,13 @@ impl OverlayWindow {
     /// Checks if a process is currently running
     /// If if has been killed in the background it will set
     /// process = None and hide the overlay
-    pub fn process_is_running(&mut self) -> bool {
+    pub fn process_is_running(&mut self, helper: &mut crate::windowing::WindowHelper) -> bool {
         if let Some(process) = &mut self.process {
             match process.try_wait() { 
                 Ok(None) => true,
                 Ok(Some(_)) => {
                     self.process = None;
-                    // self.hide();
+                    self.hide(helper);
                     false
                 },
                 Err(_) => {
@@ -49,7 +49,7 @@ impl OverlayWindow {
                     if let Err(e) = process.kill() {
                         crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to determine process status");
                     }
-                    // self.hide();
+                    self.hide(helper);
                     false
                 }
             }
@@ -78,14 +78,17 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         true
     }
 
-    fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper) {
-        self.process_is_running();
+    fn on_fixed_update(&mut self, helper: &mut crate::windowing::WindowHelper) {
+        self.process_is_running(helper);
     }
 
     fn on_input(&mut self, helper: &mut crate::windowing::WindowHelper, action: &crate::Actions) -> bool {
         if let None = self.process { return false; }
         match action {
-            crate::Actions::ToggleOverlay => self.toggle_visibility(helper),
+            crate::Actions::ToggleOverlay => {
+                self.toggle_visibility(helper);
+                return true;
+            }
             _ => {
                 if self.showing { 
                     let result = self.modal.content.action(action, helper);
@@ -104,5 +107,9 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         }
 
         false
+    }
+
+    fn is_window_dirty(&self) -> bool {
+        self.showing
     }
 }
