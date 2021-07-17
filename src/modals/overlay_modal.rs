@@ -42,17 +42,7 @@ impl ModalContent for OverlayModal {
         crate::modals::modal::outline_rectangle(piet, &rect, 2., Color::GRAY);
 
         let accent = crate::colors::get_accent_color(settings);
-        // let stops = vec![
-        //     GradientStop { pos: 0.0, color: Color::rgb(r, g, b), /* Color::rgb(0.07, 0.8, 1.),*/ },
-        //     GradientStop { pos: 1., color: Color::rgb(f64::max(0., r - 0.06), f64::max(0., g - 0.5), f64::max(0., b - 0.6)),/*Color::rgb(0.01, 0.3, 0.4),*/ },
-        // ];
-
         let rect = Rectangle::new(*rect.top_left(), rect.top_left() + V2::new(rect.width() * self.volume, rect.height()));
-        // let radial_gradient = piet.gradient(FixedGradient::Linear(FixedLinearGradient {
-        //     start: rect.origin(),
-        //     end: v2::new(rect.x1, rect.y0),
-        //     stops: stops,
-        // })).unwrap();
 
         piet.draw_rectangle(rect, accent);
     }

@@ -22,7 +22,7 @@ impl super::Widget for InfoPane {
         handle.animate(self, V2::new(layout.left(), layout.top()), 0.2);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D) { 
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) { 
         piet.draw_rectangle(rect.clone(), MODAL_BACKGROUND);
         const IMAGE_SIZE: V2 = V2::new(64., 96.);
 
@@ -66,9 +66,9 @@ impl super::Widget for InfoPane {
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height() + height > rect.height() {
-                    self.scroll_timer -= state.delta_time;
+                    self.scroll_timer -= delta_time;
                     if self.scroll_timer < 0. { 
-                        self.y_offset -= state.delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
+                        self.y_offset -= delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
                         self.y_offset = f32::max(self.y_offset, rect.height() - height - name_label.height()); 
                     }
                 }

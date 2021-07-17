@@ -4,7 +4,7 @@ use crate::{YaffeState, create_widget};
 
 create_widget!(Background, );
 impl super::Widget for Background {
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D) { 
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) { 
         let base = crate::colors::get_accent_color(&state.settings);
 
         let mut queue = self.queue.borrow_mut();

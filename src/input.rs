@@ -77,8 +77,7 @@ pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {
 }
 
 pub trait PlatformInput {
-    //TODO return error
-    fn update(&mut self, controller_index: u32);
+    fn update(&mut self, controller_index: u32) -> Result<(), u32>;
     fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, char)>;
     fn get_gamepad(&mut self) -> Vec<ControllerInput>;
 }

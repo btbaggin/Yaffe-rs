@@ -269,14 +269,14 @@ pub(super) fn shutdown() -> ShutdownResult {
     Ok(())
 }
 
-pub fn initialize_input() -> impl crate::input::PlatformInput {
+pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
     for lib_name in ["xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll"].iter() {
         let handle = load(lib_name);
         if let Some(h) = handle { 
-			return h; 
+			return Ok(h); 
 		}
     }
-	panic!("change me eventually");
+	Err(-1)
 }
 
 const CONTROLLER_GUIDE: u16 = 0x0400;
@@ -304,24 +304,23 @@ struct WindowsInput {
 }
 
 impl crate::input::PlatformInput for WindowsInput {
-    fn update(&mut self, user_index: u32) {
+    fn update(&mut self, user_index: u32) -> Result<(), u32> {
 		self.previous_state = self.current_state;
         if user_index < 4 {
             let mut output: XInputGamepadEx = unsafe { ::std::mem::zeroed() };
             let return_status = unsafe { (self.get_state)(user_index as DWORD, &mut output) };
             if return_status == ERROR_SUCCESS {
 				self.current_state.0 = output;
-				return;
                 // ERROR_DEVICE_NOT_CONNECTED => { },
-                // s => { Err(XInputError::UnknownError(s)) }
-            }
+            } else { return Err(return_status); }
         }
 
 		let mut output: [u8; 256] = [0; 256];
 		let result = unsafe { GetKeyboardState(output.as_mut_ptr()) };
-		if result != 0 {
-			self.current_state.1 = output;
-		}
+		if result != 0 { self.current_state.1 = output; }
+		else { return Err(result as u32); }
+
+		return Ok(());
     }
 
     fn get_gamepad(&mut self) -> Vec<super::ControllerInput> {

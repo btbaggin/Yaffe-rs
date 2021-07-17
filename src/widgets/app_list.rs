@@ -73,8 +73,8 @@ impl super::Widget for AppList {
         handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D) {
-        self.update(state, &rect);
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) {
+        self.update(state, &rect, delta_time);
 
         let plat = state.get_platform();
 
@@ -93,7 +93,7 @@ impl super::Widget for AppList {
     }
 }
 impl AppList {
-    fn update(&mut self, state: &YaffeState, rect: &Rectangle) {
+    fn update(&mut self, state: &YaffeState, rect: &Rectangle, delta_time: f32) {
         //Check the length of our cache vs actual in case a game was added
         //to this platform while we were on it
         if self.cached_platform != state.selected_platform ||
@@ -108,7 +108,7 @@ impl AppList {
         }
 
         for exe in self.tiles.iter_mut() {
-            exe.update(state);
+            exe.update(state, delta_time);
         }
 
         self.update_tiles(state, rect);

@@ -119,7 +119,7 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D) {
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
         const NAME_WIDTH: f32 = 175.;
 
         let search = &state.search_info;

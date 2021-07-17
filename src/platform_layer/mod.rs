@@ -24,7 +24,6 @@ pub fn get_run_at_startup(task: &str) -> StartupResult<bool> {
     os::get_run_at_startup(task)
 }
 
-pub fn initialize_input() -> impl crate::input::PlatformInput {
-    //TODO return error
+pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
     os::initialize_input()
 }

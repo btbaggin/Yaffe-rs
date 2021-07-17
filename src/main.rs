@@ -118,7 +118,6 @@ pub struct Executable {
 }
 
 pub struct YaffeState {
-    delta_time: f32,
     overlay: Rc<RefCell<OverlayWindow>>,
     selected_platform: usize,
     selected_app: usize,
@@ -138,7 +137,6 @@ impl YaffeState {
            settings: settings::SettingsFile, 
            queue: Arc<RefCell<job_system::JobQueue>>) -> YaffeState {
         YaffeState {
-            delta_time: 0.,
             overlay: overlay,
             selected_platform: 0,
             selected_app: 0,
@@ -194,8 +192,6 @@ impl windowing::WindowHandler for WidgetTree {
             logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
         }
 
-        //TODO pass through to everything?
-        self.data.delta_time = delta_time;
         assets::load_texture_atlas(graphics);
 
         if !self.data.overlay_is_active() {
@@ -207,7 +203,7 @@ impl windowing::WindowHandler for WidgetTree {
             }
 
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(window_rect.clone(), graphics, !self.layout_valid);
+            self.render_all(window_rect.clone(), graphics, delta_time, !self.layout_valid);
             self.layout_valid = true;
 
             crate::widgets::run_animations(self, delta_time);
@@ -298,7 +294,7 @@ fn main() {
     ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
  
     let input_map = input::get_input_map();
-    let input = platform_layer::initialize_input();
+    let input = platform_layer::initialize_input().log_message_if_fail("Unable to initialize input");
     windowing::create_yaffe_windows(notify, input, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 

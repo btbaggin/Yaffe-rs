@@ -28,7 +28,7 @@ pub trait WidgetName {
 }
 pub trait Widget: WidgetName {
     /// Update and draw
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D);
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
 
     /// Allows the widget to position and size itself according to the parent widget
     fn layout(&self, space: &Rectangle, size: V2) -> Rectangle { 
@@ -98,13 +98,13 @@ impl WidgetTree {
         }
     }
 
-    pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, invalidate: bool) {
+    pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
         if invalidate {
             let size = V2::new(layout.width() * self.root.ratio.x, layout.height() * self.root.ratio.y);
             let r = self.root.data.layout(&layout, size);
             self.root.set_layout(r);
         }
-        self.root.render(&self.data, self.root.layout.clone(), piet, invalidate);
+        self.root.render(&self.data, self.root.layout.clone(), piet, delta_time, invalidate);
     }
 
     pub fn focus(&mut self, widget: WidgetId) {
@@ -235,10 +235,10 @@ impl WidgetContainer {
         handled
     }
 
-    pub fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D, invalidate: bool) {
+    pub fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
         let mut x = rect.left();
         let y = rect.top();
-        self.data.render(state, Rectangle::new(self.pos, self.pos + self.size), piet);
+        self.data.render(state, Rectangle::new(self.pos, self.pos + self.size), delta_time, piet);
 
         for i in self.children.iter_mut() {
             if invalidate {
@@ -246,7 +246,7 @@ impl WidgetContainer {
                 let r = i.data.layout(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
                 i.set_layout(r);
             }
-            i.render(state, i.layout.clone(), piet, invalidate);
+            i.render(state, i.layout.clone(), piet, delta_time, invalidate);
 
             match self.orientation {
                 ContainerOrientation::Horizontal => x += i.layout.width(),

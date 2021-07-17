@@ -5,7 +5,8 @@ use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
 use crate::{V2, input::ControllerInput};
 use std::time::Instant;
-
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub trait Rect {
     fn left(&self) -> f32;
@@ -100,8 +101,7 @@ struct YaffeWindow {
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
 }
 
-use std::rc::Rc;
-use std::cell::RefCell;
+
 fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowId, YaffeWindow>,
                  event_loop: &EventLoop<()>, 
                  tracker: &mut context_tracker::ContextTracker, 
@@ -185,7 +185,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
             Event::RedrawRequested(id) => {
                 let window = windows.get_mut(&id).unwrap();
                 let context = ct.get_current(window.context_id).unwrap();
-                
+
                 let size = window.size;
                 let mut handle = window.handler.borrow_mut();
                 window.renderer.draw_frame(|graphics| {
@@ -202,7 +202,9 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 last_time = now;
 
                 //Get input
-                input.update(0);
+                if let Err(e) = input.update(0) {
+                    crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get input");
+                }
                 
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = input_to_action(&input_map, input.get_keyboard(), input.get_gamepad());

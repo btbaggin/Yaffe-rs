@@ -54,7 +54,6 @@ impl AppTile {
         let mut position = self.position;
 
         if self.focused && focused {
-            //TODO this should move to animation
             let animation_remainder = (ANIMATION_TIME - self.time) / ANIMATION_TIME;
             //Have alpha fade in as the time grows to full size
             let alpha = f32::powf(animation_remainder, 2.);
@@ -100,7 +99,7 @@ impl AppTile {
         }
     }
 
-    pub fn update(&mut self, state: &YaffeState) {
+    pub fn update(&mut self, state: &YaffeState, delta_time: f32) {
         if state.selected_app == self.index {
             if !self.focused {
                 self.focused = true;
@@ -110,7 +109,7 @@ impl AppTile {
             self.focused = false;
         }
 
-        self.time = f32::max(0., self.time - state.delta_time);
+        self.time = f32::max(0., self.time - delta_time);
     }
 
     pub fn get_image_size(&self, state: &YaffeState) -> V2 {
