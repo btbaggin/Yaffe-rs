@@ -103,10 +103,9 @@ impl crate::windowing::WindowHandler for OverlayWindow {
                         return true;
                     }
                 }
+                return false;
             }
         }
-
-        false
     }
 
     fn is_window_dirty(&self) -> bool {

@@ -28,7 +28,7 @@ impl ModalContent for SetRestrictedModal {
         let code = match action {
             Actions::Accept => return ModalResult::Ok,
             Actions::Back => return ModalResult::Cancel,
-            Actions::KeyPress(code) => *code,
+            Actions::KeyPress(crate::input::InputType::Key(code)) => *code,
             _ => action_to_char(action)
         };
         self.pass.add_digit(code);
@@ -77,7 +77,7 @@ impl ModalContent for VerifyRestrictedModal {
         let code = match action {           
             Actions::Accept => return ModalResult::Ok,
             Actions::Back => return ModalResult::Cancel,
-            Actions::KeyPress(code) => *code,
+            Actions::KeyPress(crate::input::InputType::Key(code)) => *code,
             _ => action_to_char(action),
         };
 

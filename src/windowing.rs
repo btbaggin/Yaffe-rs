@@ -3,7 +3,7 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{V2, input::ControllerInput};
+use crate::{V2, input::ControllerInput, input::InputType};
 use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -38,15 +38,8 @@ enum WindowVisibility {
     Hide,
 }
 
-#[repr(u8)]
-enum ModalFileAction {
-    OpenFile,
-    OpenDirectory,
-}
-
 pub struct WindowHelper {
     visible: Option<WindowVisibility>,
-    file_action: Option<ModalFileAction>,
 }
 
 impl WindowHelper {
@@ -55,30 +48,12 @@ impl WindowHelper {
         else { self.visible = Some(WindowVisibility::Hide); }
     }
 
-    pub fn open_file(&mut self) {
-        self.file_action = Some(ModalFileAction::OpenFile);
-    }
-    pub fn open_directory(&mut self) {
-        self.file_action = Some(ModalFileAction::OpenDirectory);
-    }
-
     pub fn resolve(self, window: &glutin::window::Window) {
         match self.visible {
             Some(WindowVisibility::Hide) => window.set_visible(false),
             Some(WindowVisibility::Visible) => window.set_visible(true),
             None => {},
         }
-
-        match self.file_action {
-            Some(ModalFileAction::OpenFile) =>  { Some(1) } //TODO state.win.handle.open_file(druid_shell::FileDialogOptions::new()),
-            Some(ModalFileAction::OpenDirectory) => { None
-                //TODO
-                // let options = druid_shell::FileDialogOptions::new();
-                // let options = options.select_directories();
-                // state.win.handle.open_file(options)
-            }
-            None => None,
-        };
     }
 }
 
@@ -219,7 +194,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 let asset_loaded = notify.try_recv().is_ok();
 
                 for (_, val) in windows.iter_mut() {
-                    let mut helper = WindowHelper { visible: None, file_action: None };
+                    let mut helper = WindowHelper { visible: None, };
                     let context = ct.get_current(val.context_id).unwrap();
                     let mut handle = val.handler.borrow_mut();
 
@@ -253,15 +228,17 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 }
 
 fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>, 
-                   keyboard: Vec<(VirtualKeyCode, char)>, 
+                   keyboard: Vec<(VirtualKeyCode, Option<char>)>, 
                    gamepad: Vec<ControllerInput>) -> std::collections::HashSet<crate::Actions> {
 
     let mut result = std::collections::HashSet::new();
     for k in keyboard {
         if let Some(action) = input_map.get(Some(k.0), None) {
             result.insert(*action);
-        } else {
-            result.insert(crate::Actions::KeyPress(k.1));
+        } else if let VirtualKeyCode::Back = k.0 {
+            result.insert(crate::Actions::KeyPress(InputType::Delete));
+        } else if let Some(c) = k.1 {
+            result.insert(crate::Actions::KeyPress(InputType::Key(c)));
         }
     }
 
@@ -269,7 +246,7 @@ fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, Controller
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(*action);
         } else {
-            result.insert(crate::Actions::KeyPress(g as u8 as char));
+            result.insert(crate::Actions::KeyPress(crate::input::InputType::Key(g as u8 as char)));
         }
     }
 

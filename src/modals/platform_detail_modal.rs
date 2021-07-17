@@ -5,6 +5,12 @@ use crate::modals::*;
 use crate::colors::*;
 use crate::logger::{LogEntry, UserMessage};
 
+struct TextFieldWithLabel {
+    label: &'static str,
+    focused: bool,
+    text: String,
+}
+
 pub struct PlatformDetailModal {
     application: bool,
     name: String,
@@ -12,7 +18,7 @@ pub struct PlatformDetailModal {
     args: String,
     folder: String,
     id: i64,
-    selected_field: u32,
+    fields: [TextFieldWithLabel; 4],
 }
 impl PlatformDetailModal {
     pub fn application() -> PlatformDetailModal {
@@ -23,7 +29,7 @@ impl PlatformDetailModal {
             args: String::from(""),
             folder: String::from(""),
             id: 0,
-            selected_field: 0,
+            fields: PlatformDetailModal::create_fields(true),
         }
     }
 
@@ -35,7 +41,7 @@ impl PlatformDetailModal {
             args: String::from(""),
             folder: String::from(""),
             id: 0,
-            selected_field: 0,
+            fields: PlatformDetailModal::create_fields(false),
         }
     }
 
@@ -50,8 +56,17 @@ impl PlatformDetailModal {
             args: args,
             folder: roms,
             id: plat.id,
-            selected_field: 0,
+            fields: PlatformDetailModal::create_fields(plat.kind == crate::platform::PlatformType::App),
         }
+    }
+
+    fn create_fields(application: bool) -> [TextFieldWithLabel; 4] {
+        [
+            TextFieldWithLabel { label: "Name", focused: false, text: String::from("") },
+            TextFieldWithLabel { label: "Executable", focused: false, text: String::from("") },
+            TextFieldWithLabel { label: "Args", focused: false, text: String::from("") },
+            TextFieldWithLabel { label: if application { "Image" } else { "Folder" }, focused: false, text: String::from("") },
+        ]
     }
 }
 
@@ -61,59 +76,84 @@ impl ModalContent for PlatformDetailModal {
         (crate::font::FONT_SIZE + crate::ui::MARGIN) * 4.
     }
 
-    fn action(&mut self, action: &Actions, handler: &mut crate::windowing::WindowHelper) -> modal::ModalResult {
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> modal::ModalResult {
         match action {
-            Actions::Select => {
-                match self.selected_field {
-                    1 => handler.open_file(),
-                    3 => if self.application { handler.open_file() } else { handler.open_directory() },
-                    _ => {}
-                }
-                modal::ModalResult::None
-            }
             Actions::Down => {
-                if self.selected_field < 3 { self.selected_field += 1; }
+                let index = self.fields.iter().enumerate().find(|&f| f.1.focused);
+                match index {
+                    None => self.fields[0].focused = true,
+                    Some(i) => {
+                        let i = i.0;
+                        self.fields[i].focused = false;
+                        if i < self.fields.len() - 1 { 
+                            self.fields[i + 1].focused = true;
+                        }
+                    }
+                }
+                
                 modal::ModalResult::None
             }
             Actions::Up => {
-                if self.selected_field > 0 { self.selected_field -= 1; }
+                let index = self.fields.iter().enumerate().find(|&f| f.1.focused);
+                match index {
+                    None => self.fields[self.fields.len() - 1].focused = true,
+                    Some(i) => {
+                        let i = i.0;
+                        self.fields[i].focused = false;
+                        if i > 0 { 
+                            self.fields[i - 1].focused = true;
+                        }
+                    }
+                }
                 modal::ModalResult::None
 
+            }
+            Actions::KeyPress(c) => {
+                for f in self.fields.iter_mut() {
+                    if f.focused {
+                        match c {
+                            crate::input::InputType::Delete => { f.text.pop(); },
+                            crate::input::InputType::Key(c) => f.text.push(*c),
+                        }
+                    }
+                }
+                modal::ModalResult::None
             }
             _ => default_modal_action(action)
         }
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
-        let draw_rect = Rect::point_and_size(*rect.top_left(), V2::new(rect.right(), rect.top() + crate::font::FONT_SIZE));
-        let draw_rect = draw_field_with_label(piet, self, settings, "Name", &self.name, 0, draw_rect);
-        let draw_rect = draw_field_with_label(piet, self, settings, "Executable", &self.exe, 1, draw_rect);
-        let draw_rect = draw_field_with_label(piet, self, settings, "Args", &self.args, 2, draw_rect);
-        draw_field_with_label(piet, self, settings, if self.application { "Image" } else { "Folder" }, &self.folder, 3, draw_rect);
+        let mut draw_rect = Rect::point_and_size(*rect.top_left(), V2::new(rect.width(), crate::font::FONT_SIZE));
+        for f in self.fields.iter() {
+            draw_rect = draw_field_with_label(piet, settings, f, draw_rect);
+        }
     }
 }
 
 fn draw_field_with_label(piet: &mut Graphics2D, 
-                         modal: &PlatformDetailModal, 
                          settings: &crate::settings::SettingsFile, 
-                         caption: &str, 
-                         field: &str, 
-                         index: u32, 
+                         field: &TextFieldWithLabel,
                          rect: Rectangle) -> Rectangle {
     //Caption
     let position = rect.top_left();
-    let label = get_drawable_text(font::FONT_SIZE, caption);
+    let label = get_drawable_text(font::FONT_SIZE, field.label);
     piet.draw_text(*position, get_font_color(settings), &label); 
     
+    let value = get_drawable_text(font::FONT_SIZE, &field.text);
+
     //Background rect
     let value_rect = Rectangle::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
     piet.draw_rectangle(value_rect.clone(), get_accent_unfocused_color(settings));
-    if modal.selected_field == index {
+    if field.focused {
         modal::outline_rectangle(piet, &value_rect, 2., get_accent_color(settings));
+        if !field.text.is_empty() {
+            let x = position.x + crate::ui::LABEL_SIZE + value.width();
+            piet.draw_line(V2::new(x, position.y + 1.), V2::new(x, position.y + value.height() - 1.), 1., get_font_color(settings));
+        }
     }
   
     //Value
-    let value = get_drawable_text(font::FONT_SIZE, field);
     piet.draw_text(V2::new(position.x + crate::ui::LABEL_SIZE, position.y), get_font_color(settings), &value);
     
     //Return drawing rect for next field

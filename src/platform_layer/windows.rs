@@ -359,7 +359,7 @@ impl crate::input::PlatformInput for WindowsInput {
         result
     }
 
-	fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, char)> {
+	fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, Option<char>)> {
 		let mut result = Vec::new();
 		let now = Instant::now();
 
@@ -481,7 +481,7 @@ impl crate::input::PlatformInput for WindowsInput {
 	}
 }
 
-unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> char {
+unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> Option<char> {
     let mut unicode_bytes = [0u16; 5];
     let len = winuser::ToUnicodeEx(
         v_key,
@@ -495,9 +495,9 @@ unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> char {
     if len >= 1 {
         std::char::decode_utf16(unicode_bytes.iter().cloned())
             .next()
-            .and_then(|c| c.ok()).unwrap()
+            .and_then(|c| c.ok())
     } else {
-        ' '
+        None
     }
 }
 

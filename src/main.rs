@@ -230,8 +230,9 @@ impl windowing::WindowHandler for WidgetTree {
                 l.add_item(String::from("Add Application"));
     
                 display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
+                return true;
             },
-            Actions::ToggleOverlay => { /* Overlay handles this */ }
+            Actions::ToggleOverlay => { return false; /* Overlay handles this */ }
             _ => {
                 if !modals::modal::is_modal_open(&self.data) {
                     let mut handler = DeferredAction::new();
@@ -245,8 +246,6 @@ impl windowing::WindowHandler for WidgetTree {
                 return true;
             }
         }
-
-        false
     }
 
     fn on_stop(&mut self) {

@@ -42,7 +42,7 @@ pub enum Actions {
     Filter,
     ToggleOverlay,
     ShowMenu,
-    KeyPress(char),
+    KeyPress(InputType),
 }
 
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
@@ -58,6 +58,12 @@ pub enum ControllerInput {
     DirectionRight,
     DirectionUp,
     DirectionDown,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub enum InputType {
+    Key(char),
+    Delete,
 }
 
 pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {
@@ -78,6 +84,6 @@ pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {
 
 pub trait PlatformInput {
     fn update(&mut self, controller_index: u32) -> Result<(), u32>;
-    fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, char)>;
+    fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, Option<char>)>;
     fn get_gamepad(&mut self) -> Vec<ControllerInput>;
 }
