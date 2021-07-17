@@ -145,6 +145,8 @@ fn draw_field_with_label(piet: &mut Graphics2D,
     //Background rect
     let value_rect = Rectangle::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
     piet.draw_rectangle(value_rect.clone(), get_accent_unfocused_color(settings));
+
+    //Focus outline
     if field.focused {
         modal::outline_rectangle(piet, &value_rect, 2., get_accent_color(settings));
         if !field.text.is_empty() {
