@@ -32,7 +32,6 @@ impl super::Widget for PlatformList {
     fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
         //Background
         piet.draw_rectangle(rect.clone(), MENU_BACKGROUND);
-        //piet.draw_line(V2::new(rect.right(), rect.top()), (rect.right(), rect.bottom()), 1., MODAL_BACKGROUND);
 
         //Title
         let title = crate::widgets::get_drawable_text(get_title_font_size(state), "Yaffe");

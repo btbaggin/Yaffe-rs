@@ -13,7 +13,6 @@ type V2 = Vector2<f32>;
 
 /*
     TODO:
-    tranparent window
     button remapping?
     scale factor
 */

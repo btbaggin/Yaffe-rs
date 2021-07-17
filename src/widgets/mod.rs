@@ -359,8 +359,9 @@ pub fn run_animations(tree: &mut WidgetTree, delta_time: f32) {
             AnimationType::Position(to) => {
                 if let Some(widget) = tree.root.find_widget(animation.widget) {
 
+                    //TODO the lerping causes some jank at the end of animations
                     let from = widget.pos;
-                    widget.pos = lerp(from, to, delta_time / animation.duration); //TODO the lerping causes some jank at the end of animations
+                    widget.pos = lerp(from, to, delta_time / animation.duration); 
             
                     if animation.remaining == 0. { widget.pos = to; }
                 }

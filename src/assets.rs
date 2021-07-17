@@ -223,7 +223,7 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
     if let Some(AssetData::Image(image)) = slot.image.as_ref() {
         return image;
     }
-    panic!();
+    panic!("Requested image on a non-image asset slot");
 }
 
 //TODO font families?
@@ -243,7 +243,7 @@ pub fn request_font(font: Fonts) -> &'static Font {
     if let Some(AssetData::Font(font)) = slot.image.as_ref() {
         return font;
     }
-    panic!(); //TODO panics
+    panic!("Requested font on a non-font asset slot");
 }
 
 pub fn load_image_async(slot: crate::RawDataPointer) {

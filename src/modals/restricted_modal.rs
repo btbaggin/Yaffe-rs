@@ -5,6 +5,7 @@ use crate::{Actions, V2};
 use crate::colors::*;
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::{RestrictedPasscode, PasscodeEquality, passcodes_equal};
+use std::hash::{Hash, Hasher};
 
 pub struct SetRestrictedModal {
     pass: RestrictedPasscode,
@@ -77,7 +78,7 @@ impl ModalContent for VerifyRestrictedModal {
             Actions::Accept => return ModalResult::Ok,
             Actions::Back => return ModalResult::Cancel,
             Actions::KeyPress(code) => *code,
-            _ => action_to_char(action)
+            _ => action_to_char(action),
         };
 
         self.pass.add_digit(code);             
@@ -102,16 +103,7 @@ impl ModalContent for VerifyRestrictedModal {
 }
 
 fn action_to_char(action: &Actions) -> char {
-    match action {
-        Actions::Info => '1',
-        Actions::Accept => '2',
-        Actions::Select => '3',
-        Actions::Back => '4',
-        Actions::Up => '5',
-        Actions::Down => '6',
-        Actions::Left => '7',
-        Actions::Right => '8',
-        Actions::Filter => '9',
-        _ => panic!("Invalid action converting to u32"),
-    }
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    action.hash(&mut hasher);
+    hasher.finish() as u8 as char
 }
