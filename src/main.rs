@@ -1,36 +1,30 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::any::Any;
 use std::time::Instant;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
-use druid_shell::kurbo::Size;
-use druid_shell::piet::Piet;
-use druid_shell::{
-    Application, KeyEvent, Code,
-    Region, WinHandler, WindowBuilder, WindowHandle,
-};
+use speedy2d::shape::Rectangle;
+use speedy2d::dimen::Vector2;
 pub use crate::settings::SettingNames;
 
 use crate::logger::{UserMessage, LogEntry};
 
+type V2 = Vector2<f32>;
+
 /*
     TODO:
-    tranparent window
-    hide overlay window
     button remapping?
+    scale factor
 */
 
 pub mod colors {
-    use druid_shell::piet::{Color};
-    pub const MENU_BACKGROUND: Color = Color::rgba8(64, 64, 64, 128);
-    pub const MODAL_OVERLAY_COLOR: Color = Color::rgba8(0, 0, 0, 115);
-    pub const MODAL_BACKGROUND: Color = Color::rgba8(26, 26, 26, 255);
+    use speedy2d::color::Color;
+    pub const MENU_BACKGROUND: Color = Color::from_rgba(0.2, 0.2, 0.2, 0.7);
+    pub const MODAL_OVERLAY_COLOR: Color = Color::from_rgba(0., 0., 0., 0.6);
+    pub const MODAL_BACKGROUND: Color = Color::from_rgba(0.1, 0.1, 0.1, 1.);
     
     pub fn get_font_color(settings: &crate::settings::SettingsFile) -> Color {
-        let (r, g, b, a) = settings.get_color(crate::SettingNames::FontColor).as_rgba();
-        Color::rgba(r, g, b, a)
+        settings.get_color(crate::SettingNames::FontColor).clone()
     }
     pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
         let color = settings.get_color(crate::SettingNames::FontColor);
@@ -45,8 +39,11 @@ pub mod colors {
         change_brightness(&color, -0.3)
     }
 
-    pub fn change_brightness(color: &Color, factor: f64) -> Color {
-        let (mut r, mut g, mut b, a) = color.as_rgba();
+    pub fn change_brightness(color: &Color, factor: f32) -> Color {
+        let mut r = color.r();
+        let mut g = color.g();
+        let mut b = color.b();
+        let a = color.a();
 
         if factor < 0. {
             let factor = 1. + factor;
@@ -59,119 +56,46 @@ pub mod colors {
             b  = (1. - b) * factor + b;
         }
 
-        return Color::rgba(r, g, b, a);
+        return Color::from_rgba(r, g, b, a);
     }
 }
 
 pub mod font {
-    pub const FONT_SIZE: f64 = 24.;
-    pub fn get_info_font_size(state: &crate::YaffeState) -> f64 {
-        state.settings.get_f64(crate::SettingNames::InfoFontSize)
+    pub const FONT_SIZE: f32 = 24.;
+    pub fn get_info_font_size(state: &crate::YaffeState) -> f32 {
+        state.settings.get_f32(crate::SettingNames::InfoFontSize)
     }
-    pub fn get_title_font_size(state: &crate::YaffeState) -> f64 {
-        state.settings.get_f64(crate::SettingNames::TitleFontSize)
+    pub fn get_title_font_size(state: &crate::YaffeState) -> f32 {
+        state.settings.get_f32(crate::SettingNames::TitleFontSize)
     }
 }
 
 pub mod ui {
-    pub const MARGIN: f64 = 10.;
-    pub const LABEL_SIZE: f64 = 200.;
+    pub const MARGIN: f32 = 10.;
+    pub const LABEL_SIZE: f32 = 200.;
 }
-
-#[macro_use]
-extern crate lazy_static;
 
 mod widgets;
 mod assets;
 mod database;
 mod modals;
 mod platform;
-mod platform_code;
+mod platform_layer;
 mod overlay;
 mod restrictions;
 mod server;
 mod job_system;
 mod logger;
-mod controller;
 mod settings;
+mod windowing;
+mod input;
+use windowing::{Rect, Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
-pub use modals::{display_modal};
-pub use job_system::{JobQueue, JobType, RawDataPointer};
-
-#[derive(Clone, Copy)]
-pub enum Actions {
-    Info,
-    Accept,
-    Select,
-    Back,
-    Up,
-    Down,
-    Left,
-    Right,
-    Filter,
-    KeyPress(u32),
-}
-
-#[derive(Clone, Copy)]
-pub enum SystemActions {
-    ToggleOverlay,
-    ShowMenu,
-}
-
-use std::hash::Hash;
-struct InputMap<A: Eq + Hash, B: Eq + Hash, T: Clone> {
-    keys: HashMap<A, T>,
-    cont: HashMap<B, T>,
-}
-impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
-    fn new() -> InputMap<A, B, T> {
-        InputMap {
-            keys: HashMap::new(),
-            cont: HashMap::new(),
-        }
-    }
-
-    fn insert(&mut self, code: A, button: B, action: T) {
-        self.keys.insert(code, action.clone());
-        self.cont.insert(button, action);
-    }
-
-    fn get(&self, code: Option<A>, button: Option<B>) -> Option<&T> {
-        if let Some(c) = code {
-            return self.keys.get(&c);
-        } else if let Some(b) = button {
-            return self.cont.get(&b);
-        }
-        return None;
-    }
-}
-
-lazy_static! {
-    static ref ACTION_MAP: InputMap<Code, u16, Actions> = {
-        let mut m = InputMap::new();
-        m.insert(Code::KeyI, controller::CONTROLLER_X, Actions::Info);
-        m.insert(Code::KeyF, controller::CONTROLLER_Y, Actions::Filter);
-        m.insert(Code::Enter, controller::CONTROLLER_A, Actions::Accept);
-        m.insert(Code::Escape, controller::CONTROLLER_B, Actions::Back);
-        m.insert(Code::ArrowUp, controller::CONTROLLER_UP, Actions::Up);
-        m.insert(Code::ArrowDown, controller::CONTROLLER_DOWN, Actions::Down);
-        m.insert(Code::ArrowRight, controller::CONTROLLER_RIGHT, Actions::Right);
-        m.insert(Code::ArrowLeft, controller::CONTROLLER_LEFT, Actions::Left);
-        m.insert(Code::Tab, controller::CONTROLLER_START, Actions::Select);
-        m
-    };
-}
-lazy_static! {
-    static ref SYSTEM_ACTION_MAP: InputMap<Code, u16, SystemActions> = {
-        let mut m = InputMap::new();
-        m.insert(Code::F1, controller::CONTROLLER_START, SystemActions::ShowMenu);
-        m.insert(Code::KeyO, controller::CONTROLLER_GUIDE, SystemActions::ToggleOverlay);
-        m
-    };
-}
-
+use modals::{display_modal};
+use job_system::{JobQueue, JobType, RawDataPointer};
+use input::Actions;
 
 pub struct Platform {
     id: i64,
@@ -192,17 +116,8 @@ pub struct Executable {
     banner: Rc<RefCell<assets::AssetSlot>>,
 }
 
-#[derive(Default)]
-struct YaffeWin {
-    size: Size,
-    handle: WindowHandle,
-}
-
 pub struct YaffeState {
-    win: YaffeWin,
-    last_time: Instant,
-    delta_time: f64,
-    overlay: *mut OverlayWindow,
+    overlay: Rc<RefCell<OverlayWindow>>,
     selected_platform: usize,
     selected_app: usize,
     platforms: Vec<Platform>,
@@ -213,17 +128,14 @@ pub struct YaffeState {
     modals: std::sync::Mutex<Vec<modals::Modal>>,
     queue: Arc<RefCell<job_system::JobQueue>>,
     refresh_list: bool,
-    controller: Option<controller::XInput>,
     settings: settings::SettingsFile,
+    running: bool,
 }
 impl YaffeState {
-    fn new(overlay: *mut OverlayWindow, 
+    fn new(overlay: Rc<RefCell<OverlayWindow>>, 
            settings: settings::SettingsFile, 
            queue: Arc<RefCell<job_system::JobQueue>>) -> YaffeState {
         YaffeState {
-            win: YaffeWin::default(),
-            last_time: Instant::now(),
-            delta_time: 0.,
             overlay: overlay,
             selected_platform: 0,
             selected_app: 0,
@@ -235,8 +147,8 @@ impl YaffeState {
             modals: std::sync::Mutex::new(vec!()),
             queue: queue,
             refresh_list: true,
-            controller: controller::load_xinput(),
             settings: settings,
+            running: true,
         }
     }
 
@@ -252,10 +164,6 @@ impl YaffeState {
         None
     }
 
-    pub fn get_overlay(&self) -> &mut OverlayWindow {
-        unsafe { &mut *self.overlay }
-    }
-
     fn is_widget_focused(&self, widget: &impl WidgetName) -> bool {
         if self.focused_widget == widget.get_id() {
             return true;
@@ -264,37 +172,24 @@ impl YaffeState {
     }
 }
 
-impl WinHandler for WidgetTree {
-    fn connect(&mut self, handle: &WindowHandle) { 
-        self.data.win.handle = handle.clone(); 
+impl windowing::WindowHandler for WidgetTree {
+    fn on_start(&mut self) {
         server::start_up();
-
+    
         //Attempt to start COM here since it doesnt work in the settings modal?
         #[cfg(windows)]
 	    unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
-}
-    fn prepare_paint(&mut self) { self.data.win.handle.invalidate(); }
+    }
 
-    fn paint(&mut self, piet: &mut Piet, _: &Region) {
+    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
         if let Err(e) = settings::update_settings(&mut self.data.settings) {
             logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
         }
 
-        assets::load_texture_atlas(piet);
+        assets::load_texture_atlas(graphics);
 
-        if !self.data.get_overlay().process_is_running() {
-            if let Some(controller) = &mut self.data.controller {
-                for e in controller.get_actions(0) {
-                    handle_input(self, None, Some(e));
-                }
-            }  
-
-            let now = Instant::now();
-            self.data.delta_time = (now - self.data.last_time).as_millis() as f64 / 1000.;
-            self.data.last_time = now;
-
-            let size = self.data.win.size;
-            let window_rect = size.to_rect();
+        if !self.data.overlay.borrow().is_showing() {
+            let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
             if self.data.refresh_list {
                 platform::get_database_info(&mut self.data);
@@ -302,56 +197,76 @@ impl WinHandler for WidgetTree {
             }
 
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(window_rect, piet, !self.layout_valid);
+            self.render_all(window_rect.clone(), graphics, delta_time, !self.layout_valid);
             self.layout_valid = true;
 
-            crate::widgets::run_animations(self, self.data.delta_time);
+            crate::widgets::run_animations(self, delta_time);
 
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
-                modals::modal::render_modal(&self.data.settings, m, &window_rect, piet);
+                modals::modal::render_modal(&self.data.settings, m, &window_rect, graphics);
             }
-        } else {
-            if let Some(controller) = &mut self.data.controller {
-                for e in controller.get_actions(0) {
-                    overlay::handle_input(self.data.get_overlay(), None, Some(e));
-                }
-            }
+
         }
 
-        self.data.win.handle.request_anim_frame();
+        self.data.running
     }
 
-    fn key_down(&mut self, event: KeyEvent) -> bool {
-        if self.data.get_overlay().process_is_running() { return false; }
-        handle_input(self, Some(event.code), None)
+    fn on_input(&mut self, helper: &mut windowing::WindowHelper, action: &Actions) -> bool {
+        if self.data.overlay.borrow().is_showing() { return false; }
+
+        match action {
+            Actions::ShowMenu => {
+                let mut l = Box::new(modals::ListModal::new(None));
+                l.add_item(String::from("Exit Yaffe"));
+                l.add_item(String::from("Shut Down"));
+                l.add_item(String::from("Settings"));
+                match self.data.restricted_mode {
+                    RestrictedMode::On(_) => l.add_item(String::from("Disable Restricted Mode")),
+                    RestrictedMode::Off => l.add_item(String::from("Enable Restricted Mode")),
+                    RestrictedMode::Pending => {},
+                }
+                l.add_item(String::from("Add Emulator"));
+                l.add_item(String::from("Add Application"));
+    
+                display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
+                return true;
+            },
+            Actions::ToggleOverlay => { return false; /* Overlay handles this */ }
+            _ => {
+                if !modals::modal::is_modal_open(&self.data) {
+                    let mut handler = DeferredAction::new();
+                    let focus = self.focus.last().log_if_fail();
+        
+                    self.root.action(&mut self.data, &action, focus, &mut handler);
+                    handler.resolve(self);
+                } else {
+                    modals::modal::update_modal(&mut self.data, helper, &action);
+                }
+                return true;
+            }
+        }
     }
 
-    fn size(&mut self, size: Size) { 
-        self.data.win.size = size; 
-        self.layout_valid = false;
-    }
-    // fn got_focus(&mut self) { println!("Got focus"); }
-    // fn lost_focus(&mut self) { println!("Lost focus"); }
-    fn request_close(&mut self) { 
-        self.data.win.handle.close(); 
+    fn on_stop(&mut self) {
+        server::shutdown();
 
         #[cfg(windows)]
         unsafe { winapi::um::combaseapi::CoUninitialize() };
+    }
 
+    fn on_resize(&mut self, _: u32, _: u32) { 
+        self.layout_valid = false;
     }
-    fn destroy(&mut self) { 
-        server::shutdown();
-        Application::global().quit() 
+
+    fn is_window_dirty(&self) -> bool {
+        self.anims.len() > 0
     }
-    fn as_any(&mut self) -> &mut dyn Any { self }
 }
 
 fn main() {
-    let app = Application::new().unwrap();
-
     logger::initialize_log();
-    let queue = job_system::start_job_system();
+    let (queue, notify) = job_system::start_job_system();
 
     let settings = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
@@ -363,30 +278,26 @@ fn main() {
 
     let q = Arc::new(RefCell::new(queue));
     let root = build_ui_tree(q.clone());
-    let state = YaffeState::new(overlay::OverlayWindow::new(settings.clone()), settings, q.clone());
+    let overlay = overlay::OverlayWindow::new(settings.clone());
+    let state = YaffeState::new(overlay.clone(), settings, q.clone());
 
     assets::initialize_asset_cache();
 
     let mut ui = widgets::WidgetTree::new(root, state);
     ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
-
-    let mut builder = WindowBuilder::new(app.clone());
-    builder.set_handler(Box::new(ui));
-    builder.set_title("Yaffe");
-
-    let window = builder.build().unwrap();
-    window.show();
-
-    app.run(None);
+ 
+    let input_map = input::get_input_map();
+    let input = platform_layer::initialize_input().log_message_if_fail("Unable to initialize input");
+    windowing::create_yaffe_windows(notify, input, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
 fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
     let mut root = WidgetContainer::root(widgets::Background::new(queue.clone()));
-    root.add_child(widgets::PlatformList::new(queue.clone()),Size::new(0.25, 1.))
-        .with_child(widgets::AppList::new(queue.clone()), Size::new(0.75, 1.))
-            .add_child(widgets::SearchBar::new(queue.clone()), Size::new(1., 0.05))
-            .add_child(widgets::Toolbar::new(queue.clone()), Size::new(1., 0.075))
-            .add_child(widgets::InfoPane::new(queue.clone()), Size::new(0.33, 1.))
+    root.add_child(widgets::PlatformList::new(queue.clone()), V2::new(0.25, 1.))
+        .with_child(widgets::AppList::new(queue.clone()), V2::new(0.75, 1.))
+            .add_child(widgets::SearchBar::new(queue.clone()), V2::new(1., 0.05))
+            .add_child(widgets::Toolbar::new(queue.clone()), V2::new(1., 0.075))
+            .add_child(widgets::InfoPane::new(queue.clone()), V2::new(0.33, 1.))
             .orientation(ContainerOrientation::Floating);
             
     root
@@ -420,56 +331,12 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
                 let content = Box::new(modals::SetRestrictedModal::new());
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, modals::ModalSize::Third, Some(restrictions::on_restricted_modal_close))
             },
-            "Exit Yaffe" => state.win.handle.close(), //This causes issues. not sure why
-            "Shut Down" => { system_shutdown::shutdown().display_failure("Failed to shut down", state); },
+            "Exit Yaffe" => state.running = false, 
+            "Shut Down" => { 
+                state.running = false;
+                crate::platform_layer::shutdown().display_failure("Failed to shut down", state); 
+            },
             _ => panic!("Unknown menu option"),
         }
     }
-}
-
-fn handle_input(tree: &mut WidgetTree, code: Option<Code>, button: Option<u16>) -> bool {
-    if let Some(action) = SYSTEM_ACTION_MAP.get(code, button) { 
-        match action {
-            SystemActions::ShowMenu => {
-                let mut l = Box::new(modals::ListModal::new(None));
-                l.add_item(String::from("Exit Yaffe"));
-                l.add_item(String::from("Shut Down"));
-                l.add_item(String::from("Settings"));
-                match tree.data.restricted_mode {
-                    RestrictedMode::On(_) => l.add_item(String::from("Disable Restricted Mode")),
-                    RestrictedMode::Off => l.add_item(String::from("Enable Restricted Mode")),
-                    RestrictedMode::Pending => {},
-                }
-                l.add_item(String::from("Add Emulator"));
-                l.add_item(String::from("Add Application"));
-    
-                display_modal(&mut tree.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
-            },
-            SystemActions::ToggleOverlay => { /* Overlay handles this */ }
-        }
-        return true;
-    }
-
-    let action_code = match ACTION_MAP.get(code, button) {
-                    Some(a) => Some(*a),
-                    None => {
-                        if let Some(c) = code { Some(Actions::KeyPress(c as u32)) }
-                        else if let Some(b) = button { Some(Actions::KeyPress(b.into())) }
-                        else { None }
-                    }
-    };
-
-    if let Some(action) = action_code {
-        if !modals::modal::is_modal_open(&tree.data) {
-            let mut handler = DeferredAction::new();
-            let focus = tree.focus.last().log_if_fail();
-
-            tree.root.action(&mut tree.data, &action, focus, &mut handler);
-            handler.resolve(tree);
-        } else {
-            modals::modal::update_modal(&mut tree.data, &action);
-        }
-    }
-    
-    false
 }

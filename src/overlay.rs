@@ -1,17 +1,10 @@
-use druid_shell::{
-    Application, KeyEvent, Code,
-    Region, WinHandler, WindowBuilder, WindowHandle, WindowState,
-};
-use druid_shell::kurbo::Size;
-use druid_shell::piet::Piet;
-use std::any::Any;
+use speedy2d::shape::Rectangle;
+use speedy2d::dimen::Vector2;
 use crate::modals;
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
 pub struct OverlayWindow {
-    handle: WindowHandle,
-    size: Size,
     modal: modals::Modal,
     process: Option<std::process::Child>,
     showing: bool,
@@ -19,31 +12,19 @@ pub struct OverlayWindow {
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
-    pub fn new(settings: crate::settings::SettingsFile) -> *mut OverlayWindow {
-
-        let window = OverlayWindow {
-            handle: WindowHandle::default(),
-            size: Size::default(),
+    pub fn new(settings: crate::settings::SettingsFile) -> std::rc::Rc<std::cell::RefCell<OverlayWindow>> {
+        let overlay = OverlayWindow {
             modal: modals::Modal::overlay(Box::new(modals::OverlayModal::default())),
             process: None,
             showing: false,
             settings: settings,
         };
+  
+        std::rc::Rc::new(std::cell::RefCell::new(overlay))
+    }
 
-        let mut overlay = WindowBuilder::new(Application::global().clone());
-        let mut handler = Box::new(window);
-
-        let handler_ptr = &mut *handler as *mut OverlayWindow;
-        
-        overlay.set_handler(handler);
-        overlay.set_transparent(true);
-        overlay.resizable(false);
-        
-        let mut handle = overlay.build().unwrap();
-        handle.set_window_state(WindowState::Maximized); 
-        handle.show_titlebar(false);
-
-        handler_ptr
+    pub fn is_showing(&self) -> bool {
+        self.showing
     }
 
     /// Sets the currently running process
@@ -54,13 +35,13 @@ impl OverlayWindow {
     /// Checks if a process is currently running
     /// If if has been killed in the background it will set
     /// process = None and hide the overlay
-    pub fn process_is_running(&mut self) -> bool {
+    pub fn process_is_running(&mut self, helper: &mut crate::windowing::WindowHelper) -> bool {
         if let Some(process) = &mut self.process {
             match process.try_wait() { 
                 Ok(None) => true,
                 Ok(Some(_)) => {
                     self.process = None;
-                    self.hide();
+                    self.hide(helper);
                     false
                 },
                 Err(_) => {
@@ -68,7 +49,7 @@ impl OverlayWindow {
                     if let Err(e) = process.kill() {
                         crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to determine process status");
                     }
-                    self.hide();
+                    self.hide(helper);
                     false
                 }
             }
@@ -78,70 +59,56 @@ impl OverlayWindow {
     }
 
     /// Shows the overlay if possible
-    pub fn toggle_visibility(&mut self) {
-        if self.showing {
-            self.handle.set_window_state(WindowState::Minimized);
-
-        } else {
-            if let Some(_) = self.process {
-                self.handle.show();
-                self.handle.bring_to_front_and_focus();
-                self.showing = true;
-            }
-        }
+    pub fn toggle_visibility(&mut self, helper: &mut crate::windowing::WindowHelper) {
         self.showing = !self.showing;
+        helper.set_visibility(self.showing);
     }
 
-    fn hide(&mut self) {
-        self.handle.set_window_state(WindowState::Minimized);
+    fn hide(&mut self, helper: &mut crate::windowing::WindowHelper) {
+        helper.set_visibility(false);
         self.showing = false;
     }
 }
 
-impl WinHandler for OverlayWindow {
-    fn connect(&mut self, handle: &WindowHandle) { 
-        self.handle = handle.clone(); 
-    }
-    fn prepare_paint(&mut self) { self.handle.invalidate(); }
+impl crate::windowing::WindowHandler for OverlayWindow {
+    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, _: f32, size: Vector2<u32>) -> bool {
+        let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
+        modals::render_modal(&self.settings, &self.modal, &window_rect, graphics);
 
-    fn paint(&mut self, piet: &mut Piet, _: &Region) {
-        let size = self.size;
-        let window_rect = size.to_rect();
-
-        //TODO read in settings for overlay
-        modals::render_modal(&self.settings, &self.modal, &window_rect, piet);
-        self.handle.request_anim_frame();
+        true
     }
 
-    fn key_down(&mut self, event: KeyEvent) -> bool {
-        handle_input(self, Some(event.code), None)
+    fn on_fixed_update(&mut self, helper: &mut crate::windowing::WindowHelper) {
+        self.process_is_running(helper);
     }
 
-    fn size(&mut self, size: Size) { self.size = size; }
-    fn as_any(&mut self) -> &mut dyn Any { self }
-}
-
-pub fn handle_input(tree: &mut OverlayWindow, code: Option<Code>, button: Option<u16>) -> bool {
-    if let Some(crate::SystemActions::ToggleOverlay) = crate::SYSTEM_ACTION_MAP.get(code, button) { 
-        tree.toggle_visibility(); 
-        return true;
-    };
-
-    let action = crate::ACTION_MAP.get(code, button);
-    let mut handler = crate::modals::modal::DeferredModalAction::new();
-    if let Some(a) = action {
-        let result = tree.modal.content.action(a, &mut handler);
-        if let modals::ModalResult::Ok = result {
-            // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
-            // see process_is_running
-            if let Err(e) = tree.process.as_mut().unwrap().kill() {
-                crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to kill running process");
+    fn on_input(&mut self, helper: &mut crate::windowing::WindowHelper, action: &crate::Actions) -> bool {
+        if let None = self.process { return false; }
+        match action {
+            crate::Actions::ToggleOverlay => {
+                self.toggle_visibility(helper);
+                return true;
             }
-            tree.process = None;
-            tree.hide();
-            return true;
+            _ => {
+                if self.showing { 
+                    let result = self.modal.content.action(action, helper);
+                    if let modals::ModalResult::Ok = result {
+                        // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
+                        // see process_is_running
+                        if let Err(e) = self.process.as_mut().unwrap().kill() {
+                            crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to kill running process");
+                        }
+                        self.process = None;
+                        self.hide(helper);
+                        return true;
+                    }
+                }
+                return false;
+            }
         }
     }
 
-    false
+    fn is_window_dirty(&self) -> bool {
+        self.showing
+    }
 }

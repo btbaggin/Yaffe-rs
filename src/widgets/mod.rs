@@ -1,9 +1,10 @@
 //https://docs.rs/piet/0.0.7/piet/trait.RenderContext.html
 //https://github.com/linebender/druid/blob/master/druid/src/widget/image.rs
-use druid_shell::kurbo::{Size, Rect, Point};
-use druid_shell::piet::{Piet, RenderContext, Text, TextLayout, PietTextLayout, 
-                        TextLayoutBuilder, TextAlignment, Color };
-use crate::{YaffeState, Actions};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use speedy2d::color::Color;
+use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
+use crate::{YaffeState, Actions, V2, Rect};
 use std::ops::Deref;
 
 mod platform_list;
@@ -27,21 +28,21 @@ pub trait WidgetName {
 }
 pub trait Widget: WidgetName {
     /// Update and draw
-    fn render(&mut self, state: &YaffeState, rect: Rect, piet: &mut Piet);
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
 
     /// Allows the widget to position and size itself according to the parent widget
-    fn layout(&self, space: &Rect, size: Size) -> Rect { 
-        Rect::new(space.x0, space.y0, space.x0 + size.width, space.y0 + size.height)
+    fn layout(&self, space: &Rectangle, size: V2) -> Rectangle { 
+        Rectangle::from_tuples((space.left(), space.top()), (space.left() + size.x, space.top() + size.y))
     }
     
     /// Called when a user action occurs
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: &Rect, _: &mut DeferredAction) {}
+    fn got_focus(&mut self, _: &Rectangle, _: &mut DeferredAction) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: &Rect, _: &mut DeferredAction) {}
+    fn lost_focus(&mut self, _: &Rectangle, _: &mut DeferredAction) {}
 }
 
 #[macro_export]
@@ -97,13 +98,13 @@ impl WidgetTree {
         }
     }
 
-    pub fn render_all(&mut self, layout: Rect, piet: &mut Piet, invalidate: bool) {
+    pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
         if invalidate {
-            let size = Size::new(layout.width() * self.root.ratio.width, layout.height() * self.root.ratio.height);
+            let size = V2::new(layout.width() * self.root.ratio.x, layout.height() * self.root.ratio.y);
             let r = self.root.data.layout(&layout, size);
             self.root.set_layout(r);
         }
-        self.root.render(&self.data, self.root.layout, piet, invalidate);
+        self.root.render(&self.data, self.root.layout.clone(), piet, delta_time, invalidate);
     }
 
     pub fn focus(&mut self, widget: WidgetId) {
@@ -167,10 +168,10 @@ impl Deref for WidgetTree {
 pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
     data: Box<dyn Widget>,
-    layout: Rect,
-    pos: Point,
-    size: Size,
-    ratio: Size,
+    layout: Rectangle,
+    pos: V2,
+    size: V2,
+    ratio: V2,
     orientation: ContainerOrientation,
 }
 impl WidgetContainer {
@@ -178,29 +179,29 @@ impl WidgetContainer {
         WidgetContainer {
             children: vec!(),
             data: Box::new(widget),
-            layout: Rect::new(0., 0., 0., 0.),
-            pos: Point::new(0., 0.),
-            size: Size::new(0., 0.),
-            ratio: Size::new(1.0, 1.0),
+            layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
+            pos: V2::new(0., 0.),
+            size: V2::new(0., 0.),
+            ratio: V2::new(1.0, 1.0),
             orientation: ContainerOrientation::Horizontal,
         }
     }
-    fn new(widget: impl Widget + 'static, size: Size) -> WidgetContainer {
+    fn new(widget: impl Widget + 'static, size: V2) -> WidgetContainer {
          WidgetContainer {
             children: vec!(),
             data: Box::new(widget),
-            layout: Rect::new(0., 0., 0., 0.),
-            pos: Point::new(0., 0.),
-            size: Size::new(0., 0.),
+            layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
+            pos: V2::new(0., 0.),
+            size: V2::new(0., 0.),
             ratio: size,
             orientation: ContainerOrientation::Horizontal,
          }
     }
 
-    fn set_layout(&mut self, rect: Rect) {
-        self.layout = rect;
+    fn set_layout(&mut self, rect: Rectangle) {
         self.size = rect.size();
-        self.pos = rect.origin();
+        self.pos = *rect.top_left();
+        self.layout = rect;
     }
 
     pub fn orientation(&mut self, orientation: ContainerOrientation) -> &mut Self {
@@ -208,12 +209,12 @@ impl WidgetContainer {
         self
     }
 
-    pub fn add_child(&mut self, widget: impl Widget + 'static, size: Size) -> &mut Self {
+    pub fn add_child(&mut self, widget: impl Widget + 'static, size: V2) -> &mut Self {
         self.children.push(WidgetContainer::new(widget, size));
         self
     }
 
-    pub fn with_child(&mut self, widget: impl Widget + 'static, size: Size) -> &mut WidgetContainer {
+    pub fn with_child(&mut self, widget: impl Widget + 'static, size: V2) -> &mut WidgetContainer {
         self.children.push(WidgetContainer::new(widget, size));
 
         let count = self.children.len();
@@ -234,18 +235,18 @@ impl WidgetContainer {
         handled
     }
 
-    pub fn render(&mut self, state: &YaffeState, rect: Rect, piet: &mut Piet, invalidate: bool) {
-        let mut x = rect.x0;
-        let y = rect.y0;
-        self.data.render(state, Rect::from((self.pos, self.size)), piet);
+    pub fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
+        let mut x = rect.left();
+        let y = rect.top();
+        self.data.render(state, Rectangle::new(self.pos, self.pos + self.size), delta_time, piet);
 
         for i in self.children.iter_mut() {
             if invalidate {
-                let size = Size::new(rect.width() * i.ratio.width, rect.height() * i.ratio.height);
-                let r = i.data.layout(&Rect::new(x, y, rect.x1, rect.y1), size);
+                let size = V2::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
+                let r = i.data.layout(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
                 i.set_layout(r);
             }
-            i.render(state, i.layout, piet, invalidate);
+            i.render(state, i.layout.clone(), piet, delta_time, invalidate);
 
             match self.orientation {
                 ContainerOrientation::Horizontal => x += i.layout.width(),
@@ -269,10 +270,16 @@ impl WidgetContainer {
 //
 // Actions/animations
 //
+enum AnimationType {
+    Position(V2),
+    Placeholder,
+}
+
 pub struct Animation {
-    pub widget: WidgetId,
-    to: Point,
-    duration: f64,
+    widget: WidgetId,
+    anim: AnimationType,
+    duration: f32,
+    remaining: f32,
 }
 
 #[repr(u8)]
@@ -315,31 +322,57 @@ impl DeferredAction {
         }
     }
 
-    pub fn animate(&mut self, widget: &impl WidgetName, to: Point, duration: f64) {
+    pub fn animate(&mut self, widget: &impl WidgetName, to: V2, duration: f32) {
         self.anims.push(Animation {
             widget: widget.get_id(),
-            to: to,
+            anim: AnimationType::Position(to),
             duration: duration,
+            remaining: duration,
+        });
+    }
+
+    pub fn animate_placeholder(&mut self, duration: f32) {
+        self.anims.push(Animation {
+            widget: std::any::TypeId::of::<crate::widgets::app_tile::AppTile>(),
+            anim: AnimationType::Placeholder,
+            duration: duration,
+            remaining: duration,
         });
     }
 }
 
 /// Processes any widgets that have running animations
 /// Currently only position animations are allowed
-pub fn run_animations(tree: &mut WidgetTree, delta_time: f64) {
+pub fn run_animations(tree: &mut WidgetTree, delta_time: f32) {
     let mut keys = vec!();
-    
-    //Run animations, if it completes, mark it for removal
-    for (k, a) in tree.anims.iter_mut() {
-        if let Some(widget) = tree.root.find_widget(a.widget) {
-            let from = widget.pos;
-            widget.pos = from.lerp(a.to, delta_time / a.duration);
 
-            if from.distance(a.to) < 1.{
-               widget.pos = a.to;
-               keys.push(k.clone());
-            }
+    fn lerp(from: V2, to: V2, amount: f32) -> V2 {
+        V2::new(from.x + amount * (to.x - from.x), from.y + amount * (to.y - from.y))
+    }
+
+    //Run animations, if it completes, mark it for removal
+    for (k, animation) in tree.anims.iter_mut() {
+        if animation.remaining > 0. { animation.remaining = f32::max(0., animation.remaining - delta_time);}
+        else if animation.remaining == 0. { animation.remaining -= delta_time; }
+        
+        match animation.anim {
+            AnimationType::Position(to) => {
+                if let Some(widget) = tree.root.find_widget(animation.widget) {
+
+                    //TODO the lerping causes some jank at the end of animations
+                    let from = widget.pos;
+                    widget.pos = lerp(from, to, delta_time / animation.duration); 
+            
+                    if animation.remaining == 0. { widget.pos = to; }
+                }
+            },
+
+            AnimationType::Placeholder => { }
         }
+
+        if animation.remaining < 0. {
+            keys.push(k.clone());
+         }
     }
 
     for k in keys {
@@ -353,52 +386,39 @@ pub fn run_animations(tree: &mut WidgetTree, delta_time: f64) {
 /// Draws text that is right aligned to parameter `right`
 /// If an image is passed it will be drawn to the left of the text
 /// Returns the new right-most position
-pub fn right_aligned_text(piet: &mut Piet, right: Point, image: Option<crate::assets::Images>, text: PietTextLayout) -> Point {
-    let size = text.size();
-    let mut right = Point::new(right.x - size.width, right.y);
+pub fn right_aligned_text(piet: &mut Graphics2D, right: V2, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> V2 {
+    let size = V2::new(text.width(), text.height());
+    let mut right = V2::new(right.x - size.x, right.y);
 
-    piet.draw_text(&text, right);
+    piet.draw_text(right, color, &text);
     if let Some(i) = image {
-        right.x -= size.height;
+        right.x -= size.y;
         let i = crate::assets::request_preloaded_image(piet, i);
-        i.render(piet, Rect::from((right, Size::new(size.height, size.height))));
+        i.render(piet, Rectangle::new(right, right + V2::new(size.y, size.y)));
     }
 
     right
 }
 
 /// Simple helper method to get a text object
-pub fn get_drawable_text(piet: &mut Piet, size: f64, text: &str, color: Color) -> PietTextLayout {
-    let font = crate::assets::request_font(piet);
-    piet
-        .text()
-        .new_text_layout(String::from(text))
-        .font(font, size)
-        .text_color(color)
-        .alignment(TextAlignment::Start)
-        .build()
-        .unwrap()
+pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
+    let font = crate::assets::request_font(crate::assets::Fonts::Regular);
+    font.layout_text(text, size, TextOptions::new())
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
-fn get_drawable_text_with_wrap(piet: &mut Piet, size: f64, text: &str, color: Color, width: f64) -> PietTextLayout {
-    let font = crate::assets::request_font(piet);
-    piet
-        .text()
-        .new_text_layout(String::from(text))
-        .font(font, size)
-        .text_color(color)
-        .alignment(TextAlignment::Start)
-        .max_width(width)
-        .build()
-        .unwrap()
+fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
+    let font = crate::assets::request_font(crate::assets::Fonts::Regular);
+    let option = TextOptions::new();
+    let option = option.with_wrap_to_width(width, TextAlignment::Left);
+    font.layout_text(text, size, option)
 }
 
 trait Shifter {
-    fn shift_x(&self, amount: f64) -> Self;
+    fn shift_x(&self, amount: f32) -> Self;
 }
-impl Shifter for Point {
-    fn shift_x(&self, amount: f64) -> Self {
-        Point::new(self.x + amount, self.y)
+impl Shifter for V2 {
+    fn shift_x(&self, amount: f32) -> Self {
+        V2::new(self.x + amount, self.y)
     }
 }

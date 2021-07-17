@@ -1,7 +1,8 @@
-use druid_shell::kurbo::{Rect, Point, Size, Line};
-use druid_shell::piet::{RenderContext, Piet, TextLayout};
-use crate::{YaffeState, create_widget, Actions, DeferredAction};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use crate::{YaffeState, create_widget, Actions, DeferredAction, V2};
 use crate::colors::*;
+use crate::Rect;
 
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
@@ -48,9 +49,9 @@ impl SearchInfo {
 
 create_widget!(SearchBar, active: bool = false);
 impl super::Widget for SearchBar {
-    fn layout(&self, space: &Rect, size: Size) -> Rect {
-        let position = Point::new(space.x0, space.y0 - size.height);
-        Rect::from((position, size))
+    fn layout(&self, space: &Rectangle, size: V2) -> Rectangle {
+        let position = V2::new(space.left(), space.top() - size.y);
+        Rectangle::new(position, position + size)
     }
 
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
@@ -108,21 +109,21 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, layout: &Rect, handle: &mut DeferredAction) {
-        handle.animate(self, Point::new(layout.x0, layout.y0 + layout.height()), 0.2);
+    fn got_focus(&mut self, layout: &Rectangle, handle: &mut DeferredAction) {
+        handle.animate(self, V2::new(layout.left(), layout.top() + layout.height()), 0.2);
     }
 
-    fn lost_focus(&mut self, layout: &Rect, handle: &mut DeferredAction) {
+    fn lost_focus(&mut self, layout: &Rectangle, handle: &mut DeferredAction) {
         if !self.active {
-            handle.animate(self, Point::new(layout.x0, layout.y0), 0.2);
+            handle.animate(self, *layout.top_left(), 0.2);
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, piet: &mut Piet) {
-        const NAME_WIDTH: f64 = 175.;
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
+        const NAME_WIDTH: f32 = 175.;
 
         let search = &state.search_info;
-        let filter_start = rect.x0 + NAME_WIDTH;
+        let filter_start = rect.left() + NAME_WIDTH;
         let start = search.start;
         let end = search.end;
         let name = match search.option {
@@ -132,53 +133,52 @@ impl super::Widget for SearchBar {
             _ => panic!("Unknown filter option"),
         };
         
-        let item_size = (rect.x1 - filter_start) / (end - start + 1) as f64;
+        let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
 
-        piet.fill(rect, &MENU_BACKGROUND);
+        piet.draw_rectangle(rect.clone(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
-        let filter_rect = Rect::from((Point::new(rect.x0, rect.y0), Size::new(NAME_WIDTH, rect.height())));
+        let filter_rect = Rectangle::new(*rect.top_left(), V2::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
         if search.index < 0 {
-            piet.fill(filter_rect, &get_accent_color(&state.settings));
+            piet.draw_rectangle(filter_rect.clone(), get_accent_color(&state.settings));
         }
 
-        let name_label = super::get_drawable_text(piet, crate::font::FONT_SIZE, &name, focused_color.clone());
-        let name_half = name_label.size() / 4.;
-        piet.draw_text(&name_label, (rect.x0 + crate::ui::MARGIN, rect.y0 + name_half.height));
+        let name_label = super::get_drawable_text(crate::font::FONT_SIZE, &name);
+        piet.draw_text(V2::new(rect.left() + crate::ui::MARGIN, rect.top() + name_label.height() / 4.), focused_color, &name_label);
 
-        const ARROW_SIZE: f64 = 10.;
-        const ARROW_HEIGHT: f64 = 5.;
-        let mid = filter_rect.x0 + filter_rect.width() / 2.;
+        const ARROW_SIZE: f32 = 10.;
+        const ARROW_HEIGHT: f32 = 5.;
+        let mid = filter_rect.left() + filter_rect.width() / 2.;
         if search.option > SEARCH_OPTION_NONE { 
             //Down arrow
-            piet.stroke(Line::new((mid - ARROW_SIZE, filter_rect.y1 - 7. - ARROW_HEIGHT), (mid, filter_rect.y1 - 7.)), &focused_color, 2.); 
-            piet.stroke(Line::new((mid, filter_rect.y1 - 7.), (mid + ARROW_SIZE, filter_rect.y1 - 7. - ARROW_HEIGHT)), &focused_color, 2.);
+            piet.draw_line(V2::new(mid - ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), V2::new(mid, filter_rect.bottom() - 7.), 2., focused_color); 
+            piet.draw_line(V2::new(mid, filter_rect.bottom() - 7.), V2::new(mid + ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), 2., focused_color);
         }
          if search.option < SEARCH_OPTION_MAX { 
             //Up arrow
-            piet.stroke(Line::new((mid - ARROW_SIZE, filter_rect.y0 + 12.), (mid, filter_rect.y0 + 7.)), &focused_color, 2.); 
-            piet.stroke(Line::new((mid, filter_rect.y0 + 7.), (mid + ARROW_SIZE, filter_rect.y0 + 12.)), &focused_color, 2.); 
+            piet.draw_line(V2::new(mid - ARROW_SIZE, filter_rect.top() + 12.), V2::new(mid, filter_rect.top() + 7.), 2., focused_color); 
+            piet.draw_line(V2::new(mid, filter_rect.top() + 7.), V2::new(mid + ARROW_SIZE, filter_rect.top() + 12.), 2., focused_color); 
           }
 
         let mask = get_exists_mask(search.option, &state.get_platform().apps);
         for i in start..=end {
-            let item_start = filter_start + ((i - start) as f64 * item_size);
+            let item_start = filter_start + ((i - start) as f32 * item_size);
 
             //Heighlight
             if search.index + start as isize == i as isize {
-                let r = Rect::new(item_start, rect.y0, item_start + item_size, rect.y1);
-                piet.fill(r, &get_accent_color(&state.settings));
+                let r = Rectangle::from_tuples((item_start, rect.top()), (item_start + item_size, rect.bottom()));
+                piet.draw_rectangle(r, get_accent_color(&state.settings));
             }
 
             //Filter item
             //If there are no items that match a certain filter we will draw it unfocused
             let bit = i - start;
             let color = if mask & 1 << bit != 0 { focused_color.clone() } else { get_font_unfocused_color(&state.settings) };
-            let item_label = super::get_drawable_text(piet, crate::font::FONT_SIZE, &String::from(i as char), color);
+            let item_label = super::get_drawable_text(crate::font::FONT_SIZE, &String::from(i as char));
             
-            let label_half = item_label.size() / 2.;
-            piet.draw_text(&item_label, (item_start + item_size / 2. - label_half.width, rect.y0  + label_half.height));
+            let label_half = V2::new(item_label.width() / 2., item_label.height() / 2.);
+            piet.draw_text(V2::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);
          }
     }
 }

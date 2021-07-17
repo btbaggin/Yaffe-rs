@@ -1,6 +1,6 @@
-use druid_shell::kurbo::{Rect, Point, Line};
-use druid_shell::piet::{Piet, RenderContext};
-use crate::{font, colors::get_font_color, widgets::get_drawable_text, YaffeState, Actions};
+use speedy2d::Graphics2D;
+use speedy2d::shape::Rectangle;
+use crate::{font, colors::get_font_color, widgets::get_drawable_text, YaffeState, Actions, V2};
 use crate::modals::*;
 use crate::logger::UserMessage;
 
@@ -11,7 +11,7 @@ pub struct SettingsModal {
 }
 impl SettingsModal {
     pub fn new() -> SettingsModal {
-        let set = match crate::platform_code::get_run_at_startup(STARTUP_TASK) {
+        let set = match crate::platform_layer::get_run_at_startup(STARTUP_TASK) {
             Ok(v) => v,
             Err(e) => {
                 crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get if Yaffe runs at startup");
@@ -24,29 +24,29 @@ impl SettingsModal {
 
 impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f64 {
+    fn get_height(&self) -> f32 {
         crate::font::FONT_SIZE + crate::ui::MARGIN
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Piet) {
-        let pos = rect.origin();
-        let label = get_drawable_text(piet, font::FONT_SIZE, "Run At Startup", get_font_color(settings));
-        piet.draw_text(&label, pos); 
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+        let pos = rect.top_left();
+        let label = get_drawable_text(font::FONT_SIZE, "Run At Startup");
+        piet.draw_text(*pos, get_font_color(settings), &label); 
 
-        let min = Point::new(pos.x + crate::ui::LABEL_SIZE, pos.y);
-        let max = Point::new(pos.x + crate::ui::LABEL_SIZE + 24., pos.y + 24.);
-        let checkbox = Rect::from((min, max));
+        let min = V2::new(pos.x + crate::ui::LABEL_SIZE, pos.y);
+        let max = V2::new(pos.x + crate::ui::LABEL_SIZE + 24., pos.y + 24.);
+        let checkbox = Rectangle::new(min, min + max);
         
         let base = crate::colors::get_accent_color(settings);
-        let factor = settings.get_f64(crate::SettingNames::DarkShadeFactor);
-        piet.fill(checkbox, &crate::colors::change_brightness(&base, factor));
+        let factor = settings.get_f32(crate::SettingNames::DarkShadeFactor);
+        piet.draw_rectangle(checkbox, crate::colors::change_brightness(&base, factor));
         if self.run_at_startup {
-            piet.stroke(Line::new(min, max), &base, 2.);
-            piet.stroke(Line::new(Point::new(min.x, max.y), Point::new(max.x, min.y)), &base, 2.);
+            piet.draw_line(min, max, 2., base);
+            piet.draw_line(V2::new(min.x, max.y), V2::new(max.x, min.y), 2., base);
         }
     }
 
-    fn action(&mut self, action: &Actions, _: &mut DeferredModalAction) -> ModalResult {
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Select => {
                 self.run_at_startup = !self.run_at_startup;
@@ -60,6 +60,6 @@ impl ModalContent for SettingsModal {
 pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
-        crate::platform_code::set_run_at_startup(STARTUP_TASK, content.run_at_startup).display_failure("Unable to set Yaffe to run at startup", state);
+        crate::platform_layer::set_run_at_startup(STARTUP_TASK, content.run_at_startup).display_failure("Unable to set Yaffe to run at startup", state);
     }
 }
