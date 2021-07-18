@@ -23,8 +23,8 @@ impl OverlayWindow {
         std::rc::Rc::new(std::cell::RefCell::new(overlay))
     }
 
-    pub fn is_showing(&self) -> bool {
-        self.showing
+    pub fn is_active(&self) -> bool {
+        self.process.is_some()
     }
 
     /// Sets the currently running process

@@ -188,7 +188,7 @@ impl windowing::WindowHandler for WidgetTree {
 
         assets::load_texture_atlas(graphics);
 
-        if !self.data.overlay.borrow().is_showing() {
+        if !self.data.overlay.borrow().is_active() {
             let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
             if self.data.refresh_list {
@@ -213,7 +213,7 @@ impl windowing::WindowHandler for WidgetTree {
     }
 
     fn on_input(&mut self, helper: &mut windowing::WindowHelper, action: &Actions) -> bool {
-        if self.data.overlay.borrow().is_showing() { return false; }
+        if self.data.overlay.borrow().is_active() { return false; }
 
         match action {
             Actions::ShowMenu => {
