@@ -345,6 +345,7 @@ struct WindowsInput {
 impl crate::input::PlatformInput for WindowsInput {
     fn update(&mut self, user_index: u32) -> Result<(), u32> {
 		self.previous_state = self.current_state;
+		
         if user_index < 4 {
             let mut output: XInputGamepadEx = unsafe { ::std::mem::zeroed() };
             let return_status = unsafe { (self.get_state)(user_index as DWORD, &mut output) };
