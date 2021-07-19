@@ -113,6 +113,11 @@ impl ModalContent for PlatformDetailModal {
                     if f.focused {
                         match c {
                             crate::input::InputType::Delete => { f.text.pop(); },
+                            crate::input::InputType::Paste => { 
+                                if let Some(clip) = crate::platform_layer::get_clipboard() {
+                                    f.text.push_str(&clip);
+                                }
+                            },
                             crate::input::InputType::Key(c) => f.text.push(*c),
                         }
                     }

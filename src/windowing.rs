@@ -188,9 +188,10 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 if let Err(e) = input.update(0) {
                     crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get input");
                 }
+
                 
                 //Convert our input to actions we will propogate through the UI
-                let mut actions = input_to_action(&input_map, input.get_keyboard(), input.get_gamepad());
+                let mut actions = input_to_action(&input_map, &mut input);
                 let asset_loaded = notify.try_recv().is_ok();
 
                 for (_, val) in windows.iter_mut() {
@@ -228,21 +229,27 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 }
 
 fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>, 
-                   keyboard: Vec<(VirtualKeyCode, Option<char>)>, 
-                   gamepad: Vec<ControllerInput>) -> std::collections::HashSet<crate::Actions> {
+                   input: &mut dyn crate::input::PlatformInput) -> std::collections::HashSet<crate::Actions> {
 
     let mut result = std::collections::HashSet::new();
-    for k in keyboard {
+    let modifiers = input.get_modifiers();
+    for k in input.get_keyboard() {
         if let Some(action) = input_map.get(Some(k.0), None) {
             result.insert(*action);
         } else if let VirtualKeyCode::Back = k.0 {
             result.insert(crate::Actions::KeyPress(InputType::Delete));
-        } else if let Some(c) = k.1 {
-            result.insert(crate::Actions::KeyPress(InputType::Key(c)));
+        } else {
+            if modifiers.ctrl() {
+                if let VirtualKeyCode::V = k.0 {
+                    result.insert(crate::Actions::KeyPress(InputType::Paste));
+                }
+            } else if let Some(c) = k.1 {
+                result.insert(crate::Actions::KeyPress(InputType::Key(c)));
+            }
         }
     }
 
-    for g in gamepad {
+    for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(*action);
         } else {

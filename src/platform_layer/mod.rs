@@ -27,3 +27,7 @@ pub fn get_run_at_startup(task: &str) -> StartupResult<bool> {
 pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
     os::initialize_input()
 }
+
+pub fn get_clipboard() -> Option<String> {
+    os::get_clipboard()
+}

@@ -10,7 +10,7 @@ use winapi::um::unknwnbase::IUnknown;
 use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcessToken};
 use winapi::um::reason::SHTDN_REASON_FLAG_PLANNED;
 use winapi::um::securitybaseapi::AdjustTokenPrivileges;
-use winapi::um::winbase::LookupPrivilegeValueW;
+use winapi::um::winbase::{LookupPrivilegeValueW, GlobalLock, GlobalUnlock};
 use winapi::um::winnt::{
     HANDLE, SHORT, LPWSTR, SE_PRIVILEGE_ENABLED, SE_SHUTDOWN_NAME, TOKEN_ADJUST_PRIVILEGES,
     TOKEN_PRIVILEGES, TOKEN_QUERY,
@@ -279,6 +279,45 @@ pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
 	Err(-1)
 }
 
+fn load<S: AsRef<str>>(s: S) -> Option<WindowsInput> {
+    fn wide_null<S: AsRef<str>>(s: S) -> [u16; ::winapi::shared::minwindef::MAX_PATH] {
+        let mut output: [u16; ::winapi::shared::minwindef::MAX_PATH] = [0; ::winapi::shared::minwindef::MAX_PATH];
+        let mut i = 0;
+        for u in s.as_ref().encode_utf16() {
+            if i == output.len() - 1 { break; } 
+            else { output[i] = u; }
+            i += 1;
+        }
+        output[i] = 0;
+        output
+      }
+
+    let lib_name = wide_null(s);
+    // It's always safe to call `LoadLibraryW`, the worst that can happen is
+    // that we get a null pointer back.
+    let xinput_handle = unsafe { LoadLibraryW(lib_name.as_ptr()) };
+    if xinput_handle.is_null() { return None; }
+
+    let mut opt_xinput_get_state = None;
+    // using transmute is so dodgy we'll put that in its own unsafe block.
+    unsafe {
+        let get_state_ptr = GetProcAddress(xinput_handle, 100 as *mut i8);
+        if !get_state_ptr.is_null() {
+            opt_xinput_get_state = Some(::std::mem::transmute(get_state_ptr));
+        }
+    }
+
+    unsafe { FreeLibrary(xinput_handle); }
+
+	let hkl = unsafe { winuser::GetKeyboardLayout(0) };
+    Some(WindowsInput { get_state: opt_xinput_get_state.unwrap(), 
+                  current_state: (XInputGamepadEx::default(), [0; 256]), 
+                  previous_state: (XInputGamepadEx::default(), [0; 256]),
+                  last_stick_time: Instant::now(), 
+                  last_button_time: Instant::now(),
+				  hkl: hkl })
+}
+
 const CONTROLLER_GUIDE: u16 = 0x0400;
 type XInputGetStateFunc = unsafe extern "system" fn(DWORD, *mut XInputGamepadEx) -> DWORD;
 
@@ -372,12 +411,7 @@ impl crate::input::PlatformInput for WindowsInput {
 					winuser::VK_BACK => Some(VirtualKeyCode::Back),
 					winuser::VK_TAB => Some(VirtualKeyCode::Tab),
 					winuser::VK_RETURN => Some(VirtualKeyCode::Return),
-					winuser::VK_LSHIFT => Some(VirtualKeyCode::LShift),
-					winuser::VK_RSHIFT => Some(VirtualKeyCode::RShift),
-					winuser::VK_LCONTROL => Some(VirtualKeyCode::LControl),
-					winuser::VK_RCONTROL => Some(VirtualKeyCode::RControl),
-					winuser::VK_LMENU => Some(VirtualKeyCode::LAlt),
-					winuser::VK_RMENU => Some(VirtualKeyCode::RAlt),
+
 					winuser::VK_PAUSE => Some(VirtualKeyCode::Pause),
 					winuser::VK_ESCAPE => Some(VirtualKeyCode::Escape),
 					winuser::VK_SPACE => Some(VirtualKeyCode::Space),
@@ -427,8 +461,6 @@ impl crate::input::PlatformInput for WindowsInput {
 					0x58 => Some(VirtualKeyCode::X),
 					0x59 => Some(VirtualKeyCode::Y),
 					0x5A => Some(VirtualKeyCode::Z),
-					winuser::VK_LWIN => Some(VirtualKeyCode::LWin),
-					winuser::VK_RWIN => Some(VirtualKeyCode::RWin),
 					winuser::VK_NUMPAD0 => Some(VirtualKeyCode::Numpad0),
 					winuser::VK_NUMPAD1 => Some(VirtualKeyCode::Numpad1),
 					winuser::VK_NUMPAD2 => Some(VirtualKeyCode::Numpad2),
@@ -479,6 +511,21 @@ impl crate::input::PlatformInput for WindowsInput {
 
 		result
 	}
+
+    fn get_modifiers(&mut self) -> glutin::event::ModifiersState {
+		use glutin::event::ModifiersState;
+		fn is_down(input: &WindowsInput, key: i32) -> bool {
+			(input.current_state.1[key as usize] & 0x80) != 0 
+		}
+		let mut result = ModifiersState::empty();
+
+		if is_down(self, winuser::VK_LSHIFT) || is_down(self, winuser::VK_RSHIFT) { result.insert(ModifiersState::SHIFT) }
+		if is_down(self, winuser::VK_LCONTROL) || is_down(self, winuser::VK_RCONTROL) { result.insert(ModifiersState::CTRL) }
+		if is_down(self, winuser::VK_LWIN) || is_down(self, winuser::VK_RWIN) { result.insert(ModifiersState::LOGO) }
+		if is_down(self, winuser::VK_LMENU) || is_down(self, winuser::VK_RMENU) { result.insert(ModifiersState::ALT)}
+
+		result
+	}
 }
 
 unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> Option<char> {
@@ -501,42 +548,25 @@ unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> Option<c
     }
 }
 
-
-fn load<S: AsRef<str>>(s: S) -> Option<WindowsInput> {
-    fn wide_null<S: AsRef<str>>(s: S) -> [u16; ::winapi::shared::minwindef::MAX_PATH] {
-        let mut output: [u16; ::winapi::shared::minwindef::MAX_PATH] = [0; ::winapi::shared::minwindef::MAX_PATH];
-        let mut i = 0;
-        for u in s.as_ref().encode_utf16() {
-            if i == output.len() - 1 { break; } 
-            else { output[i] = u; }
-            i += 1;
-        }
-        output[i] = 0;
-        output
-      }
-
-    let lib_name = wide_null(s);
-    // It's always safe to call `LoadLibraryW`, the worst that can happen is
-    // that we get a null pointer back.
-    let xinput_handle = unsafe { LoadLibraryW(lib_name.as_ptr()) };
-    if xinput_handle.is_null() { return None; }
-
-    let mut opt_xinput_get_state = None;
-    // using transmute is so dodgy we'll put that in its own unsafe block.
-    unsafe {
-        let get_state_ptr = GetProcAddress(xinput_handle, 100 as *mut i8);
-        if !get_state_ptr.is_null() {
-            opt_xinput_get_state = Some(::std::mem::transmute(get_state_ptr));
-        }
-    }
-
-    unsafe { FreeLibrary(xinput_handle); }
-
-	let hkl = unsafe { winuser::GetKeyboardLayout(0) };
-    Some(WindowsInput { get_state: opt_xinput_get_state.unwrap(), 
-                  current_state: (XInputGamepadEx::default(), [0; 256]), 
-                  previous_state: (XInputGamepadEx::default(), [0; 256]),
-                  last_stick_time: Instant::now(), 
-                  last_button_time: Instant::now(),
-				  hkl: hkl })
+pub(super) fn get_clipboard() -> Option<String> {
+	unsafe {
+		let mut result = None;
+		if winuser::OpenClipboard(std::ptr::null_mut()) != 0 {
+			
+			let data = winuser::GetClipboardData(winuser::CF_TEXT);
+			if data.is_null() { return None; }
+			
+			let text = GlobalLock(data);
+			if !text.is_null() { 
+				result = match std::ffi::CString::from_raw(text as *mut i8).into_string() {
+					Err(_) => None,
+					Ok(result) => Some(result),
+				};
+			}
+				
+			GlobalUnlock(data);
+			winuser::CloseClipboard();
+		}
+		result
+	}
 }
