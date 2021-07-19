@@ -163,6 +163,35 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
                 },
 
+                WindowEvent::KeyboardInput { input, .. } => {
+                    if let glutin::event::ElementState::Released = input.state { return; }
+
+                    let action = if !input.modifiers.is_empty() { 
+                        match input.virtual_keycode {
+                            Some(VirtualKeyCode::V) => Some(&crate::Actions::KeyPress(InputType::Paste)),
+                            _ => None,
+                        }
+                    } else if let Some(VirtualKeyCode::Delete) = input.virtual_keycode {
+                        Some(&crate::Actions::KeyPress(InputType::Delete))
+                    } else {
+                        input_map.get(input.virtual_keycode, None)
+                    };
+                    if let Some(action) = action { 
+                        for (_, window) in windows.iter_mut() {
+                            if send_action_to_window(window, &mut ct, action, false) { return; }
+                        }
+                    }
+                },
+
+                WindowEvent::ReceivedCharacter(c) => {
+                    if c.is_control() { return; }
+                    let action = &crate::Actions::KeyPress(InputType::Key(c));
+
+                    for (_, window) in windows.iter_mut() {
+                        if send_action_to_window(window, &mut ct, action, false) { return; }
+                    }
+                }
+
                 _ => {}
             },
             Event::RedrawRequested(id) => {
@@ -180,44 +209,37 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
             },
 
             Event::MainEventsCleared => {
+                //We need to calc delta time here because its always called
+                //RedrawRequested is only called conditionally so we could skip many frames
                 let now = Instant::now();
                 delta_time = (now - last_time).as_millis() as f32 / 1000.;
                 last_time = now;
 
-                //Get input
+                //Get controller input
                 if let Err(e) = input.update(0) {
-                    crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get input");
+                    crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get controller input");
                 }
 
-                
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = input_to_action(&input_map, &mut input);
                 let asset_loaded = notify.try_recv().is_ok();
 
-                for (_, val) in windows.iter_mut() {
-                    let mut helper = WindowHelper { visible: None, };
-                    let context = ct.get_current(val.context_id).unwrap();
-                    let mut handle = val.handler.borrow_mut();
-
+                for (_, window) in windows.iter_mut() {
                     //Send an action, if its handled remove it so a different window doesnt respond to it
                     let mut handled_actions = Vec::with_capacity(actions.len());
                     for action in actions.iter() {
-                        if handle.on_input(&mut helper, action) {
+                        if send_action_to_window(window, &mut ct, action, true) {
                             handled_actions.push(action.clone());
-
-                            //If the window responded to the action, set it to redraw
-                            context.windowed().window().request_redraw();
                         }
                     }
+                    
                     for action in handled_actions {
                         actions.remove(&action);
                     }
 
-                    //Method that is always called so we can perform actions always
-                    handle.on_fixed_update(&mut helper);
-                    helper.resolve(&context.windowed().window());
-
+                    let handle = window.handler.borrow();
                     if asset_loaded || handle.is_window_dirty() {
+                        let context = ct.get_current(window.context_id).unwrap();
                         context.windowed().window().request_redraw();
                     }
                 }
@@ -228,27 +250,32 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
     });
 }
 
+fn send_action_to_window(window: &mut YaffeWindow, 
+                         ct: &mut context_tracker::ContextTracker,
+                         action: &crate::Actions,
+                         do_fixed_update: bool) -> bool {
+    let mut helper = WindowHelper { visible: None, };
+    let context = ct.get_current(window.context_id).unwrap();
+    let mut handle = window.handler.borrow_mut();
+
+    //Method that is always called so we can perform actions always
+    if do_fixed_update { handle.on_fixed_update(&mut helper); }
+
+    //Send an action, if its handled remove it so a different window doesnt respond to it
+    let result = handle.on_input(&mut helper, action);
+    if result { 
+        //If the window responded to the action, set it to redraw
+        context.windowed().window().request_redraw();
+    } 
+    helper.resolve(&context.windowed().window());
+
+    result
+}
+
 fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>, 
                    input: &mut dyn crate::input::PlatformInput) -> std::collections::HashSet<crate::Actions> {
 
     let mut result = std::collections::HashSet::new();
-    let modifiers = input.get_modifiers();
-    for k in input.get_keyboard() {
-        if let Some(action) = input_map.get(Some(k.0), None) {
-            result.insert(*action);
-        } else if let VirtualKeyCode::Back = k.0 {
-            result.insert(crate::Actions::KeyPress(InputType::Delete));
-        } else {
-            if modifiers.ctrl() {
-                if let VirtualKeyCode::V = k.0 {
-                    result.insert(crate::Actions::KeyPress(InputType::Paste));
-                }
-            } else if let Some(c) = k.1 {
-                result.insert(crate::Actions::KeyPress(InputType::Key(c)));
-            }
-        }
-    }
-
     for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(*action);

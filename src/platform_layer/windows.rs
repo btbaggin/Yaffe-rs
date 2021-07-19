@@ -2,7 +2,7 @@ use winapi::um::taskschd::*;
 use winapi::um::combaseapi::*;
 use winapi::shared::rpcdce::{RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IMPERSONATE};
 use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
-use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE, HKL};
+use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE};
 use winapi::shared::winerror::{ERROR_SUCCESS, ERROR_DEVICE_NOT_CONNECTED};
 use winapi::shared::wtypes::{BSTR, VARIANT_TRUE};
 use winapi::{Interface, Class};
@@ -17,7 +17,7 @@ use winapi::um::winnt::{
 };
 use winapi::um::xinput::*;
 use winapi::um::winuser::{
-    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN, GetKeyboardState,
+    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
 };
 use winapi::um::winuser;
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
@@ -26,7 +26,6 @@ use std::time::Instant;
 use std::os::windows::ffi::OsStrExt;
 use std::ops::Deref;
 use std::convert::TryInto;
-use glutin::event::VirtualKeyCode;
 use super::{StartupResult, ShutdownResult};
 
 struct ComString { string: BSTR }
@@ -309,13 +308,11 @@ fn load<S: AsRef<str>>(s: S) -> Option<WindowsInput> {
 
     unsafe { FreeLibrary(xinput_handle); }
 
-	let hkl = unsafe { winuser::GetKeyboardLayout(0) };
     Some(WindowsInput { get_state: opt_xinput_get_state.unwrap(), 
-                  current_state: (XInputGamepadEx::default(), [0; 256]), 
-                  previous_state: (XInputGamepadEx::default(), [0; 256]),
+                  current_state: XInputGamepadEx::default(), 
+                  previous_state: XInputGamepadEx::default(),
                   last_stick_time: Instant::now(), 
-                  last_button_time: Instant::now(),
-				  hkl: hkl })
+                  last_button_time: Instant::now() })
 }
 
 const CONTROLLER_GUIDE: u16 = 0x0400;
@@ -335,11 +332,10 @@ struct XInputGamepadEx {
 
 struct WindowsInput {
     get_state: XInputGetStateFunc,
-    previous_state: (XInputGamepadEx, [u8; 256]),
-    current_state: (XInputGamepadEx, [u8; 256]),
+    previous_state: XInputGamepadEx,
+    current_state: XInputGamepadEx,
     last_stick_time: Instant,
     last_button_time: Instant,
-	hkl: HKL
 }
 
 impl crate::input::PlatformInput for WindowsInput {
@@ -350,23 +346,18 @@ impl crate::input::PlatformInput for WindowsInput {
             let mut output: XInputGamepadEx = unsafe { ::std::mem::zeroed() };
             let return_status = unsafe { (self.get_state)(user_index as DWORD, &mut output) };
             match return_status {
-				ERROR_SUCCESS => self.current_state.0 = output,
+				ERROR_SUCCESS => self.current_state = output,
 				ERROR_DEVICE_NOT_CONNECTED => {},
 				s => return Err(s),
             } 
         }
-
-		let mut output: [u8; 256] = [0; 256];
-		let result = unsafe { GetKeyboardState(output.as_mut_ptr()) };
-		if result != 0 { self.current_state.1 = output; }
-		else { return Err(result as u32); }
 
 		return Ok(());
     }
 
     fn get_gamepad(&mut self) -> Vec<super::ControllerInput> {
 		fn is_pressed(input: &WindowsInput, button: u16) -> bool {
-			input.current_state.0.w_buttons & button != 0 && input.previous_state.0.w_buttons & button == 0
+			input.current_state.w_buttons & button != 0 && input.previous_state.w_buttons & button == 0
 		}
 		let mut result = Vec::new();
 
@@ -383,8 +374,8 @@ impl crate::input::PlatformInput for WindowsInput {
 			if result.len() > count { self.last_button_time = now; }
 		}
 
-		let x = self.current_state.0.s_thumb_lx as i32;
-		let y = self.current_state.0.s_thumb_ly as i32;
+		let x = self.current_state.s_thumb_lx as i32;
+		let y = self.current_state.s_thumb_ly as i32;
 		if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 { 
 			if (now - self.last_stick_time).as_millis() > 100 {
 				let count = result.len();
@@ -397,155 +388,6 @@ impl crate::input::PlatformInput for WindowsInput {
 		}
 
         result
-    }
-
-	fn get_keyboard(&mut self) -> Vec<(VirtualKeyCode, Option<char>)> {
-		let mut result = Vec::new();
-		let now = Instant::now();
-
-		for i in 0..255 {
-			if (self.current_state.1[i] & 0x80) != 0 &&
-			   (self.previous_state.1[i] & 0x80) == 0 {
-				   self.last_button_time = now;
-
-				   let key = match i as i32 {
-					winuser::VK_BACK => Some(VirtualKeyCode::Back),
-					winuser::VK_TAB => Some(VirtualKeyCode::Tab),
-					winuser::VK_RETURN => Some(VirtualKeyCode::Return),
-
-					winuser::VK_PAUSE => Some(VirtualKeyCode::Pause),
-					winuser::VK_ESCAPE => Some(VirtualKeyCode::Escape),
-					winuser::VK_SPACE => Some(VirtualKeyCode::Space),
-					winuser::VK_PRIOR => Some(VirtualKeyCode::PageUp),
-					winuser::VK_NEXT => Some(VirtualKeyCode::PageDown),
-					winuser::VK_END => Some(VirtualKeyCode::End),
-					winuser::VK_HOME => Some(VirtualKeyCode::Home),
-					winuser::VK_LEFT => Some(VirtualKeyCode::Left),
-					winuser::VK_UP => Some(VirtualKeyCode::Up),
-					winuser::VK_RIGHT => Some(VirtualKeyCode::Right),
-					winuser::VK_DOWN => Some(VirtualKeyCode::Down),
-					winuser::VK_INSERT => Some(VirtualKeyCode::Insert),
-					winuser::VK_DELETE => Some(VirtualKeyCode::Delete),
-					0x30 => Some(VirtualKeyCode::Key0),
-					0x31 => Some(VirtualKeyCode::Key1),
-					0x32 => Some(VirtualKeyCode::Key2),
-					0x33 => Some(VirtualKeyCode::Key3),
-					0x34 => Some(VirtualKeyCode::Key4),
-					0x35 => Some(VirtualKeyCode::Key5),
-					0x36 => Some(VirtualKeyCode::Key6),
-					0x37 => Some(VirtualKeyCode::Key7),
-					0x38 => Some(VirtualKeyCode::Key8),
-					0x39 => Some(VirtualKeyCode::Key9),
-					0x41 => Some(VirtualKeyCode::A),
-					0x42 => Some(VirtualKeyCode::B),
-					0x43 => Some(VirtualKeyCode::C),
-					0x44 => Some(VirtualKeyCode::D),
-					0x45 => Some(VirtualKeyCode::E),
-					0x46 => Some(VirtualKeyCode::F),
-					0x47 => Some(VirtualKeyCode::G),
-					0x48 => Some(VirtualKeyCode::H),
-					0x49 => Some(VirtualKeyCode::I),
-					0x4A => Some(VirtualKeyCode::J),
-					0x4B => Some(VirtualKeyCode::K),
-					0x4C => Some(VirtualKeyCode::L),
-					0x4D => Some(VirtualKeyCode::M),
-					0x4E => Some(VirtualKeyCode::N),
-					0x4F => Some(VirtualKeyCode::O),
-					0x50 => Some(VirtualKeyCode::P),
-					0x51 => Some(VirtualKeyCode::Q),
-					0x52 => Some(VirtualKeyCode::R),
-					0x53 => Some(VirtualKeyCode::S),
-					0x54 => Some(VirtualKeyCode::T),
-					0x55 => Some(VirtualKeyCode::U),
-					0x56 => Some(VirtualKeyCode::V),
-					0x57 => Some(VirtualKeyCode::W),
-					0x58 => Some(VirtualKeyCode::X),
-					0x59 => Some(VirtualKeyCode::Y),
-					0x5A => Some(VirtualKeyCode::Z),
-					winuser::VK_NUMPAD0 => Some(VirtualKeyCode::Numpad0),
-					winuser::VK_NUMPAD1 => Some(VirtualKeyCode::Numpad1),
-					winuser::VK_NUMPAD2 => Some(VirtualKeyCode::Numpad2),
-					winuser::VK_NUMPAD3 => Some(VirtualKeyCode::Numpad3),
-					winuser::VK_NUMPAD4 => Some(VirtualKeyCode::Numpad4),
-					winuser::VK_NUMPAD5 => Some(VirtualKeyCode::Numpad5),
-					winuser::VK_NUMPAD6 => Some(VirtualKeyCode::Numpad6),
-					winuser::VK_NUMPAD7 => Some(VirtualKeyCode::Numpad7),
-					winuser::VK_NUMPAD8 => Some(VirtualKeyCode::Numpad8),
-					winuser::VK_NUMPAD9 => Some(VirtualKeyCode::Numpad9),
-					winuser::VK_MULTIPLY => Some(VirtualKeyCode::NumpadMultiply),
-					winuser::VK_ADD => Some(VirtualKeyCode::NumpadAdd),
-					winuser::VK_SUBTRACT => Some(VirtualKeyCode::NumpadSubtract),
-					winuser::VK_DECIMAL => Some(VirtualKeyCode::NumpadDecimal),
-					winuser::VK_DIVIDE => Some(VirtualKeyCode::NumpadDivide),
-					winuser::VK_F1 => Some(VirtualKeyCode::F1),
-					winuser::VK_F2 => Some(VirtualKeyCode::F2),
-					winuser::VK_F3 => Some(VirtualKeyCode::F3),
-					winuser::VK_F4 => Some(VirtualKeyCode::F4),
-					winuser::VK_F5 => Some(VirtualKeyCode::F5),
-					winuser::VK_F6 => Some(VirtualKeyCode::F6),
-					winuser::VK_F7 => Some(VirtualKeyCode::F7),
-					winuser::VK_F8 => Some(VirtualKeyCode::F8),
-					winuser::VK_F9 => Some(VirtualKeyCode::F9),
-					winuser::VK_F10 => Some(VirtualKeyCode::F10),
-					winuser::VK_F11 => Some(VirtualKeyCode::F11),
-					winuser::VK_F12 => Some(VirtualKeyCode::F12),
-					winuser::VK_NUMLOCK => Some(VirtualKeyCode::Numlock),
-					winuser::VK_OEM_PLUS => Some(VirtualKeyCode::Equals),
-					winuser::VK_OEM_COMMA => Some(VirtualKeyCode::Comma),
-					winuser::VK_OEM_MINUS => Some(VirtualKeyCode::Minus),
-					winuser::VK_OEM_PERIOD => Some(VirtualKeyCode::Period),
-					winuser::VK_OEM_1 => Some(VirtualKeyCode::Colon),
-					winuser::VK_OEM_2 => Some(VirtualKeyCode::Slash),
-					winuser::VK_OEM_3 => Some(VirtualKeyCode::Grave),
-					winuser::VK_OEM_4 => Some(VirtualKeyCode::LBracket),
-					winuser::VK_OEM_5 => Some(VirtualKeyCode::Backslash),
-					winuser::VK_OEM_6 => Some(VirtualKeyCode::RBracket),
-					winuser::VK_OEM_7 => Some(VirtualKeyCode::Apostrophe),
-					_ => None,
-					};
-					if let Some(k) = key {
-						let c = unsafe { get_char(&self.current_state.1, i as u32, self.hkl) };
-						result.push((k, c));
-					}
-			    }
-		}
-
-		result
-	}
-
-    fn get_modifiers(&mut self) -> glutin::event::ModifiersState {
-		use glutin::event::ModifiersState;
-		fn is_down(input: &WindowsInput, key: i32) -> bool {
-			(input.current_state.1[key as usize] & 0x80) != 0 
-		}
-		let mut result = ModifiersState::empty();
-
-		if is_down(self, winuser::VK_LSHIFT) || is_down(self, winuser::VK_RSHIFT) { result.insert(ModifiersState::SHIFT) }
-		if is_down(self, winuser::VK_LCONTROL) || is_down(self, winuser::VK_RCONTROL) { result.insert(ModifiersState::CTRL) }
-		if is_down(self, winuser::VK_LWIN) || is_down(self, winuser::VK_RWIN) { result.insert(ModifiersState::LOGO) }
-		if is_down(self, winuser::VK_LMENU) || is_down(self, winuser::VK_RMENU) { result.insert(ModifiersState::ALT)}
-
-		result
-	}
-}
-
-unsafe fn get_char(keyboard_state: &[u8; 256], v_key: u32, hkl: HKL) -> Option<char> {
-    let mut unicode_bytes = [0u16; 5];
-    let len = winuser::ToUnicodeEx(
-        v_key,
-        0,
-        keyboard_state.as_ptr(),
-        unicode_bytes.as_mut_ptr(),
-        unicode_bytes.len() as _,
-        0,
-        hkl,
-    );
-    if len >= 1 {
-        std::char::decode_utf16(unicode_bytes.iter().cloned())
-            .next()
-            .and_then(|c| c.ok())
-    } else {
-        None
     }
 }
 
