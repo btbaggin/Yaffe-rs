@@ -1,4 +1,4 @@
-use super::{ShutdownResult, StartupResult};
+use super::{ShutdownResult, StartupResult, VolumeResult};
 use std::io::{Error, ErrorKind};
 use std::os::unix::io::AsRawFd;
 // use x11::xlib::{XInternAtom, XLookupNone};
@@ -191,4 +191,8 @@ pub(super) fn get_clipboard() -> Option<String> {
         // let UTF8 = XInternAtom(x11::xlib::Display::, "UTF8_STRING", True);
         // if UTF8 != XLookupNone { c = XPasteType(UTF8, pState->form->platform, UTF8); }
         // if !c { c = XPasteType(XA_STRING, pState->form->platform, UTF8); }
+}
+
+pub(super) fn get_and_update_volume(_: f32) -> VolumeResult<f32> {
+    panic!();
 }
