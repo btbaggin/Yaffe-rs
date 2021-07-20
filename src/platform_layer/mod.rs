@@ -1,4 +1,4 @@
-use crate::input::{ControllerInput, PlatformInput};
+use crate::input::{ControllerInput, PlatformGamepad};
 
 #[cfg(target_os = "windows")]
 #[path = "windows.rs"]
@@ -29,8 +29,8 @@ pub fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
     os::get_and_update_volume(delta)
 }
 
-pub fn initialize_input() -> Result<impl PlatformInput, i32> {
-    os::initialize_input()
+pub fn initialize_gamepad() -> Result<impl PlatformGamepad, i32> {
+    os::initialize_gamepad()
 }
 
 pub fn get_clipboard() -> Option<String> {

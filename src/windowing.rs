@@ -103,7 +103,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
 }
 
 pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
-                                   mut input: impl crate::input::PlatformInput + 'static,
+                                   mut gamepad: impl crate::input::PlatformGamepad + 'static,
                                    input_map: crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>,
                                    handler: std::rc::Rc<RefCell<impl WindowHandler + 'static>>,
                                    overlay: std::rc::Rc<RefCell<impl WindowHandler + 'static>>) -> ! {
@@ -216,12 +216,12 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 last_time = now;
 
                 //Get controller input
-                if let Err(e) = input.update(0) {
+                if let Err(e) = gamepad.update(0) {
                     crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get controller input");
                 }
 
                 //Convert our input to actions we will propogate through the UI
-                let mut actions = input_to_action(&input_map, &mut input);
+                let mut actions = input_to_action(&input_map, &mut gamepad);
                 let asset_loaded = notify.try_recv().is_ok();
 
                 for (_, window) in windows.iter_mut() {
@@ -273,7 +273,7 @@ fn send_action_to_window(window: &mut YaffeWindow,
 }
 
 fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>, 
-                   input: &mut dyn crate::input::PlatformInput) -> std::collections::HashSet<crate::Actions> {
+                   input: &mut dyn crate::input::PlatformGamepad) -> std::collections::HashSet<crate::Actions> {
 
     let mut result = std::collections::HashSet::new();
     for g in input.get_gamepad() {

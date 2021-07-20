@@ -44,13 +44,17 @@ pub fn start_up() {
     }
 }
 
-#[cfg(windows)]
 pub fn create_process(process: &str) -> std::process::Command {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
-
+    #[allow(unused_mut)]
     let mut process = std::process::Command::new(process);
-    process.creation_flags(CREATE_NO_WINDOW);
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        process.creation_flags(CREATE_NO_WINDOW);
+    }
+
     process
 }
 
