@@ -268,7 +268,7 @@ pub(super) fn shutdown() -> ShutdownResult {
     Ok(())
 }
 
-pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
+pub fn initialize_gamepad() -> Result<impl crate::input::PlatformGamepad, i32> {
     for lib_name in ["xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll"].iter() {
         let handle = load(lib_name);
         if let Some(h) = handle { 
@@ -338,7 +338,7 @@ struct WindowsInput {
     last_button_time: Instant,
 }
 
-impl crate::input::PlatformInput for WindowsInput {
+impl crate::input::PlatformGamepad for WindowsInput {
     fn update(&mut self, user_index: u32) -> Result<(), u32> {
 		self.previous_state = self.current_state;
 		

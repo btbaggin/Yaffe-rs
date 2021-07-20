@@ -1,15 +1,16 @@
 use super::{ShutdownResult, StartupResult};
 use std::io::{Error, ErrorKind};
-use glutin::event::VirtualKeyCode;
 use std::os::unix::io::AsRawFd;
 // use x11::xlib::{XInternAtom, XLookupNone};
 use std::process::Command;
+use std::io::Read;
+use std::time::Instant;
 
-pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
+pub(super) fn get_run_at_startup(_: &str) -> StartupResult<bool> {
     panic!()
 }
 
-pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
+pub(super) fn set_run_at_startup(_: &str, _: bool) -> StartupResult<()> {
     panic!()
 }
 
@@ -27,22 +28,86 @@ pub(super) fn shutdown() -> ShutdownResult {
     }
 }
 
-struct LinuxInput {
-    joystick: Option<std::fs::File>,
-    previous_state: [i8; 32],
-    current_state: [i8; 32],
+const XINPUT_GAMEPAD_START: u16 = 0x0010;
+const XINPUT_GAMEPAD_BACK: u16 = 0x0020;
+const CONTROLLER_GUIDE: u16 = 0x0400;
+const XINPUT_GAMEPAD_A: u16 = 0x1000;
+const XINPUT_GAMEPAD_B: u16 = 0x2000;
+const XINPUT_GAMEPAD_X: u16 = 0x4000;
+const XINPUT_GAMEPAD_Y: u16 = 0x8000;
+const XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE: u16 = 7849;
+
+#[derive(Default, Clone, Copy)]
+struct LinuxInputState {
+    w_buttons: u16,
+	s_thumb_lx: i16,
+	s_thumb_ly: i16,
+	s_thumb_rx: i16,
+	s_thumb_ry: i16,
 }
 
-impl crate::input::PlatformInput for LinuxInput {
+struct LinuxInput {
+    joystick: Option<std::fs::File>,
+    previous_state: LinuxInputState,
+    current_state: LinuxInputState,
+    last_stick_time: Instant,
+    last_button_time: Instant,
+}
+
+#[repr(C, packed)]
+struct JsEvent {
+ 	time: u32,	/* event timestamp in milliseconds */
+    value: i16,	/* value */
+ 	event_type: u8,	/* event type */
+ 	number: u8,	/* axis/button number */
+}
+
+const JS_EVENT_BUTTON: u8 = 0x01;	/* button pressed/released */
+const JS_EVENT_AXIS: u8 = 0x02;	/* joystick moved */
+const JS_EVENT_INIT: u8 = 0x80;	/* initial state of device */
+
+impl crate::input::PlatformGamepad for LinuxInput {
     fn update(&mut self, user_index: u32) -> Result<(), u32> {
         self.previous_state = self.current_state;
 
-        if self.check_for_joystick("/dev/input/js0") { self.get_joystick(); }
+        let path = format!("/dev/input/js{}", user_index);
+        if self.check_for_joystick(&path) { self.get_joystick(); }
         Ok(())
     }
 
     fn get_gamepad(&mut self) -> Vec<super::ControllerInput> {
-        panic!()
+        fn is_pressed(input: &LinuxInput, button: u16) -> bool {
+			input.current_state.w_buttons & button != 0 && input.previous_state.w_buttons & button == 0
+		}
+		let mut result = Vec::new();
+
+		let now = Instant::now();
+		if (now - self.last_button_time).as_millis() > 100 {
+			let count = result.len();
+			if is_pressed(self, XINPUT_GAMEPAD_START) { result.push(super::ControllerInput::ButtonStart); }
+			if is_pressed(self, XINPUT_GAMEPAD_BACK) { result.push(super::ControllerInput::ButtonBack); }
+			if is_pressed(self, CONTROLLER_GUIDE) { result.push(super::ControllerInput::ButtonGuide); }
+			if is_pressed(self, XINPUT_GAMEPAD_A) { result.push(super::ControllerInput::ButtonSouth); }
+			if is_pressed(self, XINPUT_GAMEPAD_B) { result.push(super::ControllerInput::ButtonEast); }
+			if is_pressed(self, XINPUT_GAMEPAD_X) { result.push(super::ControllerInput::ButtonWest); }
+			if is_pressed(self, XINPUT_GAMEPAD_Y) { result.push(super::ControllerInput::ButtonNorth); }
+			if result.len() > count { self.last_button_time = now; }
+		}
+
+		let x = self.current_state.s_thumb_lx as i32;
+		let y = self.current_state.s_thumb_ly as i32;
+		if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 { 
+			if (now - self.last_stick_time).as_millis() > 100 {
+				let count = result.len();
+				if x < 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionLeft); }
+				if y > 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionUp); }
+				if y < 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionDown); }
+				if x > 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionRight); }
+				if result.len() > count { self.last_stick_time = now; }
+			}
+		}
+
+        result
     }
 }
 
@@ -61,72 +126,69 @@ impl LinuxInput {
         return true;
     }
 
-    fn get_joystick(&self) -> u32 {
-        let buttons = 0;
-        // struct js_event jsEvent;
+    fn get_joystick(&mut self) -> LinuxInputState {
+        let mut state = LinuxInputState::default();
+        if let Some(mut joystick) = self.joystick.as_ref() {
 
-        // /* read all events from the driver stack! */
-        // while (read(pJoystick, &jsEvent, sizeof(struct js_event)) > 0) 
-        // {
-        //     switch (e.type & ~JS_EVENT_INIT) 
-                // {
-                //     case JS_EVENT_AXIS:
-                //         switch (e.number) 
-                //         {
-                //             case 0:	pInput->left_stick.X = e.value; break;
-                //             case 1:	pInput->left_stick.Y = -e.value; break;
-                //             case 3:	pInput->right_stick.X = e.value; break;
-                //             case 4:	pInput->right_stick.Y = -e.value; break;
-                //             //2 is left trigger
-                //             //5 is right trigger
-                //         }
-                //         break;
+            /* read all events from the driver stack! */
+            let mut buffer = Vec::with_capacity(std::mem::size_of::<JsEvent>());
+            while joystick.read_exact(&mut buffer).is_ok() {
 
-                //     case JS_EVENT_BUTTON:
-                //         int button;
-                //         switch(e.number)
-                //         {
-                //             case 0: button = CONTROLLER_A; break;
-                //             case 1: button = CONTROLLER_B; break;
-                //             case 2: button = CONTROLLER_X; break;
-                //             case 3: button = CONTROLLER_Y; break;
-                //             case 4: button = CONTROLLER_LEFT_SHOULDER; break;
-                //             case 5: button = CONTROLLER_RIGHT_SHOULDER; break;
-                //             case 6: button = CONTROLLER_BACK; break;
-                //             case 7: button = CONTROLLER_START; break;
-                //             case 8: button = CONTROLLER_GUIDE; break; 
-                //             case 9: button = CONTROLLER_LEFT_THUMB; break;
-                //             case 10: button = CONTROLLER_RIGHT_THUMB; break;
-                //             default: button = 0; break;
-                //         }
+                let s: JsEvent = unsafe { std::ptr::read(buffer.as_ptr() as *const _) };
+                match s.event_type & !JS_EVENT_INIT {
+                    JS_EVENT_AXIS => {
+                        match s.number {
+                            0 => state.s_thumb_lx = s.value,
+                            2 => { /* left trigger */ },
+                            1 => state.s_thumb_ly = -s.value,
+                            3 => state.s_thumb_rx = s.value,
+                            4 => state.s_thumb_ry = -s.value,
+                            5 => { /* right trigger */ },
+                            _ => assert!(false, "Unknown joystick axis"),
+                        }
+                    },
+                    JS_EVENT_BUTTON => {
+                        let button = match s.number {
+                            0 => XINPUT_GAMEPAD_A,
+                            1 => XINPUT_GAMEPAD_B,
+                            2 => XINPUT_GAMEPAD_X,
+                            3 => XINPUT_GAMEPAD_Y,
+                            4 => { /* left shoulder */ 0 },
+                            5 => { /* right shoulder */ 0 },
+                            6 => XINPUT_GAMEPAD_BACK,
+                            7 => XINPUT_GAMEPAD_START,
+                            8 => CONTROLLER_GUIDE,
+                            9 => { /* left thumb */ 0 },
+                            10 => { /* right thumb */ 0 },
+                            _ => { assert!(false, "Unknown joystick button"); 0 },
+                        };
 
-                //         if (e.value) pInput->current_controller_buttons |= button;
-                //         else pInput->current_controller_buttons ^= button;
-                //         break;
-
-                //     default:
-                //         break;
-                // }
-        // }
-        buttons
+                        if s.value != 0 { /* up */ state.w_buttons |= button }
+                        else { /* down */ state.w_buttons ^= button; }
+                    },
+                    _ => assert!(false, "Unknown joystick event"),
+                }
+            }
+        }
+        state
     }
 }
 
-pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
+pub fn initialize_gamepad() -> Result<impl crate::input::PlatformGamepad, i32> {
     Ok(LinuxInput {
         joystick: None,
-        previous_state: [0; 32],
-        current_state: [0; 32],
+        previous_state: LinuxInputState::default(),
+        current_state: LinuxInputState::default(),
+        last_stick_time: Instant::now(),
+        last_button_time: Instant::now(),
     })
 }
 
 pub(super) fn get_clipboard() -> Option<String> {
-    unsafe {
         panic!();
 
         // char* c = 0;
         // let UTF8 = XInternAtom(x11::xlib::Display::, "UTF8_STRING", True);
         // if UTF8 != XLookupNone { c = XPasteType(UTF8, pState->form->platform, UTF8); }
         // if !c { c = XPasteType(XA_STRING, pState->form->platform, UTF8); }
-    }
 }

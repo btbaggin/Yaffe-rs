@@ -24,8 +24,8 @@ pub fn get_run_at_startup(task: &str) -> StartupResult<bool> {
     os::get_run_at_startup(task)
 }
 
-pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
-    os::initialize_input()
+pub fn initialize_gamepad() -> Result<impl crate::input::PlatformGamepad, i32> {
+    os::initialize_gamepad()
 }
 
 pub fn get_clipboard() -> Option<String> {

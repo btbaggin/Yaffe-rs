@@ -83,7 +83,7 @@ pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {
     m
 }
 
-pub trait PlatformInput {
+pub trait PlatformGamepad {
     fn update(&mut self, controller_index: u32) -> Result<(), u32>;
     fn get_gamepad(&mut self) -> Vec<ControllerInput>;
 }

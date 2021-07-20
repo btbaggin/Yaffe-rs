@@ -287,8 +287,8 @@ fn main() {
     ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
  
     let input_map = input::get_input_map();
-    let input = platform_layer::initialize_input().log_message_if_fail("Unable to initialize input");
-    windowing::create_yaffe_windows(notify, input, input_map, Rc::new(RefCell::new(ui)), overlay);
+    let gamepad = platform_layer::initialize_gamepad().log_message_if_fail("Unable to initialize input");
+    windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
 fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
