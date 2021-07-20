@@ -2,9 +2,8 @@ use super::{ShutdownResult, StartupResult};
 use std::io::{Error, ErrorKind};
 use glutin::event::VirtualKeyCode;
 use std::os::unix::io::AsRawFd;
-use x11::xlib::{XInternAtom, XLookupNone};
+// use x11::xlib::{XInternAtom, XLookupNone};
 use std::process::Command;
-use x11::keysym::*;
 
 pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
     panic!()
