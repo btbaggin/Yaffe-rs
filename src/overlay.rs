@@ -14,7 +14,7 @@ impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
     pub fn new(settings: crate::settings::SettingsFile) -> std::rc::Rc<std::cell::RefCell<OverlayWindow>> {
         let overlay = OverlayWindow {
-            modal: modals::Modal::overlay(Box::new(modals::OverlayModal::default())),
+            modal: modals::Modal::overlay(Box::new(modals::OverlayModal::new())),
             process: None,
             showing: false,
             settings: settings,

@@ -4,9 +4,20 @@ use crate::Rect;
 use crate::{Actions, V2};
 use crate::modals::{ModalResult, ModalContent};
 
-#[derive(Default)]
+const VOLUME_STEP: f32 = 0.05;
+
 pub struct OverlayModal {
     volume: f32,
+}
+
+impl OverlayModal {
+    pub fn new() -> OverlayModal {
+        let volume = match crate::platform_layer::get_and_update_volume(0.) {
+            Ok(volume) => volume,
+            Err(_) => 0.,
+        };
+        OverlayModal { volume }
+    }
 }
 
 impl ModalContent for OverlayModal {
@@ -18,13 +29,17 @@ impl ModalContent for OverlayModal {
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Left => {
-                //crate::restrictions::verify_restricted_action_with_data(state, change_volume, &mut (self.volume, -0.05));
-                self.volume = f32::max(0., self.volume - 0.05);
+                match crate::platform_layer::get_and_update_volume(-VOLUME_STEP) {
+                    Ok(volume) => self.volume = volume,
+                    Err(e) => crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to get system volume"),
+                }
                 ModalResult::None
             }
             Actions::Right => {
-                //crate::restrictions::verify_restricted_action_with_data(state, change_volume, &mut (self.volume, 0.05));
-                self.volume = f32::min(1., self.volume + 0.05);
+                match crate::platform_layer::get_and_update_volume(VOLUME_STEP) {
+                    Ok(volume) => self.volume = volume,
+                    Err(e) => crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to get system volume"),
+                }
                 ModalResult::None
             }
             Actions::Accept => ModalResult::Ok,

@@ -1,4 +1,4 @@
-use crate::input::ControllerInput;
+use crate::input::{ControllerInput, PlatformInput};
 
 #[cfg(target_os = "windows")]
 #[path = "windows.rs"]
@@ -11,6 +11,7 @@ mod os;
 
 type StartupResult<T> = Result<T, (&'static str, i32)>;
 type ShutdownResult = std::io::Result<()>;
+type VolumeResult<T> = Result<T, (&'static str, i32)>;
 
 pub fn shutdown() -> ShutdownResult {
     os::shutdown()
@@ -24,7 +25,11 @@ pub fn get_run_at_startup(task: &str) -> StartupResult<bool> {
     os::get_run_at_startup(task)
 }
 
-pub fn initialize_input() -> Result<impl crate::input::PlatformInput, i32> {
+pub fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
+    os::get_and_update_volume(delta)
+}
+
+pub fn initialize_input() -> Result<impl PlatformInput, i32> {
     os::initialize_input()
 }
 

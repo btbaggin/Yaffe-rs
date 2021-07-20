@@ -175,10 +175,6 @@ impl YaffeState {
 impl windowing::WindowHandler for WidgetTree {
     fn on_start(&mut self) {
         server::start_up();
-    
-        //Attempt to start COM here since it doesnt work in the settings modal?
-        #[cfg(windows)]
-	    unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
     }
 
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
@@ -250,9 +246,6 @@ impl windowing::WindowHandler for WidgetTree {
 
     fn on_stop(&mut self) {
         server::shutdown();
-
-        #[cfg(windows)]
-        unsafe { winapi::um::combaseapi::CoUninitialize() };
     }
 
     fn on_resize(&mut self, _: u32, _: u32) { 

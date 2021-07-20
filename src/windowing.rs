@@ -76,13 +76,13 @@ struct YaffeWindow {
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
 }
 
-
 fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowId, YaffeWindow>,
                  event_loop: &EventLoop<()>, 
                  tracker: &mut context_tracker::ContextTracker, 
                  builder: WindowBuilder,
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> Vector2<u32> {
-    let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).unwrap();
+                    use crate::logger::LogEntry;
+    let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).log_if_fail();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
     let id = windowed_context.window().id();

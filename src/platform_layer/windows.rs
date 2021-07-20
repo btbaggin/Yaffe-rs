@@ -17,16 +17,17 @@ use winapi::um::winnt::{
 };
 use winapi::um::xinput::*;
 use winapi::um::winuser::{
-    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
+    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN, OpenClipboard, GetClipboardData, CF_TEXT, CloseClipboard,
 };
-use winapi::um::winuser;
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
+use winapi::um::mmdeviceapi::{MMDeviceEnumerator, IMMDeviceEnumerator, IMMDevice, eRender, eConsole};
+use winapi::um::endpointvolume::IAudioEndpointVolume;
 
 use std::time::Instant;
 use std::os::windows::ffi::OsStrExt;
 use std::ops::Deref;
 use std::convert::TryInto;
-use super::{StartupResult, ShutdownResult};
+use super::{StartupResult, ShutdownResult, VolumeResult};
 
 struct ComString { string: BSTR }
 impl ComString {
@@ -127,6 +128,7 @@ pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
 }
 
 pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
+	unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
 	safe_com_call!(CoInitializeSecurity(std::ptr::null_mut(), 
 										-1, 
 										std::ptr::null_mut(), 
@@ -232,6 +234,7 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 		unsafe { winapi::um::oleauto::SysFreeString(*group.n1.n2_mut().n3.bstrVal()); }
 		unsafe { winapi::um::oleauto::SysFreeString(*s.n1.n2_mut().n3.bstrVal()); }
 	}
+	unsafe { winapi::um::combaseapi::CoUninitialize() };
 
 	Ok(())
 }
@@ -394,9 +397,9 @@ impl crate::input::PlatformInput for WindowsInput {
 pub(super) fn get_clipboard() -> Option<String> {
 	unsafe {
 		let mut result = None;
-		if winuser::OpenClipboard(std::ptr::null_mut()) != 0 {
+		if OpenClipboard(std::ptr::null_mut()) != 0 {
 			
-			let data = winuser::GetClipboardData(winuser::CF_TEXT);
+			let data = GetClipboardData(CF_TEXT);
 			if data.is_null() { return None; }
 			
 			let text = GlobalLock(data);
@@ -408,8 +411,40 @@ pub(super) fn get_clipboard() -> Option<String> {
 			}
 				
 			GlobalUnlock(data);
-			winuser::CloseClipboard();
+			CloseClipboard();
 		}
 		result
 	}
+}
+
+pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
+	unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
+
+    let mut p_device: ComPtr<IMMDeviceEnumerator> = ComPtr::default();
+	safe_com_call!(CoCreateInstance(&MMDeviceEnumerator::uuidof(), 
+									std::ptr::null_mut(), 
+									CLSCTX_INPROC_SERVER, 
+									&IMMDeviceEnumerator::uuidof(), 
+									p_device.as_mut() as *mut *mut std::os::raw::c_void))?;
+
+	let mut p_default: ComPtr<IMMDevice> = ComPtr::default();
+	safe_com_call!(p_device.GetDefaultAudioEndpoint(eRender, eConsole, p_default.as_mut()))?;
+									
+
+	let mut p_endpoint: ComPtr<IAudioEndpointVolume> = ComPtr::default();
+	safe_com_call!(p_default.Activate(&IAudioEndpointVolume::uuidof(), 
+									  CLSCTX_INPROC_SERVER, 
+									  std::ptr::null_mut(), 
+									  p_endpoint.as_mut() as *mut *mut std::os::raw::c_void))?;
+
+	let mut volume = 0f32;
+	safe_com_call!(p_endpoint.GetMasterVolumeLevelScalar(&mut volume as *mut f32))?;
+
+	if delta != 0. {
+		volume = f32::min(1., f32::max(0., volume + delta));
+		safe_com_call!(p_endpoint.SetMasterVolumeLevelScalar(volume, std::ptr::null_mut()))?;
+	}
+	unsafe { winapi::um::combaseapi::CoUninitialize() };
+
+	Ok(volume)
 }
