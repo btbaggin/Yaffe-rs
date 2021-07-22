@@ -175,8 +175,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                             match crate::platform_layer::get_clipboard(context.windowed().window()) {
                                 Some(clip) => {
-                                    let input = InputType::Paste(clip);
-                                    kp = crate::Actions::KeyPress(input);
+                                    kp = crate::Actions::KeyPress(InputType::Paste(clip));
                                     Some(&kp)
                                 }
                                 _ => None,
@@ -186,18 +185,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                         (false, VirtualKeyCode::Delete) => Some(&crate::Actions::KeyPress(InputType::Delete)),
                         (false, _) => input_map.get(input.virtual_keycode, None),
                     };
-                    // let action = if !input.modifiers.is_empty() { 
-                    //     match input.virtual_keycode {
-                    //         Some(VirtualKeyCode::V) => {
-                                
-                    //         }
-                    //         _ => None,
-                    //     }
-                    // } else if let Some(VirtualKeyCode::Delete) = input.virtual_keycode {
-                    //     Some(&crate::Actions::KeyPress(InputType::Delete))
-                    // } else {
-                    //     input_map.get(input.virtual_keycode, None)
-                    // };
+
                     if let Some(action) = action { 
                         for (_, window) in windows.iter_mut() {
                             if send_action_to_window(window, &mut ct, action, false) { return; }

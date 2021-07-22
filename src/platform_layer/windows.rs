@@ -400,17 +400,17 @@ pub(super) fn get_clipboard(_: &glutin::window::Window) -> Option<String> {
 		if OpenClipboard(std::ptr::null_mut()) != 0 {
 			
 			let data = GetClipboardData(CF_TEXT);
-			if data.is_null() { return None; }
-			
-			let text = GlobalLock(data);
-			if !text.is_null() { 
-				result = match std::ffi::CString::from_raw(text as *mut i8).into_string() {
-					Err(_) => None,
-					Ok(result) => Some(result),
-				};
+			if !data.is_null() {
+				let text = GlobalLock(data);
+				if !text.is_null() { 
+					result = match std::ffi::CString::from_raw(text as *mut i8).into_string() {
+						Err(_) => None,
+						Ok(result) => Some(result),
+					};
+				}
+					
+				GlobalUnlock(data);
 			}
-				
-			GlobalUnlock(data);
 			CloseClipboard();
 		}
 		result
