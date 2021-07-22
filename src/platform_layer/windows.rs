@@ -394,7 +394,7 @@ impl crate::input::PlatformGamepad for WindowsInput {
     }
 }
 
-pub(super) fn get_clipboard() -> Option<String> {
+pub(super) fn get_clipboard(_: &glutin::window::Window) -> Option<String> {
 	unsafe {
 		let mut result = None;
 		if OpenClipboard(std::ptr::null_mut()) != 0 {
