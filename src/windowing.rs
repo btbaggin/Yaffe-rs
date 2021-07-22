@@ -165,17 +165,39 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let glutin::event::ElementState::Released = input.state { return; }
+                    if let None = input.virtual_keycode { return; }
 
-                    let action = if !input.modifiers.is_empty() { 
-                        match input.virtual_keycode {
-                            Some(VirtualKeyCode::V) => Some(&crate::Actions::KeyPress(InputType::Paste)),
-                            _ => None,
-                        }
-                    } else if let Some(VirtualKeyCode::Delete) = input.virtual_keycode {
-                        Some(&crate::Actions::KeyPress(InputType::Delete))
-                    } else {
-                        input_map.get(input.virtual_keycode, None)
+                    let kp;
+                    let action = match (input.modifiers.ctrl(), input.virtual_keycode.unwrap()) {
+                        (true, VirtualKeyCode::V) => {
+                            let window = windows.get_mut(&window_id).unwrap();
+                            let context = ct.get_current(window.context_id).unwrap();
+
+                            match crate::platform_layer::get_clipboard(context.windowed().window()) {
+                                Some(clip) => {
+                                    let input = InputType::Paste(clip);
+                                    kp = crate::Actions::KeyPress(input);
+                                    Some(&kp)
+                                }
+                                _ => None,
+                            }
+                        },
+                        (true, _) => None,
+                        (false, VirtualKeyCode::Delete) => Some(&crate::Actions::KeyPress(InputType::Delete)),
+                        (false, _) => input_map.get(input.virtual_keycode, None),
                     };
+                    // let action = if !input.modifiers.is_empty() { 
+                    //     match input.virtual_keycode {
+                    //         Some(VirtualKeyCode::V) => {
+                                
+                    //         }
+                    //         _ => None,
+                    //     }
+                    // } else if let Some(VirtualKeyCode::Delete) = input.virtual_keycode {
+                    //     Some(&crate::Actions::KeyPress(InputType::Delete))
+                    // } else {
+                    //     input_map.get(input.virtual_keycode, None)
+                    // };
                     if let Some(action) = action { 
                         for (_, window) in windows.iter_mut() {
                             if send_action_to_window(window, &mut ct, action, false) { return; }
@@ -278,7 +300,7 @@ fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, Controller
     let mut result = std::collections::HashSet::new();
     for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {
-            result.insert(*action);
+            result.insert(action.clone());
         } else {
             result.insert(crate::Actions::KeyPress(crate::input::InputType::Key(g as u8 as char)));
         }

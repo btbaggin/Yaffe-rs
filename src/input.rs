@@ -29,7 +29,7 @@ impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
     }
 }
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub enum Actions {
     Info,
     Accept,
@@ -60,11 +60,11 @@ pub enum ControllerInput {
     DirectionDown,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub enum InputType {
     Key(char),
     Delete,
-    Paste,
+    Paste(String),
 }
 
 pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {

@@ -33,6 +33,6 @@ pub fn initialize_gamepad() -> Result<impl PlatformGamepad, i32> {
     os::initialize_gamepad()
 }
 
-pub fn get_clipboard() -> Option<String> {
-    os::get_clipboard()
+pub fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
+    os::get_clipboard(window)
 }
