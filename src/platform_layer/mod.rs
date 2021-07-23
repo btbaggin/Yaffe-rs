@@ -1,4 +1,5 @@
 use crate::input::{ControllerInput, PlatformGamepad};
+use std::convert::From;
 
 #[cfg(target_os = "windows")]
 #[path = "windows.rs"]
@@ -8,10 +9,28 @@ mod os;
 #[path = "linux.rs"]
 mod os;
 
+#[derive(Debug)]
+pub enum StartupError {
+    Com((&'static str, i32)),
+    File(std::io::Error),
+}
 
-type StartupResult<T> = Result<T, (&'static str, i32)>;
+impl From<std::io::Error> for StartupError {
+    fn from(v: std::io::Error) -> Self {
+        StartupError::File(v)
+    }
+}
+
+impl From<(&'static str, i32)> for StartupError {
+   fn from(v: (&'static str, i32)) -> Self {
+        StartupError::Com(v)
+    }
+}
+
+
+type StartupResult<T> = Result<T, StartupError>;
 type ShutdownResult = std::io::Result<()>;
-type VolumeResult<T> = Result<T, (&'static str, i32)>;
+type VolumeResult<T> = Result<T, StartupError>;
 
 pub fn shutdown() -> ShutdownResult {
     os::shutdown()

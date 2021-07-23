@@ -11,27 +11,26 @@ use std::convert::TryInto;
 use glutin::platform::unix::WindowExtUnix;
 
 pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
-    std::fs::Path::new(format!("~/.config/autostart/{}.desktop", task)).exists();
+    Ok(std::path::Path::new(&format!("~/.config/autostart/{}.desktop", task)).exists())
 }
 
 pub(super) fn set_run_at_startup(task: &str, run: bool) -> StartupResult<()> {
-    let path = std::fs::Path::new(format!("~/.config/autostart/{}.desktop", task));
+    //https://stackoverflow.com/questions/35530062/how-to-run-a-program-on-startup-in-debian
+    let raw_path = format!("~/.config/autostart/{}.desktop", task);
+    let path = std::path::Path::new(&raw_path);
     if !run && path.exists() {
         std::fs::remove_file(path)?;
     } else if run && !path.exists() {
-        let file = std::fs::File::create(path)?;
-
         let contents = format!("[Desktop Entry]
         Type=Application
         Name={}
         Exec={}
         StartupNotify=false
         Terminal=false
-        Hidden=false", task, path.canonicalize());
-        file.write(contents);
+        Hidden=false", task, path.canonicalize().unwrap().as_path().display());
+        std::fs::write(path, contents)?;
     }
-    //https://stackoverflow.com/questions/35530062/how-to-run-a-program-on-startup-in-debian
-    panic!()
+    Ok(())
 }
 
 pub(super) fn shutdown() -> ShutdownResult {

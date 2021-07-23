@@ -168,6 +168,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     if let None = input.virtual_keycode { return; }
 
                     let kp;
+                    #[allow(deprecated)]
                     let action = match (input.modifiers.ctrl(), input.virtual_keycode.unwrap()) {
                         (true, VirtualKeyCode::V) => {
                             let window = windows.get_mut(&window_id).unwrap();
