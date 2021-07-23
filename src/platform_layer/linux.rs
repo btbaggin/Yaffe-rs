@@ -10,11 +10,27 @@ use std::time::Instant;
 use std::convert::TryInto;
 use glutin::platform::unix::WindowExtUnix;
 
-pub(super) fn get_run_at_startup(_: &str) -> StartupResult<bool> {
-    panic!()
+pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
+    std::fs::Path::new(format!("~/.config/autostart/{}.desktop", task)).exists();
 }
 
-pub(super) fn set_run_at_startup(_: &str, _: bool) -> StartupResult<()> {
+pub(super) fn set_run_at_startup(task: &str, run: bool) -> StartupResult<()> {
+    let path = std::fs::Path::new(format!("~/.config/autostart/{}.desktop", task));
+    if !run && path.exists() {
+        std::fs::remove_file(path)?;
+    } else if run && !path.exists() {
+        let file = std::fs::File::create(path)?;
+
+        let contents = format!("[Desktop Entry]
+        Type=Application
+        Name={}
+        Exec={}
+        StartupNotify=false
+        Terminal=false
+        Hidden=false", task, path.canonicalize());
+        file.write(contents);
+    }
+    //https://stackoverflow.com/questions/35530062/how-to-run-a-program-on-startup-in-debian
     panic!()
 }
 
@@ -195,7 +211,6 @@ macro_rules! intern_atom {
     }};
 }
 pub(super) fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
-        // char* c = 0;
         let mut result = None;
         unsafe {
             let w = window.xlib_window().unwrap(); //TODO this shoudl be better than unwrap
