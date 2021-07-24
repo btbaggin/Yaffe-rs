@@ -11,7 +11,7 @@ static QS_ADD_PLATFORM: &str = "INSERT INTO Platforms ( ID, Platform, Path, Args
 static QS_UPDATE_PLATFORM: &str = "UPDATE Platforms SET Path = @Path, Args = @Args, Roms = @Roms WHERE ID = @ID";
 
 static QS_GET_GAME: &str = "SELECT ID, Name, Overview, Players, Rating, FileName FROM Games WHERE Platform = @Platform AND FileName = @Game";
-static QS_GET_RECENT_GAMES: &str = "SELECT g.Name, g.Overview, g.Players, g.Rating, g.FileName, p.ID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT 10";
+static QS_GET_RECENT_GAMES: &str = "SELECT g.Name, g.Overview, g.Players, g.Rating, g.FileName, p.ID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT @Max";
 static QS_ADD_GAME: &str = "INSERT INTO Games (ID, Platform, Name, Overview, Players, Rating, FileName) VALUES ( @GameId, @Platform, @Name, @Overview, @Players, @Rating, @FileName )";
 static QS_UPDATE_GAME_LAST_RUN: &str = "UPDATE Games SET LastRun = strftime('%s', 'now', 'localtime') WHERE Platform = @Platform AND FileName = @Game";
 
@@ -271,11 +271,11 @@ pub(super) fn get_all_applications() -> Vec<Executable> {
     result
 }
 
-pub(super) fn get_recent_games() -> Vec<Executable> {
+pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {
     crate::log_function!();
 
     let con = YaffeConnection::new();
-    let stmt = create_statement!(con, QS_GET_RECENT_GAMES, );
+    let stmt = create_statement!(con, QS_GET_RECENT_GAMES, max);
 
     let mut result = vec!();
     execute_select(stmt, |r| {

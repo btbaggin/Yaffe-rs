@@ -73,6 +73,7 @@ stringy_enum! {
         ItemsPerColumn("items_per_column") = SettingValue::I32(3),
         FontColor("font_color") = SettingValue::Color(Color::from_rgba(0.95, 0.95, 0.95, 1.)),
         AccentColor("accent_color") = SettingValue::Color(Color::from_rgba(0.25, 0.3, 1., 1.)),
+        RecentPageCount("recent_page_count") = SettingValue::F32(1.),
     }
 }
 

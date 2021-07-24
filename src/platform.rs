@@ -164,7 +164,10 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform) {
             platform.apps.sort_by(|a, b| a.name.cmp(&b.name));
         }
         PlatformType::Recents => {
-            platform.apps = get_recent_games();
+            let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
+                      state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
+                      state.settings.get_f32(crate::SettingNames::RecentPageCount);
+            platform.apps = get_recent_games(max as i64);
         }
     }
 }

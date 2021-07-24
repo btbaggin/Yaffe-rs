@@ -267,5 +267,6 @@ unsafe fn x_paste_type(atom: u64, display: &mut x11::xlib::Display, window: u64,
 }
 
 pub(super) fn get_and_update_volume(_: f32) -> VolumeResult<f32> {
+    //TODO
     panic!();
 }
