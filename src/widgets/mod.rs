@@ -118,24 +118,8 @@ impl WidgetTree {
     }
 
     pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
-        //TODO remove duplication
-        let mut top_left = *layout.top_left();
-        let mut bottom_right = *layout.bottom_right();
-
-        if invalidate {
-            let size = V2::new(layout.width() * self.root.ratio.x, layout.height() * self.root.ratio.y);
-            let space = Rectangle::new(top_left, bottom_right);
-            let r = match self.orientation {
-                ContainerAlignment::Left => Rectangle::new(top_left, top_left + size),
-                ContainerAlignment::Right => Rectangle::from_tuples((bottom_right.x - size.x, top_left.y), (bottom_right.x, bottom_right.y)),
-                ContainerAlignment::Top => Rectangle::new(top_left, top_left + size),
-                ContainerAlignment::Bottom => Rectangle::from_tuples((bottom_right.x - size.x, top_left.y), (bottom_right.x, bottom_right.y)),
-            };
-
-            // let r = i.widget.place(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
-            self.root.widget.set_layout(r);
-        }
-        self.root.render(&self.data, self.root.widget.layout().clone(), piet, delta_time, invalidate);
+        if invalidate { self.root.widget.set_layout(layout); }
+        self.root.render(&self.data, piet, delta_time, invalidate);
     }
 
     pub fn focus(&mut self, widget: WidgetId) {
@@ -200,7 +184,7 @@ pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
     widget: Box<dyn Widget>,
     ratio: V2,
-    orientation: ContainerAlignment,
+    alignment: ContainerAlignment,
 }
 impl WidgetContainer {
     pub fn root(widget: impl Widget + 'static) -> WidgetContainer {
@@ -208,7 +192,7 @@ impl WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio: V2::new(1.0, 1.0),
-            orientation: ContainerAlignment::Left,
+            alignment: ContainerAlignment::Left,
         }
     }
     fn new(widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> WidgetContainer {
@@ -216,7 +200,7 @@ impl WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio: size,
-            orientation: alignment,
+            alignment: alignment,
          }
     }
 
@@ -251,19 +235,20 @@ impl WidgetContainer {
         handled
     }
 
-    pub fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
+    pub fn render(&mut self, state: &YaffeState, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
         let mut left_stack = 0.;
         let mut right_stack = 0.;
-        self.widget.render(state, self.widget.layout(), delta_time, piet);
+        let rect = self.widget.layout();
+        self.widget.render(state, rect.clone(), delta_time, piet);
 
         for i in self.children.iter_mut() {
             if invalidate {
                 let size = V2::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
 
                 let origin;
-                match i.orientation {
+                match i.alignment {
                     ContainerAlignment::Left => {
                         origin = V2::new(rect.left() + left_stack, rect.top());
                         left_stack += size.x;
@@ -287,7 +272,7 @@ impl WidgetContainer {
                 let r = Rectangle::new(origin, origin + size);
                 i.widget.set_layout(r);
             }
-            i.render(state, i.widget.layout().clone(), piet, delta_time, invalidate);
+            i.render(state, piet, delta_time, invalidate);
         }
     }
 
