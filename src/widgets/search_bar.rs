@@ -3,7 +3,6 @@ use speedy2d::shape::Rectangle;
 use crate::{YaffeState, widget, Actions, DeferredAction, V2};
 use crate::colors::*;
 use crate::Rect;
-use crate::widgets::UiElement;
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
 const SEARCH_OPTION_PLAYERS: i32 = 2;

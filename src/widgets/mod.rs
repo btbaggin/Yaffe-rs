@@ -296,7 +296,7 @@ impl WidgetContainer {
 // Actions/animations
 //
 enum AnimationType {
-    Position(V2),
+    Position((V2, V2)),
     Placeholder,
 }
 
@@ -347,10 +347,10 @@ impl DeferredAction {
         }
     }
 
-    pub fn animate(&mut self, widget: &impl FocusableWidget, to: V2, duration: f32) {
+    pub fn animate(&mut self, widget: &impl FocusableWidget,  to: V2, duration: f32) {
         self.anims.push(Animation {
             widget: widget.get_id(),
-            anim: AnimationType::Position(to),
+            anim: AnimationType::Position((*widget.layout().top_left(), to)),
             duration: duration,
             remaining: duration,
         });
@@ -371,32 +371,34 @@ impl DeferredAction {
 pub fn run_animations(tree: &mut WidgetTree, delta_time: f32) {
     let mut keys = vec!();
 
-    fn lerp(from: V2, to: V2, amount: f32) -> V2 {
-        V2::new(from.x + amount * (to.x - from.x), from.y + amount * (to.y - from.y))
+    fn slerp(current: V2, from: V2, to: V2, amount: f32) -> V2 {
+        let delta = to - from;
+        V2::new(current.x + delta.x * amount, current.y + delta.y * amount)
     }
 
     //Run animations, if it completes, mark it for removal
     for (k, animation) in tree.anims.iter_mut() {
-        if animation.remaining > 0. { animation.remaining = f32::max(0., animation.remaining - delta_time);}
-        else if animation.remaining == 0. { animation.remaining -= delta_time; }
-        
-        match animation.anim {
-            AnimationType::Position(to) => {
-                if let Some(widget) = tree.root.find_widget(animation.widget) {
-
-                    //TODO the lerping causes some jank at the end of animations
-                    let from = widget.widget.position();
-                    widget.set_position(lerp(from, to, delta_time / animation.duration)); 
-            
-                    if animation.remaining == 0. { widget.set_position(to); }
-                }
-            },
-
-            AnimationType::Placeholder => { }
-        }
-
-        if animation.remaining < 0. {
+        if animation.remaining <= 0. {
+            //We do this at the beginning because we need animations to persist 1 fram longer than they go
+            //This is because we only redraw the screen if animations are playing
+            //If we removed them at the end we wouldn't redraw the last frame of the animation
             keys.push(k.clone());
+         } else {
+
+            animation.remaining -= delta_time;
+        
+            match animation.anim {
+                AnimationType::Position((from, to)) => {
+                    if let Some(widget) = tree.root.find_widget(animation.widget) {
+                        let position = slerp(widget.widget.position(), from, to, delta_time / animation.duration);
+                        widget.set_position(position); 
+    
+                        if animation.remaining <= 0. { widget.set_position(to) }
+                    }
+                },
+    
+                AnimationType::Placeholder => { }
+            }
          }
     }
 
