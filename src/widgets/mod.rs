@@ -36,11 +36,9 @@ pub trait Widget: FocusableWidget {
     /// Update and draw
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
 
-    /// Allows the widget to position and size itself according to the parent widget
-    fn place(&self, space: &Rectangle, size: V2) -> Rectangle { 
-        Rectangle::from_tuples((space.left(), space.top()), (space.left() + size.x, space.top() + size.y))
-    }
-    
+    /// Offset from initial placement to move. Percentage based on widget size
+    fn offset(&self) -> V2 { V2::new(0., 0.) }
+
     /// Called when a user action occurs
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
@@ -120,9 +118,21 @@ impl WidgetTree {
     }
 
     pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
+        //TODO remove duplication
+        let mut top_left = *layout.top_left();
+        let mut bottom_right = *layout.bottom_right();
+
         if invalidate {
             let size = V2::new(layout.width() * self.root.ratio.x, layout.height() * self.root.ratio.y);
-            let r = self.root.widget.place(&layout, size);
+            let space = Rectangle::new(top_left, bottom_right);
+            let r = match self.orientation {
+                ContainerAlignment::Left => Rectangle::new(top_left, top_left + size),
+                ContainerAlignment::Right => Rectangle::from_tuples((bottom_right.x - size.x, top_left.y), (bottom_right.x, bottom_right.y)),
+                ContainerAlignment::Top => Rectangle::new(top_left, top_left + size),
+                ContainerAlignment::Bottom => Rectangle::from_tuples((bottom_right.x - size.x, top_left.y), (bottom_right.x, bottom_right.y)),
+            };
+
+            // let r = i.widget.place(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
             self.root.widget.set_layout(r);
         }
         self.root.render(&self.data, self.root.widget.layout().clone(), piet, delta_time, invalidate);
@@ -201,12 +211,12 @@ impl WidgetContainer {
             orientation: ContainerAlignment::Left,
         }
     }
-    fn new(widget: impl Widget + 'static, size: V2) -> WidgetContainer {
+    fn new(widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> WidgetContainer {
          WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio: size,
-            orientation: ContainerAlignment::Left,
+            orientation: alignment,
          }
     }
 
@@ -215,18 +225,13 @@ impl WidgetContainer {
         self.widget.set_layout(Rectangle::new(rect, rect + layout.size()))
     }
 
-    pub fn alignment(&mut self, orientation: ContainerAlignment) -> &mut Self {
-        self.orientation = orientation;
-        self
-    }
-
-    pub fn add_child(&mut self, widget: impl Widget + 'static, size: V2) -> &mut Self {
-        self.children.push(WidgetContainer::new(widget, size));
+    pub fn add_child(&mut self, widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> &mut Self {
+        self.children.push(WidgetContainer::new(widget, size, alignment));
         self
     }
 
     pub fn with_child(&mut self, widget: impl Widget + 'static, size: V2) -> &mut WidgetContainer {
-        self.children.push(WidgetContainer::new(widget, size));
+        self.children.push(WidgetContainer::new(widget, size, ContainerAlignment::Left));
 
         let count = self.children.len();
         &mut self.children[count - 1]
@@ -247,24 +252,42 @@ impl WidgetContainer {
     }
 
     pub fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
-        let mut x = rect.left();
-        let y = rect.top();
+        let mut top_stack = 0.;
+        let mut bottom_stack = 0.;
+        let mut left_stack = 0.;
+        let mut right_stack = 0.;
         self.widget.render(state, self.widget.layout(), delta_time, piet);
 
         for i in self.children.iter_mut() {
             if invalidate {
                 let size = V2::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
-                let r = i.widget.place(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
+
+                let origin;
+                match i.orientation {
+                    ContainerAlignment::Left => {
+                        origin = V2::new(rect.left() + left_stack, rect.top());
+                        left_stack += size.x;
+                    },
+                    ContainerAlignment::Right => {
+                        origin = V2::new(rect.right() - (size.x + right_stack), rect.top());
+                        right_stack += size.x;
+                    },
+                    ContainerAlignment::Top => {
+                        origin = V2::new(rect.left(), rect.top() + top_stack);
+                        top_stack += size.y;
+                    },
+                    ContainerAlignment::Bottom => {
+                        origin = V2::new(rect.left(), rect.bottom() - (size.y + bottom_stack));
+                        bottom_stack += size.y;
+                    },
+                };
+
+                let offset = i.widget.offset();
+                let origin = V2::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
+                let r = Rectangle::new(origin, origin + size);
                 i.widget.set_layout(r);
             }
             i.render(state, i.widget.layout().clone(), piet, delta_time, invalidate);
-
-            match self.orientation {
-                ContainerAlignment::Left => x += i.widget.layout().width(),
-                ContainerAlignment::Right => { /* do nothing. child must position itself */ }
-                ContainerAlignment::Top => {},
-                ContainerAlignment::Bottom => {},
-            }
         }
     }
 

@@ -21,8 +21,11 @@ impl super::Widget for PlatformList {
                 true
             }
             Actions::Info => {
-                let modal = Box::new(PlatformDetailModal::from_existing(state.get_platform()));
-                display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(crate::modals::on_update_application_close));
+                let platform = state.get_platform();
+                if let crate::platform::PlatformType::App = platform.kind {
+                    let modal = Box::new(PlatformDetailModal::from_existing(platform));
+                    display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(crate::modals::on_update_application_close));
+                }
                 true
             }
             _ => false
