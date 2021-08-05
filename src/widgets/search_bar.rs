@@ -3,7 +3,7 @@ use speedy2d::shape::Rectangle;
 use crate::{YaffeState, widget, Actions, DeferredAction, V2};
 use crate::colors::*;
 use crate::Rect;
-
+use crate::widgets::UiElement;
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
 const SEARCH_OPTION_PLAYERS: i32 = 2;
@@ -51,7 +51,7 @@ widget!(pub struct SearchBar {
     active: bool = false
 });
 impl super::Widget for SearchBar {
-    fn layout(&self, space: &Rectangle, size: V2) -> Rectangle {
+    fn place(&self, space: &Rectangle, size: V2) -> Rectangle {
         let position = V2::new(space.left(), space.top() - size.y);
         Rectangle::new(position, position + size)
     }
@@ -111,13 +111,15 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, layout: &Rectangle, handle: &mut DeferredAction) {
-        handle.animate(self, V2::new(layout.left(), layout.top() + layout.height()), 0.2);
+    fn got_focus(&mut self, handle: &mut DeferredAction) {
+        let layout = self.layout();
+        handle.animate(self, V2::new(layout.left(), 0.), 0.2);
     }
 
-    fn lost_focus(&mut self, layout: &Rectangle, handle: &mut DeferredAction) {
+    fn lost_focus(&mut self, handle: &mut DeferredAction) {
         if !self.active {
-            handle.animate(self, *layout.top_left(), 0.2);
+            let layout = self.layout();
+            handle.animate(self, V2::new(layout.left(), -layout.height()), 0.2);
         }
     }
 

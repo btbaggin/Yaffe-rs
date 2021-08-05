@@ -8,7 +8,7 @@ use crate::widgets::Shifter;
 
 widget!(pub struct Toolbar {});
 impl super::Widget for Toolbar {
-    fn layout(&self, space: &Rectangle, ratio_size: V2) -> Rectangle { 
+    fn place(&self, space: &Rectangle, ratio_size: V2) -> Rectangle { 
         Rectangle::from_tuples((space.left(), space.bottom() - space.height() * ratio_size.y), (space.right(), space.bottom()))
     }
 

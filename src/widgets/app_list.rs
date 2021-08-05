@@ -70,7 +70,7 @@ impl super::Widget for AppList {
         }
     }
 
-    fn got_focus(&mut self, _: &Rectangle, handler: &mut DeferredAction) {
+    fn got_focus(&mut self, handler: &mut DeferredAction) {
         handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
     }
 

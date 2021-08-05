@@ -289,9 +289,10 @@ fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
     root.add_child(widgets::PlatformList::new(queue.clone()), V2::new(0.25, 1.))
         .with_child(widgets::AppList::new(queue.clone()), V2::new(0.75, 1.))
             .add_child(widgets::SearchBar::new(queue.clone()), V2::new(1., 0.05))
+                .alignment(ContainerAlignment::Top)
             .add_child(widgets::Toolbar::new(queue.clone()), V2::new(1., 0.075))
             .add_child(widgets::InfoPane::new(queue.clone()), V2::new(0.33, 1.))
-            .orientation(ContainerOrientation::Floating);
+                .alignment(ContainerAlignment::Right);
             
     root
 }

@@ -22,8 +22,14 @@ pub use background::Background;
 pub use app_tile::AppTile;
 pub use info_pane::InfoPane;
 
+pub trait UiElement {
+    fn position(&self) -> V2;
+    fn size(&self) -> V2;
+    fn layout(&self) -> Rectangle;
+    fn set_layout(&mut self, layout: Rectangle);
+}
 pub type WidgetId = std::any::TypeId;
-pub trait FocusableWidget {
+pub trait FocusableWidget: UiElement {
     fn get_id(&self) -> WidgetId;
 }
 pub trait Widget: FocusableWidget {
@@ -31,7 +37,7 @@ pub trait Widget: FocusableWidget {
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
 
     /// Allows the widget to position and size itself according to the parent widget
-    fn layout(&self, space: &Rectangle, size: V2) -> Rectangle { 
+    fn place(&self, space: &Rectangle, size: V2) -> Rectangle { 
         Rectangle::from_tuples((space.left(), space.top()), (space.left() + size.x, space.top() + size.y))
     }
     
@@ -39,10 +45,10 @@ pub trait Widget: FocusableWidget {
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: &Rectangle, _: &mut DeferredAction) {}
+    fn got_focus(&mut self, _: &mut DeferredAction) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: &Rectangle, _: &mut DeferredAction) {}
+    fn lost_focus(&mut self, _: &mut DeferredAction) {}
 }
 
 #[macro_export]
@@ -58,7 +64,17 @@ macro_rules! widget {
         $($element:ident: $ty:ty = $value:expr),*
     }) => {
         #[allow(unused_variables)]
-        pub struct $name { #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, $($element: $ty),* }
+        pub struct $name { 
+            #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, 
+            layout: Rectangle,
+            $($element: $ty),* 
+        }
+        impl crate::widgets::UiElement for $name {
+            fn position(&self) -> crate::V2 { *self.layout.top_left() }
+            fn size(&self) -> crate::V2 { self.layout.size() }
+            fn layout(&self) -> Rectangle { self.layout.clone() }
+            fn set_layout(&mut self, layout: Rectangle) { self.layout = layout; }
+        }
         impl crate::widgets::FocusableWidget for $name {
             fn get_id(&self) -> crate::widgets::WidgetId { std::any::TypeId::of::<$name>() }
         }
@@ -66,6 +82,7 @@ macro_rules! widget {
             pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>) -> $name {
                 $name { 
                     queue: q, 
+                    layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
                     $($element: $value),*
                 }
             }
@@ -74,9 +91,11 @@ macro_rules! widget {
 }
 
 #[repr(u8)]
-pub enum ContainerOrientation {
-    Horizontal,
-    Floating
+pub enum ContainerAlignment {
+    Left,
+    Right,
+    Top,
+    Bottom,
 }
 
 /// Container for our widgets that lays them out in the tree
@@ -103,10 +122,10 @@ impl WidgetTree {
     pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
         if invalidate {
             let size = V2::new(layout.width() * self.root.ratio.x, layout.height() * self.root.ratio.y);
-            let r = self.root.data.layout(&layout, size);
-            self.root.set_layout(r);
+            let r = self.root.widget.place(&layout, size);
+            self.root.widget.set_layout(r);
         }
-        self.root.render(&self.data, self.root.layout.clone(), piet, delta_time, invalidate);
+        self.root.render(&self.data, self.root.widget.layout().clone(), piet, delta_time, invalidate);
     }
 
     pub fn focus(&mut self, widget: WidgetId) {
@@ -114,13 +133,13 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(last) = self.focus.last() {
             if let Some(lost) = self.root.find_widget(*last) {
-                lost.data.lost_focus(&lost.layout, &mut handle);
+                lost.widget.lost_focus(&mut handle);
             }
         }
         
         //Find new focus
         if let Some(got) = self.root.find_widget(widget) {
-            got.data.got_focus(&got.layout, &mut handle);
+            got.widget.got_focus(&mut handle);
             self.focus.push(widget);
         }
 
@@ -138,14 +157,14 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(last) = self.focus.pop() {
             if let Some(lost) = self.root.find_widget(last) {
-                lost.data.lost_focus(&lost.layout, &mut handle);
+                lost.widget.lost_focus(&mut handle);
             }
         }
 
         //Revert to previous focus
         if let Some(f) = self.focus.last() {
             if let Some(got) = self.root.find_widget(*f) {
-                got.data.got_focus(&got.layout, &mut handle);
+                got.widget.got_focus(&mut handle);
             }
         }
 
@@ -169,44 +188,34 @@ impl Deref for WidgetTree {
 /// Manages ratio sizing and animations
 pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
-    data: Box<dyn Widget>,
-    layout: Rectangle,
-    pos: V2,
-    size: V2,
+    widget: Box<dyn Widget>,
     ratio: V2,
-    orientation: ContainerOrientation,
+    orientation: ContainerAlignment,
 }
 impl WidgetContainer {
     pub fn root(widget: impl Widget + 'static) -> WidgetContainer {
         WidgetContainer {
             children: vec!(),
-            data: Box::new(widget),
-            layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
-            pos: V2::new(0., 0.),
-            size: V2::new(0., 0.),
+            widget: Box::new(widget),
             ratio: V2::new(1.0, 1.0),
-            orientation: ContainerOrientation::Horizontal,
+            orientation: ContainerAlignment::Left,
         }
     }
     fn new(widget: impl Widget + 'static, size: V2) -> WidgetContainer {
          WidgetContainer {
             children: vec!(),
-            data: Box::new(widget),
-            layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
-            pos: V2::new(0., 0.),
-            size: V2::new(0., 0.),
+            widget: Box::new(widget),
             ratio: size,
-            orientation: ContainerOrientation::Horizontal,
+            orientation: ContainerAlignment::Left,
          }
     }
 
-    fn set_layout(&mut self, rect: Rectangle) {
-        self.size = rect.size();
-        self.pos = *rect.top_left();
-        self.layout = rect;
+    fn set_position(&mut self, rect: V2) {
+        let layout = self.widget.layout();
+        self.widget.set_layout(Rectangle::new(rect, rect + layout.size()))
     }
 
-    pub fn orientation(&mut self, orientation: ContainerOrientation) -> &mut Self {
+    pub fn alignment(&mut self, orientation: ContainerAlignment) -> &mut Self {
         self.orientation = orientation;
         self
     }
@@ -225,7 +234,7 @@ impl WidgetContainer {
 
     pub fn action(&mut self, state: &mut YaffeState, action: &Actions, current_focus: &WidgetId, handler: &mut DeferredAction) -> bool {
         //Only send action to currently focused widget
-        let handled = current_focus == &self.data.get_id() && self.data.action(state, action, handler);
+        let handled = current_focus == &self.widget.get_id() && self.widget.action(state, action, handler);
 
         if !handled {
             for i in self.children.iter_mut() {
@@ -240,25 +249,27 @@ impl WidgetContainer {
     pub fn render(&mut self, state: &YaffeState, rect: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
         let mut x = rect.left();
         let y = rect.top();
-        self.data.render(state, Rectangle::new(self.pos, self.pos + self.size), delta_time, piet);
+        self.widget.render(state, self.widget.layout(), delta_time, piet);
 
         for i in self.children.iter_mut() {
             if invalidate {
                 let size = V2::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
-                let r = i.data.layout(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
-                i.set_layout(r);
+                let r = i.widget.place(&Rectangle::from_tuples((x, y), (rect.right(), rect.bottom())), size);
+                i.widget.set_layout(r);
             }
-            i.render(state, i.layout.clone(), piet, delta_time, invalidate);
+            i.render(state, i.widget.layout().clone(), piet, delta_time, invalidate);
 
             match self.orientation {
-                ContainerOrientation::Horizontal => x += i.layout.width(),
-                ContainerOrientation::Floating => { /* do nothing. child must position itself */ }
+                ContainerAlignment::Left => x += i.widget.layout().width(),
+                ContainerAlignment::Right => { /* do nothing. child must position itself */ }
+                ContainerAlignment::Top => {},
+                ContainerAlignment::Bottom => {},
             }
         }
     }
 
     fn find_widget(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer> {
-        let id = self.data.get_id();
+        let id = self.widget.get_id();
         if widget == id { return Some(self) }
 
         for i in self.children.iter_mut() {
@@ -362,10 +373,10 @@ pub fn run_animations(tree: &mut WidgetTree, delta_time: f32) {
                 if let Some(widget) = tree.root.find_widget(animation.widget) {
 
                     //TODO the lerping causes some jank at the end of animations
-                    let from = widget.pos;
-                    widget.pos = lerp(from, to, delta_time / animation.duration); 
+                    let from = widget.widget.position();
+                    widget.set_position(lerp(from, to, delta_time / animation.duration)); 
             
-                    if animation.remaining == 0. { widget.pos = to; }
+                    if animation.remaining == 0. { widget.set_position(to); }
                 }
             },
 

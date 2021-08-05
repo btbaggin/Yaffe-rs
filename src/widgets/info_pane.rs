@@ -4,25 +4,29 @@ use crate::{YaffeState, widget, Actions, DeferredAction, V2, Rect};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
+use crate::widgets::UiElement;
 
 widget!(pub struct InfoPane { 
     scroll_timer: f32 = 0., 
     y_offset: f32 = 0.
 });
 impl super::Widget for InfoPane {
-    fn layout(&self, space: &Rectangle, size: V2) -> Rectangle { 
+    fn place(&self, space: &Rectangle, size: V2) -> Rectangle { 
         let position = V2::new(space.left() + space.width(), space.top());
         Rectangle::new(position, position + size)
     }
 
-    fn got_focus(&mut self, layout: &Rectangle, handle: &mut DeferredAction) {
+    fn got_focus(&mut self, handle: &mut DeferredAction) {
+        let layout = self.layout();
         handle.animate(self, V2::new(layout.left() - layout.width(), layout.top()), 0.2);
         self.scroll_timer = 3.;
         self.y_offset = 0.;
     }
 
-    fn lost_focus(&mut self, layout: &Rectangle, handle: &mut DeferredAction) {
-        handle.animate(self, V2::new(layout.left(), layout.top()), 0.2);
+    fn lost_focus(&mut self, handle: &mut DeferredAction) {
+        //TODO find a way to reset the position
+        let layout = self.layout();
+        handle.animate(self, V2::new(self.layout.left() + layout.width(), layout.top()), 0.2);
     }
 
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) { 
