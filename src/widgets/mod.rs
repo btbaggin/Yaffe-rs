@@ -23,10 +23,10 @@ pub use app_tile::AppTile;
 pub use info_pane::InfoPane;
 
 pub type WidgetId = std::any::TypeId;
-pub trait WidgetName {
+pub trait FocusableWidget {
     fn get_id(&self) -> WidgetId;
 }
-pub trait Widget: WidgetName {
+pub trait Widget: FocusableWidget {
     /// Update and draw
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
 
@@ -59,7 +59,7 @@ macro_rules! widget {
     }) => {
         #[allow(unused_variables)]
         pub struct $name { #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, $($element: $ty),* }
-        impl crate::widgets::WidgetName for $name {
+        impl crate::widgets::FocusableWidget for $name {
             fn get_id(&self) -> crate::widgets::WidgetId { std::any::TypeId::of::<$name>() }
         }
         impl $name {
@@ -324,7 +324,7 @@ impl DeferredAction {
         }
     }
 
-    pub fn animate(&mut self, widget: &impl WidgetName, to: V2, duration: f32) {
+    pub fn animate(&mut self, widget: &impl FocusableWidget, to: V2, duration: f32) {
         self.anims.push(Animation {
             widget: widget.get_id(),
             anim: AnimationType::Position(to),

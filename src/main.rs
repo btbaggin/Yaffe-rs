@@ -164,7 +164,7 @@ impl YaffeState {
         None
     }
 
-    fn is_widget_focused(&self, widget: &impl WidgetName) -> bool {
+    fn is_widget_focused(&self, widget: &impl FocusableWidget) -> bool {
         if self.focused_widget == widget.get_id() {
             return true;
         }
