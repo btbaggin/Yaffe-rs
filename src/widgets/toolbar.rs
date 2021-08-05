@@ -8,10 +8,6 @@ use crate::widgets::Shifter;
 
 widget!(pub struct Toolbar {});
 impl super::Widget for Toolbar {
-    fn place(&self, space: &Rectangle, ratio_size: V2) -> Rectangle { 
-        Rectangle::from_tuples((space.left(), space.bottom() - space.height() * ratio_size.y), (space.right(), space.bottom()))
-    }
-
     fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) { 
         let time = chrono::Local::now();
 

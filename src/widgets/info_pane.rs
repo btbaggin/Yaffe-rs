@@ -11,10 +11,7 @@ widget!(pub struct InfoPane {
     y_offset: f32 = 0.
 });
 impl super::Widget for InfoPane {
-    fn place(&self, space: &Rectangle, size: V2) -> Rectangle { 
-        let position = V2::new(space.left() + space.width(), space.top());
-        Rectangle::new(position, position + size)
-    }
+    fn offset(&self) -> V2 { V2::new(1., 0.) }
 
     fn got_focus(&mut self, handle: &mut DeferredAction) {
         let layout = self.layout();

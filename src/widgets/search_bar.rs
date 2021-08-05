@@ -51,10 +51,7 @@ widget!(pub struct SearchBar {
     active: bool = false
 });
 impl super::Widget for SearchBar {
-    fn place(&self, space: &Rectangle, size: V2) -> Rectangle {
-        let position = V2::new(space.left(), space.top() - size.y);
-        Rectangle::new(position, position + size)
-    }
+    fn offset(&self) -> V2 { V2::new(0., -1.) }
 
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         let mask = get_exists_mask(state.search_info.option, &state.get_platform().apps);
