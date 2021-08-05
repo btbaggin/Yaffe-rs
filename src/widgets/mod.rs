@@ -43,10 +43,10 @@ pub trait Widget: FocusableWidget {
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: &mut DeferredAction) {}
+    fn got_focus(&mut self, _: Rectangle, _: &mut DeferredAction) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: &mut DeferredAction) {}
+    fn lost_focus(&mut self, _: Rectangle, _: &mut DeferredAction) {}
 }
 
 #[macro_export]
@@ -127,13 +127,13 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(last) = self.focus.last() {
             if let Some(lost) = self.root.find_widget(*last) {
-                lost.widget.lost_focus(&mut handle);
+                lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
             }
         }
         
         //Find new focus
         if let Some(got) = self.root.find_widget(widget) {
-            got.widget.got_focus(&mut handle);
+            got.widget.got_focus(got.original_layout.clone(), &mut handle);
             self.focus.push(widget);
         }
 
@@ -151,14 +151,14 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(last) = self.focus.pop() {
             if let Some(lost) = self.root.find_widget(last) {
-                lost.widget.lost_focus(&mut handle);
+                lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
             }
         }
 
         //Revert to previous focus
         if let Some(f) = self.focus.last() {
             if let Some(got) = self.root.find_widget(*f) {
-                got.widget.got_focus(&mut handle);
+                got.widget.got_focus(got.original_layout.clone(), &mut handle);
             }
         }
 
@@ -184,6 +184,7 @@ pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
     widget: Box<dyn Widget>,
     ratio: V2,
+    original_layout: Rectangle,
     alignment: ContainerAlignment,
 }
 impl WidgetContainer {
@@ -192,6 +193,7 @@ impl WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio: V2::new(1.0, 1.0),
+            original_layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
             alignment: ContainerAlignment::Left,
         }
     }
@@ -200,6 +202,7 @@ impl WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio: size,
+            original_layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
             alignment: alignment,
          }
     }
@@ -270,6 +273,7 @@ impl WidgetContainer {
                 let offset = i.widget.offset();
                 let origin = V2::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
                 let r = Rectangle::new(origin, origin + size);
+                i.original_layout = r.clone();
                 i.widget.set_layout(r);
             }
             i.render(state, piet, delta_time, invalidate);

@@ -13,17 +13,14 @@ widget!(pub struct InfoPane {
 impl super::Widget for InfoPane {
     fn offset(&self) -> V2 { V2::new(1., 0.) }
 
-    fn got_focus(&mut self, handle: &mut DeferredAction) {
-        let layout = self.layout();
-        handle.animate(self, V2::new(layout.left() - layout.width(), layout.top()), 0.2);
+    fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+        handle.animate(self, V2::new(original.left() - self.layout().width(), original.top()), 0.2);
         self.scroll_timer = 3.;
         self.y_offset = 0.;
     }
 
-    fn lost_focus(&mut self, handle: &mut DeferredAction) {
-        //TODO find a way to reset the position
-        let layout = self.layout();
-        handle.animate(self, V2::new(self.layout.left() + layout.width(), layout.top()), 0.2);
+    fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+        handle.animate(self, *original.top_left(), 0.2);
     }
 
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) { 

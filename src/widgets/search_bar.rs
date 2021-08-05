@@ -108,15 +108,13 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, handle: &mut DeferredAction) {
-        let layout = self.layout();
-        handle.animate(self, V2::new(layout.left(), 0.), 0.2);
+    fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+        handle.animate(self, V2::new(original.left(), original.bottom()), 0.2);
     }
 
-    fn lost_focus(&mut self, handle: &mut DeferredAction) {
+    fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
         if !self.active {
-            let layout = self.layout();
-            handle.animate(self, V2::new(layout.left(), -layout.height()), 0.2);
+            handle.animate(self, *original.top_left(), 0.2);
         }
     }
 
