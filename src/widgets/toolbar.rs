@@ -1,12 +1,12 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, create_widget, V2};
+use crate::{YaffeState, widget, V2};
 use crate::colors::*;
 use crate::Rect;
 use crate::assets::{Images};
 use crate::widgets::Shifter;
 
-create_widget!(Toolbar, );
+widget!(pub struct Toolbar {});
 impl super::Widget for Toolbar {
     fn layout(&self, space: &Rectangle, ratio_size: V2) -> Rectangle { 
         Rectangle::from_tuples((space.left(), space.bottom() - space.height() * ratio_size.y), (space.right(), space.bottom()))

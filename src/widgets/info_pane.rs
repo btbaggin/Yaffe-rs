@@ -1,11 +1,14 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, create_widget, Actions, DeferredAction, V2, Rect};
+use crate::{YaffeState, widget, Actions, DeferredAction, V2, Rect};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
 
-create_widget!(InfoPane, scroll_timer: f32 = 0., y_offset: f32 = 0.);
+widget!(pub struct InfoPane { 
+    scroll_timer: f32 = 0., 
+    y_offset: f32 = 0.
+});
 impl super::Widget for InfoPane {
     fn layout(&self, space: &Rectangle, size: V2) -> Rectangle { 
         let position = V2::new(space.left() + space.width(), space.top());

@@ -1,8 +1,8 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, create_widget};
+use crate::{YaffeState, widget};
 
-create_widget!(Background, );
+widget!(pub struct Background {});
 impl super::Widget for Background {
     fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) { 
         let base = crate::colors::get_accent_color(&state.settings);

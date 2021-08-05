@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, create_widget, Actions, DeferredAction, V2};
+use crate::{YaffeState, widget, Actions, DeferredAction, V2};
 use crate::colors::*;
 use crate::Rect;
 
@@ -47,7 +47,9 @@ impl SearchInfo {
     }
 }
 
-create_widget!(SearchBar, active: bool = false);
+widget!(pub struct SearchBar { 
+    active: bool = false
+});
 impl super::Widget for SearchBar {
     fn layout(&self, space: &Rectangle, size: V2) -> Rectangle {
         let position = V2::new(space.left(), space.top() - size.y);

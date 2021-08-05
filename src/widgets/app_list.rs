@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, Actions, DeferredAction, create_widget, V2};
+use crate::{YaffeState, Actions, DeferredAction, widget, V2};
 use crate::widgets::AppTile;
 use crate::Rect;
 use crate::logger::{LogEntry, UserMessage};
@@ -8,13 +8,14 @@ use crate::logger::{LogEntry, UserMessage};
 const APPS_PER_ROW: usize = 4;
 const MARGIN: f32 = 0.1;
 
-create_widget!(AppList, 
+widget!(pub struct AppList {
     cached_platform: usize = 99999, 
     tiles: Vec<AppTile> = Vec::<AppTile>::new(),
     tiles_x: isize = 0,
     tiles_y: isize = 0,
     first_visible: isize = 0
-);
+});
+
 impl super::Widget for AppList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {

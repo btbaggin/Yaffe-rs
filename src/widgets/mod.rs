@@ -53,8 +53,10 @@ macro_rules! get_widget_id {
 }
 
 #[macro_export]
-macro_rules! create_widget {
-    ($name:ident, $($element:ident: $ty:ty = $value:expr),*) => {
+macro_rules! widget {
+    (pub struct $name:ident {
+        $($element:ident: $ty:ty = $value:expr),*
+    }) => {
         #[allow(unused_variables)]
         pub struct $name { #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, $($element: $ty),* }
         impl crate::widgets::WidgetName for $name {

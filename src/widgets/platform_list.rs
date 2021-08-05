@@ -1,10 +1,10 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, Actions, DeferredAction, create_widget, V2, Rect};
+use crate::{YaffeState, Actions, DeferredAction, widget, V2, Rect};
 use crate::{colors::*, ui::*, font::*};
 use crate::modals::{PlatformDetailModal, ModalSize, display_modal};
 
-create_widget!(PlatformList, );
+widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
