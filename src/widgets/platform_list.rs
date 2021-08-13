@@ -9,11 +9,15 @@ impl super::Widget for PlatformList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Down =>  {
-                if state.selected_platform < state.platforms.len() - 1 { state.selected_platform += 1 }
+                if state.selected_platform < state.platforms.len() - 1 { 
+                    state.selected_platform += 1;
+                }
                 true
             }
             Actions::Up => {
-                if state.selected_platform > 0 { state.selected_platform -= 1}
+                if state.selected_platform > 0 { 
+                    state.selected_platform -= 1;
+                }
                 true
             }
             Actions::Accept => {
@@ -58,6 +62,7 @@ impl super::Widget for PlatformList {
             let height = name_label.height();
             if i == selected_index {
                 let rect = Rectangle::from_tuples((rect.left(), y), (right, y + height));
+
                 if state.is_widget_focused(self) { piet.draw_rectangle(rect, get_accent_color(&state.settings)); }
                 else { piet.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
             }

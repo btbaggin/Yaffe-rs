@@ -13,35 +13,44 @@ widget!(pub struct AppList {
     tiles: Vec<AppTile> = Vec::<AppTile>::new(),
     tiles_x: isize = 0,
     tiles_y: isize = 0,
-    first_visible: isize = 0
+    first_visible: isize = 0,
+    dummy: f32 = 0.
 });
 
 impl super::Widget for AppList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
-                handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
+                let offset = crate::offset_of!(AppList => dummy);
+                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
+
                 let (index, visible) = self.increment_index(state.selected_app, APPS_PER_ROW, false);
                 state.selected_app = index;
                 self.first_visible = visible;
                 true
             }
             Actions::Down => {
-                handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
+                let offset = crate::offset_of!(AppList => dummy);
+                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
+
                 let (index, visible) = self.increment_index(state.selected_app, APPS_PER_ROW, true);
                 state.selected_app = index;
                 self.first_visible = visible;
                 true
             }
             Actions::Left => {
-                handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
+                let offset = crate::offset_of!(AppList => dummy);
+                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
+
                 let (index, visible) = self.increment_index(state.selected_app, 1, false);
                 state.selected_app = index;
                 self.first_visible = visible;
                 true
             }
             Actions::Right => { 
-                handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
+                let offset = crate::offset_of!(AppList => dummy);
+                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
+
                 let (index, visible) = self.increment_index(state.selected_app, 1, true);
                 state.selected_app = index;
                 self.first_visible = visible;
@@ -71,7 +80,8 @@ impl super::Widget for AppList {
     }
 
     fn got_focus(&mut self, _: Rectangle, handler: &mut DeferredAction) {
-        handler.animate_placeholder(crate::widgets::app_tile::ANIMATION_TIME);
+        let offset = crate::offset_of!(AppList => dummy);
+        handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) {

@@ -14,13 +14,15 @@ impl super::Widget for InfoPane {
     fn offset(&self) -> V2 { V2::new(1., 0.) }
 
     fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
-        handle.animate(self, V2::new(original.left() - self.layout().width(), original.top()), 0.2);
+        let offset = crate::offset_of!(InfoPane => position: V2 => x);
+        handle.animate_f32(self, offset, original.left() - self.layout().width(), 0.2);
         self.scroll_timer = 3.;
         self.y_offset = 0.;
     }
 
     fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
-        handle.animate(self, *original.top_left(), 0.2);
+        let offset = crate::offset_of!(InfoPane => position: V2 => x);
+        handle.animate_f32(self, offset, original.top_left().x, 0.2);
     }
 
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) { 
@@ -63,7 +65,7 @@ impl super::Widget for InfoPane {
 
             //Overview
             if !app.overview.is_empty() {
-                let name_label = super::get_drawable_text_with_wrap(crate::font::get_info_font_size(state), &app.overview, rect.width() - 10.);
+                let name_label = super::get_drawable_text_with_wrap(crate::font::get_title_font_size(state), &app.overview, rect.width() - 10.);
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height() + height > rect.height() {

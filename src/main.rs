@@ -196,7 +196,7 @@ impl windowing::WindowHandler for WidgetTree {
             self.render_all(window_rect.clone(), graphics, delta_time, !self.layout_valid);
             self.layout_valid = true;
 
-            crate::widgets::run_animations(self, delta_time);
+            crate::widgets::animations::run_animations(self, delta_time);
 
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {

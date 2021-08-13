@@ -7,6 +7,7 @@ const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
 const SEARCH_OPTION_PLAYERS: i32 = 2;
 const SEARCH_OPTION_MAX: i32 = SEARCH_OPTION_PLAYERS;
+const NAME_WIDTH: f32 = 175.;
 
 pub struct SearchInfo {
     option: i32,
@@ -28,7 +29,7 @@ impl SearchInfo {
                 let c = (self.start + self.index as u8) as char;
                 exe.name.starts_with(c) 
             }
-            SEARCH_OPTION_PLAYERS => { exe.players == self.start - self.index as u8 }
+            SEARCH_OPTION_PLAYERS => { exe.players == (self.index + 1) as u8 }
             _ => panic!("Unknown filter option"),
         }
     }
@@ -41,13 +42,14 @@ impl SearchInfo {
             i += amount;
             if i <= -1 { self.index = -1; return; }
             else if mask & 1 << i != 0 { self.index = i; return; }
-            else if i == (self.end - self.start) as isize { self.index = -1; return; }
+            else if i >= (self.end - self.start) as isize { self.index = -1; return; }
         }
     }
 }
 
 widget!(pub struct SearchBar { 
-    active: bool = false
+    active: bool = false,
+    highlight_offset: f32 = 0.
 });
 impl super::Widget for SearchBar {
     fn offset(&self) -> V2 { V2::new(0., -1.) }
@@ -80,11 +82,22 @@ impl super::Widget for SearchBar {
                 true
             }
             Actions::Left => {
+                let filter_start = self.position.x + NAME_WIDTH;
+                let item_size = (self.position.x + self.size.x - filter_start) / (search.end - search.start + 1) as f32;
                 search.increment_index(mask, -1);
+
+                let offset = crate::offset_of!(SearchBar => highlight_offset);
+                handler.animate_f32(self, offset, f32::max(0., search.index as f32 * item_size), 0.1);
                 true
             }
             Actions::Right => {
+                let filter_start = self.position.x + NAME_WIDTH;
+                let item_size = (self.position.x + self.size.x - filter_start) / (search.end - search.start + 1) as f32;
                 search.increment_index(mask, 1);
+
+                let offset = crate::offset_of!(SearchBar => highlight_offset);
+                handler.animate_f32(self, offset, f32::max(0., search.index as f32 * item_size), 0.1);
+
                 true
             }
             Actions::Down => {
@@ -108,17 +121,20 @@ impl super::Widget for SearchBar {
     }
 
     fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
-        handle.animate(self, V2::new(original.left(), original.bottom()), 0.2);
+        let offset = crate::offset_of!(SearchBar => position: V2 => y);
+        handle.animate_f32(self, offset, original.bottom(), 0.2);
+
+        self.highlight_offset = 0.;
     }
 
     fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
         if !self.active {
-            handle.animate(self, *original.top_left(), 0.2);
+            let offset = crate::offset_of!(SearchBar => position: V2 => y);
+            handle.animate_f32(self, offset, original.top(), 0.2);
         }
     }
 
     fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
-        const NAME_WIDTH: f32 = 175.;
 
         let search = &state.search_info;
         let filter_start = rect.left() + NAME_WIDTH;
@@ -133,41 +149,46 @@ impl super::Widget for SearchBar {
         
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
 
+
         piet.draw_rectangle(rect.clone(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
         let filter_rect = Rectangle::new(*rect.top_left(), V2::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
-        if search.index < 0 {
-            piet.draw_rectangle(filter_rect.clone(), get_accent_color(&state.settings));
+
+        //Highlight
+        let mut highlight_position = rect.left() + self.highlight_offset;
+        let mut highlight_width = NAME_WIDTH;
+        if search.index >= 0 { 
+            highlight_position += NAME_WIDTH; 
+            highlight_width = item_size;
         }
 
+        let r = Rectangle::from_tuples((highlight_position, rect.top()), (highlight_position + highlight_width, rect.bottom()));
+        piet.draw_rectangle(r, get_accent_color(&state.settings));
+
+        let mid = filter_rect.left() + filter_rect.width() / 2.;
+
         let name_label = super::get_drawable_text(crate::font::FONT_SIZE, &name);
-        piet.draw_text(V2::new(rect.left() + crate::ui::MARGIN, rect.top() + name_label.height() / 4.), focused_color, &name_label);
+        let half = name_label.width() / 2.;
+        piet.draw_text(V2::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - crate::font::FONT_SIZE / 2.), focused_color, &name_label);
 
         const ARROW_SIZE: f32 = 10.;
         const ARROW_HEIGHT: f32 = 5.;
-        let mid = filter_rect.left() + filter_rect.width() / 2.;
         if search.option > SEARCH_OPTION_NONE { 
             //Down arrow
             piet.draw_line(V2::new(mid - ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), V2::new(mid, filter_rect.bottom() - 7.), 2., focused_color); 
             piet.draw_line(V2::new(mid, filter_rect.bottom() - 7.), V2::new(mid + ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), 2., focused_color);
         }
-         if search.option < SEARCH_OPTION_MAX { 
+        if search.option < SEARCH_OPTION_MAX { 
             //Up arrow
             piet.draw_line(V2::new(mid - ARROW_SIZE, filter_rect.top() + 12.), V2::new(mid, filter_rect.top() + 7.), 2., focused_color); 
             piet.draw_line(V2::new(mid, filter_rect.top() + 7.), V2::new(mid + ARROW_SIZE, filter_rect.top() + 12.), 2., focused_color); 
-          }
+        }
 
         let mask = get_exists_mask(search.option, &state.get_platform().apps);
         for i in start..=end {
             let item_start = filter_start + ((i - start) as f32 * item_size);
-
-            //Heighlight
-            if search.index + start as isize == i as isize {
-                let r = Rectangle::from_tuples((item_start, rect.top()), (item_start + item_size, rect.bottom()));
-                piet.draw_rectangle(r, get_accent_color(&state.settings));
-            }
 
             //Filter item
             //If there are no items that match a certain filter we will draw it unfocused

@@ -6,7 +6,9 @@ use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
 use crate::{YaffeState, Actions, V2, Rect};
 use std::ops::Deref;
+use crate::widgets::animations::*;
 
+pub mod animations;
 mod platform_list;
 mod app_list;
 mod search_bar;
@@ -64,14 +66,18 @@ macro_rules! widget {
         #[allow(unused_variables)]
         pub struct $name { 
             #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, 
-            layout: Rectangle,
+            pub position: crate::V2,
+            pub size: crate::V2,
             $($element: $ty),* 
         }
         impl crate::widgets::UiElement for $name {
-            fn position(&self) -> crate::V2 { *self.layout.top_left() }
-            fn size(&self) -> crate::V2 { self.layout.size() }
-            fn layout(&self) -> Rectangle { self.layout.clone() }
-            fn set_layout(&mut self, layout: Rectangle) { self.layout = layout; }
+            fn position(&self) -> crate::V2 { self.position }
+            fn size(&self) -> crate::V2 { self.size }
+            fn layout(&self) -> Rectangle { Rectangle::new(self.position, self.position + self.size) }
+            fn set_layout(&mut self, layout: Rectangle) { 
+                self.position = *layout.top_left(); 
+                self.size = layout.size();
+            }
         }
         impl crate::widgets::FocusableWidget for $name {
             fn get_id(&self) -> crate::widgets::WidgetId { std::any::TypeId::of::<$name>() }
@@ -80,7 +86,8 @@ macro_rules! widget {
             pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>) -> $name {
                 $name { 
                     queue: q, 
-                    layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
+                    position: crate::V2::new(0., 0.),
+                    size: crate::V2::new(0., 0.),
                     $($element: $value),*
                 }
             }
@@ -103,7 +110,7 @@ pub struct WidgetTree {
     pub root: WidgetContainer,
     pub focus: Vec<WidgetId>,
     pub data: YaffeState,
-    pub anims: std::collections::HashMap<WidgetId, Animation>,
+    pub anims: Vec<Animation>,
     pub layout_valid: bool,
 }
 impl WidgetTree {
@@ -112,7 +119,7 @@ impl WidgetTree {
             root: root,
             focus: vec!(),
             data: data,
-            anims: std::collections::HashMap::new(),
+            anims: vec!(),
             layout_valid: false,
         }
     }
@@ -139,10 +146,7 @@ impl WidgetTree {
 
         //Update any animations
         for i in handle.anims {
-            if self.anims.contains_key(&i.widget) {
-                self.anims.remove(&i.widget);
-            }
-            self.anims.insert(i.widget, i);
+            self.anims.push(i);
         }
     }
 
@@ -164,10 +168,7 @@ impl WidgetTree {
 
         //Update any animations
         for i in handle.anims {
-            if self.anims.contains_key(&i.widget) {
-                self.anims.remove(&i.widget);
-            }
-            self.anims.insert(i.widget, i);
+            self.anims.push(i);
         }
     }
 }
@@ -205,11 +206,6 @@ impl WidgetContainer {
             original_layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
             alignment: alignment,
          }
-    }
-
-    fn set_position(&mut self, rect: V2) {
-        let layout = self.widget.layout();
-        self.widget.set_layout(Rectangle::new(rect, rect + layout.size()))
     }
 
     pub fn add_child(&mut self, widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> &mut Self {
@@ -292,20 +288,6 @@ impl WidgetContainer {
     }
 }
 
-//
-// Actions/animations
-//
-enum AnimationType {
-    Position((V2, V2)),
-    Placeholder,
-}
-
-pub struct Animation {
-    widget: WidgetId,
-    anim: AnimationType,
-    duration: f32,
-    remaining: f32,
-}
 
 #[repr(u8)]
 enum FocusType {
@@ -340,71 +322,13 @@ impl DeferredAction {
 
         //Update any animations
         for i in self.anims {
-            if ui.anims.contains_key(&i.widget) {
-                ui.anims.remove(&i.widget);
-            }
-            ui.anims.insert(i.widget, i);
+            ui.anims.push(i);
         }
     }
 
-    pub fn animate(&mut self, widget: &impl FocusableWidget,  to: V2, duration: f32) {
-        self.anims.push(Animation {
-            widget: widget.get_id(),
-            anim: AnimationType::Position((*widget.layout().top_left(), to)),
-            duration: duration,
-            remaining: duration,
-        });
-    }
-
-    pub fn animate_placeholder(&mut self, duration: f32) {
-        self.anims.push(Animation {
-            widget: std::any::TypeId::of::<crate::widgets::app_tile::AppTile>(),
-            anim: AnimationType::Placeholder,
-            duration: duration,
-            remaining: duration,
-        });
-    }
-}
-
-/// Processes any widgets that have running animations
-/// Currently only position animations are allowed
-pub fn run_animations(tree: &mut WidgetTree, delta_time: f32) {
-    let mut keys = vec!();
-
-    fn slerp(current: V2, from: V2, to: V2, amount: f32) -> V2 {
-        let delta = to - from;
-        V2::new(current.x + delta.x * amount, current.y + delta.y * amount)
-    }
-
-    //Run animations, if it completes, mark it for removal
-    for (k, animation) in tree.anims.iter_mut() {
-        if animation.remaining <= 0. {
-            //We do this at the beginning because we need animations to persist 1 fram longer than they go
-            //This is because we only redraw the screen if animations are playing
-            //If we removed them at the end we wouldn't redraw the last frame of the animation
-            keys.push(k.clone());
-         } else {
-
-            animation.remaining -= delta_time;
-        
-            match animation.anim {
-                AnimationType::Position((from, to)) => {
-                    if let Some(widget) = tree.root.find_widget(animation.widget) {
-                        let position = slerp(widget.widget.position(), from, to, delta_time / animation.duration);
-                        widget.set_position(position); 
-    
-                        if animation.remaining <= 0. { widget.set_position(to) }
-                    }
-                },
-    
-                AnimationType::Placeholder => { }
-            }
-         }
-    }
-
-    for k in keys {
-        tree.anims.remove(&k);
-    }
+    // pub fn animate(&mut self, widget: &impl FocusableWidget, to: V2, duration: f32) {
+    //     self.anims.push(Animation::position(widget, to, duration));
+    // }
 }
 
 //
@@ -435,7 +359,7 @@ pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBloc
 
 /// Simple helper method to get a text object that is wrapped to a certain size
 fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
-    let font = crate::assets::request_font(crate::assets::Fonts::Regular);
+    let font =  crate::assets::request_font(crate::assets::Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);
     font.layout_text(text, size, option)
