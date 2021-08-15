@@ -14,8 +14,6 @@ const VISIBLE_FLAG: u8 = 0x01;
 pub struct AppTile { 
     queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>,
     index: usize,
-    focused: bool,
-    time: f32,
     flags: u8,
     pub position: V2,
     pub size: V2,
@@ -25,8 +23,6 @@ impl AppTile {
         AppTile { 
             queue: q,
             index: index,
-            focused: false,
-            time: 0.,
             flags: VISIBLE_FLAG,
             position: V2::new(0., 0.),
             size: V2::new(0., 0.),
@@ -47,18 +43,18 @@ impl AppTile {
     }
 
 
-    pub fn render(&mut self, settings: &crate::settings::SettingsFile, focused: bool, exe: &crate::Executable, piet: &mut Graphics2D) {
+    pub fn render(&mut self, settings: &crate::settings::SettingsFile, focused: bool, animation: f32, exe: &crate::Executable, piet: &mut Graphics2D) {
         if !self.is_visible() { return; }
 
         let mut target_size = self.size;
         let mut position = self.position;
 
-        if self.focused && focused {
-            let animation_remainder = (ANIMATION_TIME - self.time) / ANIMATION_TIME;
+        if focused {
+            // let animation_remainder = (ANIMATION_TIME - self.time) / ANIMATION_TIME;
             //Have alpha fade in as the time grows to full size
-            let alpha = f32::powf(animation_remainder, 2.);
+            let alpha = f32::powf(animation, 2.);
 
-            target_size = target_size * (1. + animation_remainder * SELECTED_SCALAR);
+            target_size = target_size * (1. + animation * SELECTED_SCALAR);
             position = position - (target_size - self.size) / 2.;
 
             //Position of the text and buttons for the focused game
@@ -97,19 +93,6 @@ impl AppTile {
         } else if let Some(i) = request_image(piet, &mut queue, Images::Placeholder) {
             i.render(piet, Rect::point_and_size(position, target_size));
         }
-    }
-
-    pub fn update(&mut self, state: &YaffeState, delta_time: f32) {
-        if state.selected_app == self.index {
-            if !self.focused {
-                self.focused = true;
-                self.time = ANIMATION_TIME;
-            }
-        } else {
-            self.focused = false;
-        }
-
-        self.time = f32::max(0., self.time - delta_time);
     }
 
     pub fn get_image_size(&self, state: &YaffeState) -> V2 {

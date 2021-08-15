@@ -14,46 +14,26 @@ widget!(pub struct AppList {
     tiles_x: isize = 0,
     tiles_y: isize = 0,
     first_visible: isize = 0,
-    dummy: f32 = 0.
+    tile_animation: f32 = 0.
 });
 
 impl super::Widget for AppList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
-                let offset = crate::offset_of!(AppList => dummy);
-                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
-
-                let (index, visible) = self.increment_index(state.selected_app, APPS_PER_ROW, false);
-                state.selected_app = index;
-                self.first_visible = visible;
+                self.update_position(state, APPS_PER_ROW, false, handler);
                 true
             }
             Actions::Down => {
-                let offset = crate::offset_of!(AppList => dummy);
-                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
-
-                let (index, visible) = self.increment_index(state.selected_app, APPS_PER_ROW, true);
-                state.selected_app = index;
-                self.first_visible = visible;
+                self.update_position(state, APPS_PER_ROW, true, handler);
                 true
             }
             Actions::Left => {
-                let offset = crate::offset_of!(AppList => dummy);
-                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
-
-                let (index, visible) = self.increment_index(state.selected_app, 1, false);
-                state.selected_app = index;
-                self.first_visible = visible;
+                self.update_position(state, 1, false, handler);
                 true
             }
             Actions::Right => { 
-                let offset = crate::offset_of!(AppList => dummy);
-                handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
-
-                let (index, visible) = self.increment_index(state.selected_app, 1, true);
-                state.selected_app = index;
-                self.first_visible = visible;
+                self.update_position(state, 1, true, handler);
                 true 
             }
             Actions::Accept => {
@@ -80,12 +60,13 @@ impl super::Widget for AppList {
     }
 
     fn got_focus(&mut self, _: Rectangle, handler: &mut DeferredAction) {
-        let offset = crate::offset_of!(AppList => dummy);
-        handler.animate_f32(self, offset, 0., crate::widgets::app_tile::ANIMATION_TIME);
+        self.tile_animation = 0.;
+        let offset = crate::offset_of!(AppList => tile_animation);
+        handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) {
-        self.update(state, &rect, delta_time);
+    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
+        self.update(state, &rect);
 
         let plat = state.get_platform();
 
@@ -95,16 +76,16 @@ impl super::Widget for AppList {
             if i == state.selected_app && focused { continue; }
 
             let tile = &mut self.tiles[i];
-            tile.render(&state.settings, focused, &plat.apps[i], piet);
+            tile.render(&state.settings, false, self.tile_animation, &plat.apps[i], piet);
         }
 
         if let Some(tile) = self.tiles.get_mut(state.selected_app) {
-            tile.render(&state.settings, focused, &plat.apps[state.selected_app], piet);
+            tile.render(&state.settings, focused, self.tile_animation, &plat.apps[state.selected_app], piet);
         }
     }
 }
 impl AppList {
-    fn update(&mut self, state: &YaffeState, rect: &Rectangle, delta_time: f32) {
+    fn update(&mut self, state: &YaffeState, rect: &Rectangle) {
         //Check the length of our cache vs actual in case a game was added
         //to this platform while we were on it
         if self.cached_platform != state.selected_platform ||
@@ -116,10 +97,6 @@ impl AppList {
             }
 
             self.cached_platform = state.selected_platform;
-        }
-
-        for exe in self.tiles.iter_mut() {
-            exe.update(state, delta_time);
         }
 
         self.update_tiles(state, rect);
@@ -248,6 +225,19 @@ impl AppList {
         assert!(index >= 0);
 
         (index as usize, first_visible)
+    }
+
+    fn update_position(&mut self, state: &mut YaffeState, amount: usize, forward: bool, handler: &mut DeferredAction) {
+        let old_index = state.selected_app;
+        let (index, visible) = self.increment_index(state.selected_app, amount, forward);
+        if old_index != index {
+            state.selected_app = index;
+            self.first_visible = visible;
+
+            self.tile_animation = 0.;
+            let offset = crate::offset_of!(AppList => tile_animation);
+            handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
+        }
     }
 }
 
