@@ -7,6 +7,9 @@ use speedy2d::shape::Rectangle;
 use speedy2d::dimen::Vector2;
 pub use crate::settings::SettingNames;
 
+#[macro_use]
+extern crate dlopen_derive;
+
 use crate::logger::{UserMessage, LogEntry};
 
 type V2 = Vector2<f32>;
@@ -89,6 +92,7 @@ mod logger;
 mod settings;
 mod windowing;
 mod input;
+mod plugins;
 use windowing::{Rect, Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
@@ -121,12 +125,13 @@ pub struct YaffeState {
     selected_platform: usize,
     selected_app: usize,
     platforms: Vec<Platform>,
-    search_info: widgets::SearchInfo,
+    plugins: Vec<plugins::Plugin>,
     focused_widget: widgets::WidgetId,
-    restricted_mode: RestrictedMode,
-    restricted_last_approve: Option<Instant>,
     modals: std::sync::Mutex<Vec<modals::Modal>>,
     queue: Arc<RefCell<job_system::JobQueue>>,
+    search_info: widgets::SearchInfo,
+    restricted_mode: RestrictedMode,
+    restricted_last_approve: Option<Instant>,
     refresh_list: bool,
     settings: settings::SettingsFile,
     running: bool,
@@ -140,6 +145,7 @@ impl YaffeState {
             selected_platform: 0,
             selected_app: 0,
             platforms: vec!(),
+            plugins: vec!(),
             search_info: SearchInfo::new(),
             focused_widget: get_widget_id!(widgets::PlatformList),
             restricted_mode: RestrictedMode::Off,
@@ -245,6 +251,7 @@ impl windowing::WindowHandler for WidgetTree {
     }
 
     fn on_stop(&mut self) {
+        plugins::unload(&mut self.data.plugins);
         server::shutdown();
     }
 
@@ -281,6 +288,8 @@ fn main() {
  
     let input_map = input::get_input_map();
     let gamepad = platform_layer::initialize_gamepad().log_message_if_fail("Unable to initialize input");
+
+    plugins::load_plugins(&mut ui.data.plugins, "./plugins");
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 

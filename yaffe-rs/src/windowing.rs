@@ -214,6 +214,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 window.renderer.draw_frame(|graphics| {
                     if !handle.on_frame(graphics, delta_time, size) {
                         *control_flow = ControlFlow::Exit;
+                        handle.on_stop();
                     }
                 });
                 context.windowed().swap_buffers().unwrap();
