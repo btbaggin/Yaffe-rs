@@ -132,5 +132,6 @@ pub enum JobType {
     LoadImage(RawDataPointer),
     DownloadUrl((String, String)),
     SearchPlatform((RawDataPointer, String, String, String, String)),
-    SearchGame((RawDataPointer, String, String, i64))
+    SearchGame((RawDataPointer, String, String, i64)),
+    GetPluginItems(),
 }
