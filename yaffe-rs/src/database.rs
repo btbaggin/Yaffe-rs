@@ -14,9 +14,6 @@ static QS_GET_RECENT_GAMES: &str = "SELECT g.Name, g.Overview, g.Players, g.Rati
 static QS_ADD_GAME: &str = "INSERT INTO Games (ID, Platform, Name, Overview, Players, Rating, FileName) VALUES ( @GameId, @Platform, @Name, @Overview, @Players, @Rating, @FileName )";
 static QS_UPDATE_GAME_LAST_RUN: &str = "UPDATE Games SET LastRun = strftime('%s', 'now', 'localtime') WHERE Platform = @Platform AND FileName = @Game";
 
-//TODO remove
-static QS_GET_APPLICATION: &str = "SELECT Name, Path, Args FROM Applications WHERE ID = @ID";
-
 pub static QS_CREATE_GAMES_TABLE: &str = "CREATE TABLE \"Games\" ( \"ID\" INTEGER, \"Platform\" INTEGER, \"Name\" TEXT, \"Overview\" TEXT, \"Players\" INTEGER, \"Rating\" INTEGER, \"FileName\" TEXT, \"LastRun\" INTEGER )";
 pub static QS_CREATE_PLATFORMS_TABLE: &str = "CREATE TABLE \"Platforms\" ( \"ID\" INTEGER, \"Platform\" TEXT, \"Path\" TEXT, \"Args\" TEXT, \"Roms\" TEXT )";
 
@@ -201,18 +198,10 @@ pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)>
     crate::log_function!(platform);
 
     let con = YaffeConnection::new();
+    let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);
+    execute_select_once(&mut stmt)?;
 
-    if platform < 0 {
-        let mut stmt = create_statement!(con, QS_GET_APPLICATION, platform);
-        execute_select_once(&mut stmt)?;
-
-        Ok((stmt.read::<String>(0).unwrap(), stmt.read::<String>(1).unwrap(), String::from("")))
-    } else {
-        let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);
-        execute_select_once(&mut stmt)?;
-
-        Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<String>(3).unwrap()))
-    }
+    Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<String>(3).unwrap()))
 }
 
 pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {

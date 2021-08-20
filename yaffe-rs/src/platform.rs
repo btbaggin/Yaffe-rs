@@ -1,9 +1,12 @@
 use crate::database::*;
 use crate::assets::AssetSlot;
 use crate::{YaffeState};
+use crate::plugins::Plugin;
 use super::{Platform, Executable};
 use std::convert::{TryFrom, TryInto};
 use crate::logger::LogEntry;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -87,21 +90,23 @@ impl Platform {
         }
     }
 
-    pub fn get_plugin<'a>(&self, state: &'a YaffeState) -> &'a std::cell::RefCell<crate::plugins::Plugin> {
-        assert_eq!(PlatformType::Plugin, self.kind);
-        &state.plugins[self.plugin_index]
+    pub fn get_plugin<'a>(&self, state: &'a YaffeState) -> Option<&'a RefCell<Plugin>> {
+        if let PlatformType::Plugin = self.kind {
+            return Some(&state.plugins[self.plugin_index]);
+        }
+        None
     }
 }
 
 impl Executable {
-    pub fn new_plugin_item(platform_index: usize, item: yaffe_plugin::YaffePluginItem) -> Executable {
+    pub fn plugin_item(platform_index: usize, item: yaffe_plugin::YaffePluginItem) -> Executable {
         super::Executable {
             file: item.path,
             name: item.name,
             description: String::from(""),
             platform_index: platform_index,
-            boxart: std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&item.thumbnail))),
-            banner: std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&item.thumbnail))),
+            boxart: Rc::new(RefCell::new(AssetSlot::new_url(&item.thumbnail))),
+            banner: Rc::new(RefCell::new(AssetSlot::new_url(&item.thumbnail))),
             players: 1,
             rating: if !item.restricted { Rating::Everyone } else { Rating::Mature },
         }
@@ -113,8 +118,8 @@ impl Executable {
                     platform_index: usize, 
                     players: u8,
                     rating: Rating,
-                    boxart: std::rc::Rc<std::cell::RefCell<AssetSlot>>, 
-                    banner: std::rc::Rc<std::cell::RefCell<AssetSlot>>) -> Executable {
+                    boxart: Rc<RefCell<AssetSlot>>, 
+                    banner: Rc<RefCell<AssetSlot>>) -> Executable {
         Executable {
             file,
             name,
@@ -141,13 +146,6 @@ pub fn get_database_info(state: &mut YaffeState) {
     for (i, p) in state.plugins.iter_mut().enumerate() {
         let name = String::from(p.borrow().name());
 
-        //TODO 
-        // for i in p.load_items().unwrap() {
-        //     platform.apps.push(Executable::new_application(i.name.clone(), 
-        //         i.name,
-        //         std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail))),
-        //         std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail)))));
-        // }
         platforms.push(Platform::plugin(i, name));
     }
 

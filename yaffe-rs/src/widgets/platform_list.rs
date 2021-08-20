@@ -11,12 +11,14 @@ impl super::Widget for PlatformList {
             Actions::Down =>  {
                 if state.selected_platform < state.platforms.len() - 1 { 
                     state.selected_platform += 1;
+                    handler.load_plugin(true);
                 }
                 true
             }
             Actions::Up => {
                 if state.selected_platform > 0 { 
                     state.selected_platform -= 1;
+                    handler.load_plugin(true);
                 }
                 true
             }
@@ -26,7 +28,6 @@ impl super::Widget for PlatformList {
             }
             Actions::Info => {
                 let platform = state.get_platform();
-                //TODO change to not???
                 if let crate::platform::PlatformType::Emulator = platform.kind {
                     let modal = Box::new(PlatformDetailModal::from_existing(platform, platform.id.unwrap()));
                     display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(crate::modals::on_update_application_close));

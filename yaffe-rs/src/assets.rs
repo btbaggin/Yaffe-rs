@@ -193,7 +193,6 @@ fn get_slot_mut(t: AssetTypes) -> &'static mut AssetSlot {
 
 fn asset_path_is_valid(path: &AssetPathType) -> bool {
     match path {
-        //TODO ? 
         AssetPathType::File(p) => std::path::Path::new(&p).exists(),
         AssetPathType::Url(_) => true,
     }

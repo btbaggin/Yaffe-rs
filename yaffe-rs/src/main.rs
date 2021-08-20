@@ -260,6 +260,8 @@ impl windowing::WindowHandler for WidgetTree {
         self.layout_valid = false;
     }
 
+    //TODO check settings in on_fixed_update?
+
     fn is_window_dirty(&self) -> bool {
         self.anims.len() > 0
     }

@@ -210,17 +210,17 @@ macro_rules! intern_atom {
     }};
 }
 pub(super) fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
-        let mut result = None;
-        unsafe {
-            let w = window.xlib_window().unwrap(); //TODO this shoudl be better than unwrap
-            let d = window.xlib_display().unwrap();
-            let d = &mut *(d as *mut x11::xlib::_XDisplay);
+    let mut result = None;
+    unsafe {
+        let w = window.xlib_window().unwrap(); //TODO this shoudl be better than unwrap
+        let d = window.xlib_display().unwrap();
+        let d = &mut *(d as *mut x11::xlib::_XDisplay);
 
-            let utf8 = intern_atom!(d, "UTF8_STRING", 1);
-            if utf8 != 0 { result = x_paste_type(utf8, d, w, utf8); }
-            if result.is_none() { result = x_paste_type(XA_STRING, d, w, utf8); }
-        }
-        result
+        let utf8 = intern_atom!(d, "UTF8_STRING", 1);
+        if utf8 != 0 { result = x_paste_type(utf8, d, w, utf8); }
+        if result.is_none() { result = x_paste_type(XA_STRING, d, w, utf8); }
+    }
+    result
 }
 
 unsafe fn x_paste_type(atom: u64, display: &mut x11::xlib::Display, window: u64, utf8: u64) -> Option<String> {

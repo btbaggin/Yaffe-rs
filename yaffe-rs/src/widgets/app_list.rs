@@ -5,7 +5,6 @@ use crate::widgets::AppTile;
 use crate::Rect;
 use crate::logger::{LogEntry, UserMessage};
 
-const APPS_PER_ROW: usize = 4;
 const MARGIN: f32 = 0.1;
 
 widget!(pub struct AppList {
@@ -21,11 +20,13 @@ impl super::Widget for AppList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
-                self.update_position(state, APPS_PER_ROW, false, handler);
+                let apps = state.settings.get_i32(crate::SettingNames::ItemsPerRow);
+                self.update_position(state, apps, false, handler);
                 true
             }
             Actions::Down => {
-                self.update_position(state, APPS_PER_ROW, true, handler);
+                let apps = state.settings.get_i32(crate::SettingNames::ItemsPerRow);
+                self.update_position(state, apps, true, handler);
                 true
             }
             Actions::Left => {
@@ -90,13 +91,13 @@ impl AppList {
         //to this platform while we were on it
         if self.cached_platform != state.selected_platform ||
             self.tiles.len() != state.get_platform().apps.len() {
+            let platform = state.get_platform();
             self.tiles.clear();
 
-            for i in 0..state.get_platform().apps.len() {
+            for i in 0..platform.apps.len() {
                 self.tiles.push(AppTile::new(self.queue.clone(), i));
             }
 
-            //TODO do something with calling to the plugin
             self.cached_platform = state.selected_platform;
         }
 
@@ -194,7 +195,7 @@ impl AppList {
 		tile.size = tile_size;
     }
 
-    fn increment_index(&self, index: usize, amount: usize, forward: bool) -> (usize, isize) {
+    fn increment_index(&self, index: usize, amount: i32, forward: bool) -> (usize, isize) {
         let mut index = index as isize;
         let old_index = index;
         let one = if forward { 1 } else { -1 };
@@ -220,15 +221,15 @@ impl AppList {
         }
 
         //Adjust first_visible index until our index is inside it
-        while index < first_visible { first_visible -= self.tiles_x; }
-        while index > first_visible + (self.tiles_x * self.tiles_y) - 1 { first_visible += self.tiles_x; }
-        assert!(self.first_visible >= 0);
+        while index < first_visible as isize { first_visible -= self.tiles_x; }
+        while index > (first_visible + (self.tiles_x * self.tiles_y) - 1) as isize { first_visible += self.tiles_x; }
+        assert!(first_visible >= 0);
         assert!(index >= 0);
 
         (index as usize, first_visible)
     }
 
-    fn update_position(&mut self, state: &mut YaffeState, amount: usize, forward: bool, handler: &mut DeferredAction) {
+    fn update_position(&mut self, state: &mut YaffeState, amount: i32, forward: bool, handler: &mut DeferredAction) {
         let old_index = state.selected_app;
         let (index, visible) = self.increment_index(state.selected_app, amount, forward);
         if old_index != index {
@@ -238,6 +239,12 @@ impl AppList {
             self.tile_animation = 0.;
             let offset = crate::offset_of!(AppList => tile_animation);
             handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
+
+            if let crate::platform::PlatformType::Plugin = state.get_platform().kind {
+                if self.first_visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {
+                    handler.load_plugin(false);
+                }
+            }
         }
     }
 }
@@ -248,11 +255,11 @@ fn start_game(state: &mut YaffeState) {
         if let Some(platform) = state.platforms.get(exe.platform_index) {
             let child = match platform.kind {
                 crate::platform::PlatformType::Plugin => {
-                    let plugin = platform.get_plugin(state);
+                    let plugin = platform.get_plugin(state).unwrap();
                     let mut process = plugin.borrow_mut().start(&exe.name, &exe.file);
                     process.spawn()
                 },
-                
+
                 _ => {
                     let id = platform.id.unwrap();
                     //This should never fail since we got it from the database

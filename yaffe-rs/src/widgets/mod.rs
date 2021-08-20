@@ -144,10 +144,7 @@ impl WidgetTree {
             self.focus.push(widget);
         }
 
-        //Update any animations
-        for i in handle.anims {
-            self.anims.push(i);
-        }
+        handle.resolve(self);
     }
 
     pub fn revert_focus(&mut self) {
@@ -166,10 +163,7 @@ impl WidgetTree {
             }
         }
 
-        //Update any animations
-        for i in handle.anims {
-            self.anims.push(i);
-        }
+        handle.resolve(self);
     }
 }
 impl Deref for WidgetTree {
@@ -298,11 +292,13 @@ enum FocusType {
 pub struct DeferredAction {
     focus: Option<FocusType>,
     anims: Vec<Animation>,
+    load_plugin: Option<bool>,
 }
 impl DeferredAction {
     pub fn new() -> DeferredAction {
         DeferredAction { 
             focus: None,
+            load_plugin: None,
             anims: vec!(),
         }
     }
@@ -311,6 +307,9 @@ impl DeferredAction {
     }
     pub fn revert_focus(&mut self) {
         self.focus = Some(FocusType::Revert);
+    }
+    pub fn load_plugin(&mut self, initial: bool) {
+        self.load_plugin = Some(initial);
     }
 
     pub fn resolve(self, ui: &mut WidgetTree) {
@@ -324,11 +323,25 @@ impl DeferredAction {
         for i in self.anims {
             ui.anims.push(i);
         }
+
+        if let Some(initial) = self.load_plugin {
+            let state = &mut ui.data;
+            if let Some(plugin) = state.get_platform().get_plugin(state) {
+
+                let items = plugin.borrow_mut().load_items(initial);
+                match items {
+                    Ok(items) => {
+                        let platform = &mut state.platforms[state.selected_platform];
+                        for i in items {
+                            platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
+                        }
+                    },
+                    Err(e) => crate::logger::log_entry(crate::logger::LogTypes::Warning, e),
+                }
+            }
+        }
     }
 
-    // pub fn animate(&mut self, widget: &impl FocusableWidget, to: V2, duration: f32) {
-    //     self.anims.push(Animation::position(widget, to, duration));
-    // }
 }
 
 //

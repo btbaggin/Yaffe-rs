@@ -4,7 +4,6 @@ use crate::modals::{ListModal, display_modal, ModalSize, on_platform_found_close
 use crate::logger::*;
 use std::collections::HashSet;
 
-
 //This is used to pass a raw pointer to the assetslot between threads
 //Since PietImage isnt marked Send we just pass the raw pointer, we don't touch the image off the main thread
 #[derive(Clone, Copy)]
@@ -133,5 +132,4 @@ pub enum JobType {
     DownloadUrl((String, String)),
     SearchPlatform((RawDataPointer, String, String, String, String)),
     SearchGame((RawDataPointer, String, String, i64)),
-    GetPluginItems(),
 }

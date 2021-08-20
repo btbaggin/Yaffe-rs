@@ -46,7 +46,6 @@ impl PlatformDetailModal {
         //This should never fail since we orignally got it from the database
         let (path, args, roms) = crate::database::get_platform_info(id).log_if_fail();
 
-        //TODO look at
         PlatformDetailModal { 
             name: plat.name.clone(),
             exe: path,

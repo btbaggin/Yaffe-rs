@@ -1,4 +1,3 @@
-#![allow(dead_code)] //TODO i should be able to remove eventually
 use crate::V2;
 use crate::widgets::WidgetId;
 
@@ -10,6 +9,7 @@ pub trait Animator {
 
 pub enum AnimationTarget {
     F32((f32, f32)),
+    #[allow(dead_code)]
     V2((V2, V2)),
 }
 
@@ -36,6 +36,7 @@ impl Animator for f32 {
 }
 
 impl crate::DeferredAction {
+    #[allow(dead_code)]
     pub fn animate_v2(&mut self, widget: &impl crate::widgets::FocusableWidget, field: FieldOffset, target: V2, duration: f32) {
         let anim = Animation {
             widget: widget.get_id(),
