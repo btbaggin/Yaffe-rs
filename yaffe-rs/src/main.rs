@@ -102,7 +102,7 @@ use job_system::{JobQueue, JobType, RawDataPointer};
 use input::Actions;
 
 pub struct Platform {
-    id: i64,
+    id: i64, //TODO change to option
     name: String,
     path: String,
     apps: Vec<Executable>,
@@ -112,10 +112,10 @@ pub struct Platform {
 pub struct Executable {
     file: String,
     name: String,
-    overview: String,
+    description: String,
     rating: platform::Rating,
     players: u8,
-    platform_id: i64, //Duplicated from Platform so we always know it, even if launching from recents
+    platform_id: Option<i64>, //Duplicated from Platform so we always know it, even if launching from recents
     boxart: Rc<RefCell<assets::AssetSlot>>,
     banner: Rc<RefCell<assets::AssetSlot>>,
 }
@@ -289,7 +289,7 @@ fn main() {
     let input_map = input::get_input_map();
     let gamepad = platform_layer::initialize_gamepad().log_message_if_fail("Unable to initialize input");
 
-    plugins::load_plugins(&mut ui.data.plugins, "./plugins");
+    plugins::load_plugins(&mut ui.data, "./plugins");
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
