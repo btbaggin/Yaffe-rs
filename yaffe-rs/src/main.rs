@@ -102,11 +102,12 @@ use job_system::{JobQueue, JobType, RawDataPointer};
 use input::Actions;
 
 pub struct Platform {
-    id: i64, //TODO change to option
+    id: Option<i64>,
     name: String,
     path: String,
     apps: Vec<Executable>,
     kind: platform::PlatformType,
+    plugin_index: usize,
 }
 
 pub struct Executable {
@@ -115,7 +116,7 @@ pub struct Executable {
     description: String,
     rating: platform::Rating,
     players: u8,
-    platform_id: Option<i64>, //Duplicated from Platform so we always know it, even if launching from recents
+    platform_index: usize,
     boxart: Rc<RefCell<assets::AssetSlot>>,
     banner: Rc<RefCell<assets::AssetSlot>>,
 }
@@ -125,7 +126,7 @@ pub struct YaffeState {
     selected_platform: usize,
     selected_app: usize,
     platforms: Vec<Platform>,
-    plugins: Vec<plugins::Plugin>,
+    plugins: Vec<RefCell<plugins::Plugin>>,
     focused_widget: widgets::WidgetId,
     modals: std::sync::Mutex<Vec<modals::Modal>>,
     queue: Arc<RefCell<job_system::JobQueue>>,

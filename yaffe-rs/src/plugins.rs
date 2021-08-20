@@ -53,7 +53,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 					//Do any initialization work on the object
 					let mut plugin = Plugin { _container: cont, data };
 					if plugin.data.initialize().display_failure(&message, state).is_some() {
-						state.plugins.push(plugin);
+						state.plugins.push(std::cell::RefCell::new(plugin));
 					}
 				}
 			}
@@ -61,7 +61,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 	}
 }
 
-pub fn unload(plugins: &mut Vec<Plugin>) {
+pub fn unload(plugins: &mut Vec<std::cell::RefCell<Plugin>>) {
 	//TODO this crashes things
 	plugins.clear();
 }

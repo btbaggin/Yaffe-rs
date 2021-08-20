@@ -6,9 +6,9 @@ use std::convert::{TryFrom, TryInto};
 use crate::logger::LogEntry;
 
 #[repr(u8)]
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum PlatformType {
-    Enumlator,
+    Emulator,
     Plugin,
     Recents,
 }
@@ -54,56 +54,76 @@ impl TryFrom<String> for Rating {
 }
 
 impl Platform {
-    pub fn new(id: i64, name: String, path: String, t: PlatformType) -> Platform {
+    pub fn new(id: i64, name: String, path: String) -> Platform {
         super::Platform {
-            id: id,
+            id: Some(id),
             name: name,
             path: path,
             apps: vec!(),
-            kind: t,
+            kind: PlatformType::Emulator,
+            plugin_index: 0,
         }
     }
 
-    //TODO rename to plugin
-    pub fn application(name: String, t: PlatformType) -> Platform {
-        super::Platform::new(-1, name, String::from(""), t)
+    pub fn recents(name: String) -> Platform {
+        super::Platform {
+            id: None,
+            name: name,
+            path: String::from(""),
+            apps: vec!(),
+            kind: PlatformType::Recents,
+            plugin_index: 0,
+        }
+    }
+
+    pub fn plugin(index: usize, name: String) -> Platform {
+        super::Platform {
+            id: None,
+            name: name,
+            path: String::from(""),
+            apps: vec!(),
+            kind: PlatformType::Plugin,
+            plugin_index: index,
+        }
+    }
+
+    pub fn get_plugin<'a>(&self, state: &'a YaffeState) -> &'a std::cell::RefCell<crate::plugins::Plugin> {
+        assert_eq!(PlatformType::Plugin, self.kind);
+        &state.plugins[self.plugin_index]
     }
 }
 
 impl Executable {
-    pub fn new_application(file: String, 
-                           name: String, 
-                           boxart: std::rc::Rc<std::cell::RefCell<AssetSlot>>, 
-                           banner: std::rc::Rc<std::cell::RefCell<AssetSlot>>) -> Executable {
+    pub fn new_plugin_item(platform_index: usize, item: yaffe_plugin::YaffePluginItem) -> Executable {
         super::Executable {
-            file: file,
-            name: name,
+            file: item.path,
+            name: item.name,
             description: String::from(""),
-            platform_id: None,
-            boxart: boxart,
-            banner: banner,
+            platform_index: platform_index,
+            boxart: std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&item.thumbnail))),
+            banner: std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&item.thumbnail))),
             players: 1,
-            rating: Rating::Everyone,
+            rating: if !item.restricted { Rating::Everyone } else { Rating::Mature },
         }
     }
 
     pub fn new_game(file: String, 
                     name: String, 
-                    overview: String,
-                    platform_id: i64, 
+                    description: String,
+                    platform_index: usize, 
                     players: u8,
                     rating: Rating,
                     boxart: std::rc::Rc<std::cell::RefCell<AssetSlot>>, 
                     banner: std::rc::Rc<std::cell::RefCell<AssetSlot>>) -> Executable {
         Executable {
-            file: file,
-            name: name,
-            description: overview,
-            platform_id: Some(platform_id),
-            boxart: boxart,
-            banner: banner,
-            players: players,
-            rating: rating,
+            file,
+            name,
+            description,
+            platform_index,
+            boxart,
+            banner,
+            players,
+            rating,
         }
     }
 }
@@ -114,31 +134,30 @@ pub fn get_database_info(state: &mut YaffeState) {
     create_database().log_message_if_fail("Unable to create database");
     let mut platforms = get_all_platforms();
 
-    for p in platforms.iter_mut() {
-        refresh_executable(state, p);
+    for (i, p) in platforms.iter_mut().enumerate() {
+        refresh_executable(state, p, i);
     }
 
-    for p in state.plugins.iter_mut() {
-        let name = String::from(p.name());
+    for (i, p) in state.plugins.iter_mut().enumerate() {
+        let name = String::from(p.borrow().name());
 
-        let mut platform = Platform::application(name, PlatformType::Plugin);
-        for i in p.load_items().unwrap() {
-            platform.apps.push(Executable::new_application(i.name.clone(), 
-                i.name,
-                std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail))),
-                std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail)))));
-        }
-        platforms.push(platform);
-            // platform.apps = get_all_applications();
+        //TODO 
+        // for i in p.load_items().unwrap() {
+        //     platform.apps.push(Executable::new_application(i.name.clone(), 
+        //         i.name,
+        //         std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail))),
+        //         std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail)))));
+        // }
+        platforms.push(Platform::plugin(i, name));
     }
 
 
     state.platforms = platforms;
 }
 
-fn refresh_executable(state: &mut YaffeState, platform: &mut Platform) {
+fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: usize) {
     match platform.kind {
-        PlatformType::Enumlator => {
+        PlatformType::Emulator => {
             for entry in std::fs::read_dir(std::path::Path::new(&platform.path)).log_if_fail() {
                 let entry = entry.unwrap();
                 let path = entry.path();
@@ -148,16 +167,17 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform) {
                     let name = path.file_stem().unwrap().to_string_lossy();
                     let name = clean_file_name(&name);
                     
+                    let id = platform.id.unwrap();
                     let state_ptr = crate::RawDataPointer::new(state);
                     let mut queue = state.queue.borrow_mut();
-                    if let Ok((name, overview, players, rating)) = get_game_info(platform, &file) {
+                    if let Ok((name, overview, players, rating)) = get_game_info(id, &file) {
 
                         let (boxart, banner) = crate::assets::get_asset_slot(&platform.name, &name);
     
                         platform.apps.push(Executable::new_game(String::from(file), 
                                                                 name, 
                                                                 overview, 
-                                                                platform.id, 
+                                                                index, 
                                                                 players as u8, 
                                                                 rating.try_into().expect("Something went very wrong"), 
                                                                 boxart, 
@@ -170,7 +190,7 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform) {
                         //Comes back and A gets a modal
                         //Upon accepting A modal we refresh the screen
                         //Find B it needs to look up, but there is already a modal pending user action
-                        queue.send_with_key(file.to_string(), crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), platform.id)));
+                        queue.send_with_key(file.to_string(), crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), id)));
                     }
                 }
             }

@@ -1,6 +1,5 @@
 use core::ops::Deref;
 use crate::{Platform, Executable};
-use crate::platform::PlatformType;
 use std::convert::TryInto;
 use crate::logger::LogEntry;
 
@@ -18,7 +17,6 @@ static QS_UPDATE_GAME_LAST_RUN: &str = "UPDATE Games SET LastRun = strftime('%s'
 //TODO remove
 static QS_GET_APPLICATION: &str = "SELECT Name, Path, Args FROM Applications WHERE ID = @ID";
 
-pub static QS_CREATE_APPLICATION_TABLE: &str = "CREATE TABLE \"Applications\" ( \"ID\" INTEGER, \"Name\" TEXT, \"Path\" TEXT, \"Args\"	TEXT )";
 pub static QS_CREATE_GAMES_TABLE: &str = "CREATE TABLE \"Games\" ( \"ID\" INTEGER, \"Platform\" INTEGER, \"Name\" TEXT, \"Overview\" TEXT, \"Players\" INTEGER, \"Rating\" INTEGER, \"FileName\" TEXT, \"LastRun\" INTEGER )";
 pub static QS_CREATE_PLATFORMS_TABLE: &str = "CREATE TABLE \"Platforms\" ( \"ID\" INTEGER, \"Platform\" TEXT, \"Path\" TEXT, \"Args\" TEXT, \"Roms\" TEXT )";
 
@@ -145,11 +143,6 @@ pub fn create_database() -> QueryResult<()> {
         let con = YaffeConnection::new();
 
         {
-            let stmt = create_statement!(con, QS_CREATE_APPLICATION_TABLE, );
-            execute_update(stmt)?;
-        }
-
-        {
             let stmt = create_statement!(con, QS_CREATE_GAMES_TABLE, );
             execute_update(stmt)?;
         }
@@ -169,13 +162,13 @@ pub(super) fn get_all_platforms() -> Vec<Platform> {
     let stmt = create_statement!(con, QS_GET_ALL_PLATFORMS, );
 
     let mut result = vec!();
-    result.push(Platform::application(String::from("Recent"), PlatformType::Recents));
+    result.push(Platform::recents(String::from("Recent")));
 
     execute_select(stmt, |r| {
         let id = r.read::<i64>(0).unwrap();
         let name = r.read::<String>(1).unwrap();
         let path = r.read::<String>(2).unwrap();
-        result.push(Platform::new(id, name, path, PlatformType::Enumlator));
+        result.push(Platform::new(id, name, path));
     });
 
     result
@@ -235,14 +228,13 @@ pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {
         let players = i64::max(1, r.read::<i64>(2).unwrap());
         let rating = r.read::<i64>(3).unwrap();
         let file = r.read::<String>(4).unwrap();
-        let platform_id = r.read::<i64>(5).unwrap();
         let platform_name = r.read::<String>(6).unwrap();
 
         let (boxart, banner) = crate::assets::get_asset_slot(&platform_name, &name);
         result.push(Executable::new_game(file, 
                                          name, 
                                          overview, 
-                                         platform_id, 
+                                         0, //TODO this needs to be right 
                                          players as u8, 
                                          rating.try_into().log_message_if_fail("Unknown rating value"), 
                                          boxart, 
@@ -252,11 +244,11 @@ pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {
     result
 }
 
-pub(super) fn get_game_info(platform: &Platform, file: &str) -> QueryResult<(String, String, i64, i64)> {
+pub(super) fn get_game_info(id: i64, file: &str) -> QueryResult<(String, String, i64, i64)> {
     crate::logger::log_entry_with_message(crate::logger::LogTypes::Information, "getting all applications", file);
 
     let con = YaffeConnection::new();
-    let mut stmt = create_statement!(con, QS_GET_GAME, platform.id, file);
+    let mut stmt = create_statement!(con, QS_GET_GAME, id, file);
 
     if let Ok(_) = execute_select_once(&mut stmt) {
         return Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<i64>(3).unwrap(), stmt.read::<i64>(4).unwrap()));

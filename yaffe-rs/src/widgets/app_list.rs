@@ -112,7 +112,7 @@ impl AppList {
         let list_rect = Rectangle::from_tuples((rect.left() + margin_x, rect.top() + margin_y), (rect.right() - margin_x, rect.bottom() - margin_y));
 
         //Get size each tile should try to stretch to
-        let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state, platform.kind != crate::platform::PlatformType::Enumlator, &list_rect);
+        let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state, platform.kind != crate::platform::PlatformType::Emulator, &list_rect);
         self.tiles_x = tiles_x;
         self.tiles_y = tiles_y;
 
@@ -245,28 +245,34 @@ impl AppList {
 fn start_game(state: &mut YaffeState) {
     if let Some(exe) = state.get_executable() {
 
-        let child = if let Some(id) = exe.platform_id {
-            //This should never fail since we got it from the database
-            let (path, args, roms) = crate::database::get_platform_info(id).log_message_if_fail("Platform not found");
-            crate::database::update_game_last_run(exe, id).log_if_fail();
+        if let Some(platform) = state.platforms.get(exe.platform_index) {
+            let child = match platform.kind {
+                crate::platform::PlatformType::Plugin => {
+                    let plugin = platform.get_plugin(state);
+                    let mut process = plugin.borrow_mut().start(&exe.name, &exe.file);
+                    process.spawn()
+                },
+                
+                _ => {
+                    let id = platform.id.unwrap();
+                    //This should never fail since we got it from the database
+                    let (path, args, roms) = crate::database::get_platform_info(id).log_message_if_fail("Platform not found");
+                    crate::database::update_game_last_run(exe, id).log_if_fail();
 
-            let mut process = &mut std::process::Command::new(path);
-            let exe_path = std::path::Path::new(&roms).join(&exe.file);
+                    let mut process = &mut std::process::Command::new(path);
+                    let exe_path = std::path::Path::new(&roms).join(&exe.file);
 
-            process = process.arg(exe_path.to_str().unwrap());
-            if !args.is_empty() { process = process.args(args.split(' ')); }
-            process.spawn()
-        } else {
-            let mut process = std::process::Command::new("C\\Windows\\Notepad.exe");
-            process.spawn()
-            //TODO call to plugin
-            // process = process.args(args.split(' '));
-        };
+                    process = process.arg(exe_path.to_str().unwrap());
+                    if !args.is_empty() { process = process.args(args.split(' ')); }
+                    process.spawn()
+                }
+            };
 
-        if let Some(process) = child.display_failure("Unable to start game", state) {
-            let mut overlay = state.overlay.borrow_mut();
-            overlay.set_process(process);
-            //We could refresh so our recent games page updates, but I dont think that's desirable
+            if let Some(process) = child.display_failure("Unable to start game", state) {
+                let mut overlay = state.overlay.borrow_mut();
+                overlay.set_process(process);
+                //We could refresh so our recent games page updates, but I dont think that's desirable
+            }
         }
     }
 }
