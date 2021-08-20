@@ -12,7 +12,6 @@ struct TextFieldWithLabel {
 }
 
 pub struct PlatformDetailModal {
-    application: bool,
     name: String,
     exe: String,
     args: String,
@@ -23,7 +22,6 @@ pub struct PlatformDetailModal {
 impl PlatformDetailModal {
     pub fn application() -> PlatformDetailModal {
         PlatformDetailModal { 
-            application: true,
             name: String::from(""),
             exe: String::from(""),
             args: String::from(""),
@@ -35,7 +33,6 @@ impl PlatformDetailModal {
 
     pub fn emulator() -> PlatformDetailModal {
         PlatformDetailModal { 
-            application: false,
             name: String::from("Playstation"),
             exe: String::from(""),
             args: String::from(""),
@@ -45,19 +42,18 @@ impl PlatformDetailModal {
         }
     }
 
-    pub fn from_existing(plat: &crate::Platform) -> PlatformDetailModal {
+    pub fn from_existing(plat: &crate::Platform, id: i64) -> PlatformDetailModal {
         //This should never fail since we orignally got it from the database
-        let (path, args, roms) = crate::database::get_platform_info(plat.id).log_if_fail();
+        let (path, args, roms) = crate::database::get_platform_info(id).log_if_fail();
 
         //TODO look at
         PlatformDetailModal { 
-            application: plat.kind == crate::platform::PlatformType::Plugin,
             name: plat.name.clone(),
             exe: path,
             args: args,
             folder: roms,
-            id: plat.id,
-            fields: PlatformDetailModal::create_fields(plat.kind == crate::platform::PlatformType::Plugin),
+            id: id,
+            fields: PlatformDetailModal::create_fields(false),
         }
     }
 
@@ -168,14 +164,9 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
 
-        if content.application {
-            crate::database::add_new_application(&content.name, &content.exe, &content.args, &content.folder).display_failure("Unable to add application", state);
-            state.refresh_list = true;
-        } else {
-            let state_ptr = crate::RawDataPointer::new(state);
-            let mut queue = state.queue.borrow_mut();
-            queue.send(crate::JobType::SearchPlatform((state_ptr, content.name.clone(), content.exe.clone(), content.args.clone(), content.folder.clone())));  
-        }
+        let state_ptr = crate::RawDataPointer::new(state);
+        let mut queue = state.queue.borrow_mut();
+        queue.send(crate::JobType::SearchPlatform((state_ptr, content.name.clone(), content.exe.clone(), content.args.clone(), content.folder.clone())));  
     }
 }
 
@@ -184,11 +175,7 @@ pub fn on_update_application_close(state: &mut YaffeState, result: ModalResult, 
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
         state.refresh_list = true;
 
-        if content.application {
-			crate::database::update_application(&content.name, &content.exe, &content.args).display_failure("Unable to update application", state);
-		} else {
-			crate::database::update_platform(content.id, &content.exe, &content.args, &content.folder).display_failure("Unable to update platform", state);
-		}
+		crate::database::update_platform(content.id, &content.exe, &content.args, &content.folder).display_failure("Unable to update platform", state);
     }
 }
 

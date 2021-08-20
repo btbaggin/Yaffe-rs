@@ -96,6 +96,7 @@ impl AppList {
                 self.tiles.push(AppTile::new(self.queue.clone(), i));
             }
 
+            //TODO do something with calling to the plugin
             self.cached_platform = state.selected_platform;
         }
 
@@ -244,21 +245,25 @@ impl AppList {
 fn start_game(state: &mut YaffeState) {
     if let Some(exe) = state.get_executable() {
 
-        //This should never fail since we got it from the database
-        let (path, args, roms) = crate::database::get_platform_info(exe.platform_id).log_message_if_fail("Platform not found");
+        let child = if let Some(id) = exe.platform_id {
+            //This should never fail since we got it from the database
+            let (path, args, roms) = crate::database::get_platform_info(id).log_message_if_fail("Platform not found");
+            crate::database::update_game_last_run(exe, id).log_if_fail();
 
-        let mut process = &mut std::process::Command::new(path);
-        if exe.platform_id > 0 {
-            crate::database::update_game_last_run(exe).log_if_fail();
+            let mut process = &mut std::process::Command::new(path);
             let exe_path = std::path::Path::new(&roms).join(&exe.file);
 
             process = process.arg(exe_path.to_str().unwrap());
             if !args.is_empty() { process = process.args(args.split(' ')); }
+            process.spawn()
         } else {
-            process = process.args(args.split(' '));
-        }
+            let mut process = std::process::Command::new("C\\Windows\\Notepad.exe");
+            process.spawn()
+            //TODO call to plugin
+            // process = process.args(args.split(' '));
+        };
 
-        if let Some(process) = process.spawn().display_failure("Unable to start game", state) {
+        if let Some(process) = child.display_failure("Unable to start game", state) {
             let mut overlay = state.overlay.borrow_mut();
             overlay.set_process(process);
             //We could refresh so our recent games page updates, but I dont think that's desirable

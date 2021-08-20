@@ -50,6 +50,11 @@ pub enum AssetTypes {
     Font(Fonts),
 }
 
+pub enum AssetPathType {
+    File(String),
+    Url(String),
+}
+
 pub enum AssetData {
     Image(YaffeTexture),
     Font(Font),
@@ -57,15 +62,24 @@ pub enum AssetData {
 
 pub struct AssetSlot {
     state: AtomicU8,
-    path: String,
+    path: AssetPathType,
     data: Option<((u32, u32), Vec<u8>)>,
     image: Option<AssetData>,
 }
 impl AssetSlot {
+    pub fn new_url(path: &str) -> AssetSlot {
+        AssetSlot {
+            state: AtomicU8::new(ASSET_STATE_UNLOADED),
+            path: AssetPathType::Url(String::from(path)),
+            data: None,
+            image: None,
+        }
+    }
+
     pub fn new(path: &str) -> AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_UNLOADED),
-            path: String::from(path),
+            path: AssetPathType::File(String::from(path)),
             data: None,
             image: None,
         }
@@ -74,7 +88,7 @@ impl AssetSlot {
     pub fn packed_texture(path: &str, image: YaffeTexture) -> AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
-            path: String::from(path),
+            path: AssetPathType::File(String::from(path)),
             data: None,
             image: Some(AssetData::Image(image)),
         }
@@ -86,7 +100,7 @@ impl AssetSlot {
 
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
-            path: String::from(path),
+            path: AssetPathType::File(String::from(path)),
             data: None,
             image: Some(AssetData::Font(font)),
         }
@@ -177,9 +191,17 @@ fn get_slot_mut(t: AssetTypes) -> &'static mut AssetSlot {
     unsafe { ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_if_fail("Invalid asset slot reqeust") }
 }
 
+fn asset_path_is_valid(path: &AssetPathType) -> bool {
+    match path {
+        //TODO ? 
+        AssetPathType::File(p) => std::path::Path::new(&p).exists(),
+        AssetPathType::Url(_) => true,
+    }
+}
+
 pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot: &'a mut AssetSlot) -> Option<&'a YaffeTexture> {
     if slot.state.load(Ordering::Relaxed) == ASSET_STATE_UNLOADED && 
-       std::path::Path::new(&slot.path).exists() {
+       asset_path_is_valid(&slot.path) {
         if let Ok(ASSET_STATE_UNLOADED) = slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed) {
 
             queue.send(crate::JobType::LoadImage(crate::RawDataPointer::new(slot)));
@@ -210,7 +232,9 @@ pub fn request_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, image: Ima
 pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a YaffeTexture {
     let slot = get_slot_mut(AssetTypes::Image(image));
 
-    assert_eq!(std::path::Path::new(&slot.path).exists(), true);
+    //TODO 
+    //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
+    // assert_eq!(std::path::Path::new(&slot.path).exists(), true);
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
@@ -226,11 +250,12 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
     panic!("Requested image on a non-image asset slot");
 }
 
-//TODO font families?
 pub fn request_font(font: Fonts) -> &'static Font {
     let slot = get_slot_mut(AssetTypes::Font(font));
 
-    assert_eq!(std::path::Path::new(&slot.path).exists(), true);
+    //TODO
+    //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
+    //assert_eq!(std::path::Path::new(&slot.path).exists(), true);
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
@@ -249,7 +274,13 @@ pub fn request_font(font: Fonts) -> &'static Font {
 pub fn load_image_async(slot: crate::RawDataPointer) {
     use image::GenericImageView;
     let asset_slot = slot.get_inner::<AssetSlot>();
-    let data = std::fs::read(&asset_slot.path).log_if_fail();
+    let data = match &asset_slot.path {
+        AssetPathType::File(path) => std::fs::read(&path).log_if_fail(),
+        AssetPathType::Url(path) =>  {
+            let image = reqwest::blocking::get(path).unwrap().bytes().log_if_fail();
+            image.to_vec()
+        },
+    };
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(data));
     reader = reader.with_guessed_format().log_if_fail();

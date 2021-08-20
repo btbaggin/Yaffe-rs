@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut};
 use dlopen::wrapper::{Container, WrapperApi};
 use crate::logger::LogEntry;
 pub use yaffe_plugin::{YaffePluginItem};
+use crate::logger::UserMessage;
 
 pub struct Plugin {
 	_container: Container<PluginWrapper>, //There for keeping reference to the library
@@ -26,7 +27,7 @@ struct PluginWrapper {
 	initialize: fn() -> Box<dyn yaffe_plugin::YaffePlugin>,
 }
 
-pub fn load_plugins(plugins: &mut Vec<Plugin>, directory: &str) {
+pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 	let path = std::fs::canonicalize(directory).unwrap();
 
 	for entry in std::fs::read_dir(path).log_if_fail() {
@@ -35,22 +36,25 @@ pub fn load_plugins(plugins: &mut Vec<Plugin>, directory: &str) {
 		if let Some(ext) = path.extension() {
 			let ext = ext.to_string_lossy();
 
-			let mut ok = false;
-			#[cfg(windows)]
-			if ext == "dll" { ok = true } 
-			#[cfg(not(windows))]
-			if ext == "so" { ok = true }
+			#[cfg(windows)] 
+			let ok = ext == "dll";
+			#[cfg(not(windows))] 
+			let ok = ext == "so";
 
 			if ok && path.is_file() {
-				let container: Container<PluginWrapper> = unsafe { Container::load(path) }.expect("Something bad");
-				let data = container.initialize();
+				let file = path.file_name().unwrap().to_string_lossy();
+				let message = format!("Failed to load plugin {:?}", file);
 
-				let mut plugin = Plugin { _container: container, data };
-				if let Err(s) = plugin.data.initialize() {
-					//TODO display user error
-					crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, s, "Unable to load plugin");
-				} else {
-					plugins.push(plugin);
+				let container: Option<Container<PluginWrapper>> = unsafe { Container::load(path) }.display_failure(&message, state);
+				if let Some(cont) = container {
+					//Create our YaffePlugin object
+					let data = cont.initialize();
+					
+					//Do any initialization work on the object
+					let mut plugin = Plugin { _container: cont, data };
+					if plugin.data.initialize().display_failure(&message, state).is_some() {
+						state.plugins.push(plugin);
+					}
 				}
 			}
 		}

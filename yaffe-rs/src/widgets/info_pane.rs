@@ -64,8 +64,8 @@ impl super::Widget for InfoPane {
             }
 
             //Overview
-            if !app.overview.is_empty() {
-                let name_label = super::get_drawable_text_with_wrap(crate::font::get_title_font_size(state), &app.overview, rect.width() - 10.);
+            if !app.description.is_empty() {
+                let name_label = super::get_drawable_text_with_wrap(crate::font::get_title_font_size(state), &app.description, rect.width() - 10.);
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height() + height > rect.height() {

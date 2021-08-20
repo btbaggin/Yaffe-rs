@@ -64,6 +64,7 @@ impl Platform {
         }
     }
 
+    //TODO rename to plugin
     pub fn application(name: String, t: PlatformType) -> Platform {
         super::Platform::new(-1, name, String::from(""), t)
     }
@@ -77,8 +78,8 @@ impl Executable {
         super::Executable {
             file: file,
             name: name,
-            overview: String::from(""),
-            platform_id: -1,
+            description: String::from(""),
+            platform_id: None,
             boxart: boxart,
             banner: banner,
             players: 1,
@@ -97,8 +98,8 @@ impl Executable {
         Executable {
             file: file,
             name: name,
-            overview: overview,
-            platform_id: platform_id,
+            description: overview,
+            platform_id: Some(platform_id),
             boxart: boxart,
             banner: banner,
             players: players,
@@ -124,8 +125,8 @@ pub fn get_database_info(state: &mut YaffeState) {
         for i in p.load_items().unwrap() {
             platform.apps.push(Executable::new_application(i.name.clone(), 
                 i.name,
-                std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new(&i.thumbnail))),
-                std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new(&i.thumbnail)))));
+                std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail))),
+                std::rc::Rc::new(std::cell::RefCell::new(AssetSlot::new_url(&i.thumbnail)))));
         }
         platforms.push(platform);
             // platform.apps = get_all_applications();

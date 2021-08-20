@@ -26,9 +26,9 @@ impl super::Widget for PlatformList {
             }
             Actions::Info => {
                 let platform = state.get_platform();
+                //TODO change to not???
                 if let crate::platform::PlatformType::Plugin = platform.kind {
-                    //TODO look at
-                    let modal = Box::new(PlatformDetailModal::from_existing(platform));
+                    let modal = Box::new(PlatformDetailModal::from_existing(platform, platform.id));
                     display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(crate::modals::on_update_application_close));
                 }
                 true

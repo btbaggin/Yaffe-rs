@@ -15,10 +15,8 @@ static QS_GET_RECENT_GAMES: &str = "SELECT g.Name, g.Overview, g.Players, g.Rati
 static QS_ADD_GAME: &str = "INSERT INTO Games (ID, Platform, Name, Overview, Players, Rating, FileName) VALUES ( @GameId, @Platform, @Name, @Overview, @Players, @Rating, @FileName )";
 static QS_UPDATE_GAME_LAST_RUN: &str = "UPDATE Games SET LastRun = strftime('%s', 'now', 'localtime') WHERE Platform = @Platform AND FileName = @Game";
 
+//TODO remove
 static QS_GET_APPLICATION: &str = "SELECT Name, Path, Args FROM Applications WHERE ID = @ID";
-static QS_ADD_APPLICATION: &str = "INSERT INTO Applications ( ID, Name, Path, Args ) VALUES ( @ID, @Name, @Path, @Args )";
-static QS_UPDATE_APPLICATION: &str = "UPDATE Applications Set Path = @Path, Args = @Args WHERE Name = @Name";
-static QS_GET_APPLICATION_ID: &str = "SELECT COALESCE(MIN(ID), 0) - 1 from Applications";
 
 pub static QS_CREATE_APPLICATION_TABLE: &str = "CREATE TABLE \"Applications\" ( \"ID\" INTEGER, \"Name\" TEXT, \"Path\" TEXT, \"Args\"	TEXT )";
 pub static QS_CREATE_GAMES_TABLE: &str = "CREATE TABLE \"Games\" ( \"ID\" INTEGER, \"Platform\" INTEGER, \"Name\" TEXT, \"Overview\" TEXT, \"Players\" INTEGER, \"Rating\" INTEGER, \"FileName\" TEXT, \"LastRun\" INTEGER )";
@@ -224,32 +222,6 @@ pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)>
     }
 }
 
-pub fn add_new_application(name: &str, path: &str, args: &str, image: &str) -> QueryResult<()> {
-    let base = std::path::Path::new(".\\Assets\\Applications");
-    if !base.exists() { std::fs::create_dir(base).unwrap(); }
-
-    let app = base.join(name);
-    let art = app.join("boxart.jpg");
-    if !app.exists() { std::fs::create_dir(app).unwrap(); }
-
-    std::fs::copy(std::path::Path::new(image), art).unwrap();
-
-    let con = YaffeConnection::new();
-
-    let mut stmt = create_statement!(con, QS_GET_APPLICATION_ID, );
-    let id = execute_select_once(&mut stmt)?;
-
-    let stmt = create_statement!(con, QS_ADD_APPLICATION, id, name, path, args);
-    execute_update(stmt)
-}
-
-pub fn update_application(name: &str, path: &str, args: &str) -> QueryResult<()> {
-    let con = YaffeConnection::new();
-    let stmt = create_statement!(con, QS_UPDATE_APPLICATION, path, args, name);
-
-    execute_update(stmt)
-}
-
 pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {
     crate::log_function!();
 
@@ -301,10 +273,10 @@ pub(super) fn insert_game(id: i64, platform: i64, name: &str, overview: &str, pl
     execute_update(stmt)
 }
 
-pub fn update_game_last_run(exe: &Executable) -> QueryResult<()> {
+pub fn update_game_last_run(exe: &Executable, id: i64) -> QueryResult<()> {
     crate::log_function!();
     let con = YaffeConnection::new();
-    let stmt = create_statement!(con, QS_UPDATE_GAME_LAST_RUN, exe.platform_id, &exe.file[..]);
-
+    let stmt = create_statement!(con, QS_UPDATE_GAME_LAST_RUN, id, &exe.file[..]);
+    
     execute_update(stmt)
 }
