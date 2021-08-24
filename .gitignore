@@ -1,28 +1,16 @@
 /target
-Assets/background.jpg
-Assets/banner.png
-Assets/packed.png
-Assets/placeholder.jpg
-Assets/Roboto-Black.ttf
-Assets/Roboto-Regular.ttf
-Assets/Nintendo 64/Bio Menace/boxart.jpg
-Assets/Nintendo 64/Mario Kart/boxart.jpg
-Assets/Nintendo 64/Mario Kart 64/banner.jpg
-Assets/Nintendo 64/Mario Kart 64/boxart.jpg
-Assets/Nintendo 64/Pokémon Snap/boxart.jpg
-Assets/Nintendo 64/Star Fox 64/banner.jpg
-Assets/Nintendo 64/Star Fox 64/boxart.jpg
-Assets/Nintendo 64/Super Mario 64/banner.jpg
-Assets/Nintendo 64/Super Mario 64/boxart.jpg
+yaffe-rs/target
+yaffe-rs/Assets
+yaffe-rs/plugins
 YaffeService.runtimeconfig.json
 Newtonsoft.Json.dll
 log.txt
 settings.txt
 yaffe-rs.exe
-yaffe-rs
 Yaffe.db
 YaffeService.dll
 YaffeService.exe
 Assets/atlas.tex
 Cargo.lock
 RCa21132
+api_key.txt
