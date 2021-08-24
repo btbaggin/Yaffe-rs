@@ -6,11 +6,10 @@ use std::cell::RefCell;
 use speedy2d::shape::Rectangle;
 use speedy2d::dimen::Vector2;
 pub use crate::settings::SettingNames;
+use crate::logger::{UserMessage, LogEntry};
 
 #[macro_use]
 extern crate dlopen_derive;
-
-use crate::logger::{UserMessage, LogEntry};
 
 type V2 = Vector2<f32>;
 
@@ -18,6 +17,8 @@ type V2 = Vector2<f32>;
     TODO:
     button remapping?
     scale factor
+    move yaffe-service logic here
+    move api key to settings file
 */
 
 pub mod colors {
@@ -86,7 +87,7 @@ mod platform;
 mod platform_layer;
 mod overlay;
 mod restrictions;
-mod server;
+mod game_db;
 mod job_system;
 mod logger;
 mod settings;
@@ -172,18 +173,11 @@ impl YaffeState {
     }
 
     fn is_widget_focused(&self, widget: &impl FocusableWidget) -> bool {
-        if self.focused_widget == widget.get_id() {
-            return true;
-        }
-        false
+        self.focused_widget == widget.get_id()
     }
 }
 
 impl windowing::WindowHandler for WidgetTree {
-    fn on_start(&mut self) {
-        server::start_up();
-    }
-
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
         if let Err(e) = settings::update_settings(&mut self.data.settings) {
             logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
@@ -253,7 +247,6 @@ impl windowing::WindowHandler for WidgetTree {
 
     fn on_stop(&mut self) {
         plugins::unload(&mut self.data.plugins);
-        server::shutdown();
     }
 
     fn on_resize(&mut self, _: u32, _: u32) { 

@@ -1,5 +1,5 @@
 use std::thread;
-use crate::server::*;
+use crate::game_db::*;
 use crate::modals::{ListModal, display_modal, ModalSize, on_platform_found_close};
 use crate::logger::*;
 use std::collections::HashSet;
@@ -77,10 +77,8 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             }
 
             JobType::SearchPlatform((state, name, path, args, rom)) => {
-                let message = MessageTypes::PlatformInfo(&name);
                 let state = state.get_inner::<crate::YaffeState>();
-                if let Some(buffer) = send_message(message).display_failure("Unable to send message for platform search", state) {
-                    let result: ServiceResponse<PlatformInfo> = serde_json::from_slice(&buffer).log_if_fail();
+                if let Some(result) = search_platform(&name).display_failure("Unable to send message for platform search", state) {
 
                     if result.exact {
                         let plat = &result.results[0];
@@ -99,11 +97,8 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             }
 
             JobType::SearchGame((state, exe, name, plat_id)) => {
-                let message = MessageTypes::GameInfo((plat_id, &name));
                 let state = state.get_inner::<crate::YaffeState>();
-                if let Some(buffer) = send_message(message).display_failure("Unable to send message for game search", state) {
-                    let result: ServiceResponse<GameInfo> = serde_json::from_slice(&buffer).log_if_fail();
-
+                if let Some(result) = search_game(&name, plat_id).display_failure("Unable to send message for game search", state) {
                     if result.exact {
                         let game = &result.results[0];
                         let data = crate::database::GameData::new(game, exe.clone(), plat_id);

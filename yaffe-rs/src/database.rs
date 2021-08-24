@@ -32,7 +32,7 @@ pub struct PlatformData {
     pub folder: String,
 }
 impl PlatformData {
-    pub fn new(info: &crate::server::PlatformInfo, path: String, args: String, folder: String) -> PlatformData {
+    pub fn new(info: &crate::game_db::PlatformInfo, path: String, args: String, folder: String) -> PlatformData {
         PlatformData {
             id: info.id,
             name: info.name.clone(),
@@ -60,7 +60,7 @@ pub struct GameData {
     pub boxart: String,
 }
 impl GameData {
-    pub fn new(info: &crate::server::GameInfo, file: String, plat_id: i64) -> GameData {
+    pub fn new(info: &crate::game_db::GameInfo, file: String, plat_id: i64) -> GameData {
         let rating: crate::platform::Rating = info.rating.clone().try_into().unwrap();
         crate::database::GameData {
             id: info.id,
