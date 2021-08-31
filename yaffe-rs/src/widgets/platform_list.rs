@@ -51,11 +51,12 @@ impl super::Widget for PlatformList {
         let selected_index = state.selected_platform;
         let right = rect.right();
         let mut y = 10.;
-        let plat_kind = -1;
+        let mut plat_kind = -1; //TODO change to actual type
         for (i, p) in state.platforms.iter().enumerate() {
             //Header for the specific platform type
             if p.kind as i32 != plat_kind {
                 y = draw_header(piet, state, y, rect.width(), p.kind, 28.);
+                plat_kind = p.kind as i32;
             }
 
             let name_label = super::get_drawable_text(FONT_SIZE, &p.name);
@@ -76,8 +77,8 @@ impl super::Widget for PlatformList {
                 //Count
                 let num_label = super::get_drawable_text(FONT_SIZE, &p.apps.len().to_string());
                 piet.draw_text(V2::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
-                y += height;
             }
+            y += height;
         }
     }
 }

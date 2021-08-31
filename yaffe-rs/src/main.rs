@@ -264,11 +264,11 @@ fn main() {
     logger::initialize_log();
     let (queue, notify) = job_system::start_job_system();
 
-    let settings = match settings::load_settings("./settings.txt") {
+    let (settings, plugins) = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
         Err(e) => {
             logger::log_entry(logger::LogTypes::Error, e);
-            settings::SettingsFile::default()
+            (settings::SettingsFile::default(), settings::PluginSettings::default())
         },
     };
 
@@ -285,7 +285,7 @@ fn main() {
     let input_map = input::get_input_map();
     let gamepad = platform_layer::initialize_gamepad().log_message_if_fail("Unable to initialize input");
 
-    plugins::load_plugins(&mut ui.data, "./plugins");
+    plugins::load_plugins(&mut ui.data, "./plugins", plugins);
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 

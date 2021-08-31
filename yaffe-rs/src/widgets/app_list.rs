@@ -255,8 +255,8 @@ fn start_game(state: &mut YaffeState) {
         if let Some(platform) = state.platforms.get(exe.platform_index) {
             let child = match platform.kind {
                 crate::platform::PlatformType::Plugin => {
-                    let plugin = platform.get_plugin(state).unwrap();
-                    let mut process = plugin.borrow_mut().start(&exe.name, &exe.file);
+                    let plugin = platform.get_plugin(state).unwrap().borrow_mut();
+                    let mut process = plugin.start(&exe.name, &exe.file);
                     process.spawn()
                 },
 

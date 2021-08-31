@@ -103,7 +103,7 @@ impl Executable {
         super::Executable {
             file: item.path,
             name: item.name,
-            description: String::from(""),
+            description: item.description,
             platform_index: platform_index,
             boxart: Rc::new(RefCell::new(AssetSlot::new_url(&item.thumbnail))),
             banner: Rc::new(RefCell::new(AssetSlot::new_url(&item.thumbnail))),
@@ -138,6 +138,14 @@ pub fn get_database_info(state: &mut YaffeState) {
 
     create_database().log_message_if_fail("Unable to create database");
     let mut platforms = get_all_platforms();
+
+    let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
+            state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
+            state.settings.get_f32(crate::SettingNames::RecentPageCount);
+
+    //get_all_platforms always sets the first platform to recents
+    assert_eq!(platforms[0].kind, PlatformType::Recents);
+    platforms[0].apps = get_recent_games(max as i64, &platforms);
 
     for (i, p) in platforms.iter_mut().enumerate() {
         refresh_executable(state, p, i);
@@ -195,15 +203,14 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: us
             platform.apps.sort_by(|a, b| a.name.cmp(&b.name));
         }
         PlatformType::Plugin => {
-            //Loaded on demand?
-            // platform.apps = get_all_applications();
-            // platform.apps.sort_by(|a, b| a.name.cmp(&b.name));
+            //These are not stored from the database, but loaded at runtime
+            assert!(false);
         }
         PlatformType::Recents => {
-            let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
-                      state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
-                      state.settings.get_f32(crate::SettingNames::RecentPageCount);
-            platform.apps = get_recent_games(max as i64);
+            // let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
+            //           state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
+            //           state.settings.get_f32(crate::SettingNames::RecentPageCount);
+            // platform.apps = get_recent_games(max as i64, map);
         }
     }
 }

@@ -204,7 +204,7 @@ pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)>
     Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<String>(3).unwrap()))
 }
 
-pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {
+pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable> {
     crate::log_function!();
 
     let con = YaffeConnection::new();
@@ -217,17 +217,21 @@ pub(super) fn get_recent_games(max: i64) -> Vec<Executable> {
         let players = i64::max(1, r.read::<i64>(2).unwrap());
         let rating = r.read::<i64>(3).unwrap();
         let file = r.read::<String>(4).unwrap();
+        let platform_id = r.read::<i64>(5).unwrap();
         let platform_name = r.read::<String>(6).unwrap();
 
         let (boxart, banner) = crate::assets::get_asset_slot(&platform_name, &name);
-        result.push(Executable::new_game(file, 
-                                         name, 
-                                         overview, 
-                                         0, //TODO this needs to be right 
-                                         players as u8, 
-                                         rating.try_into().log_message_if_fail("Unknown rating value"), 
-                                         boxart, 
-                                         banner));
+        let index = map.iter().position(|s| s.id == Some(platform_id));
+        if let Some(index) = index {
+            result.push(Executable::new_game(file, 
+                name, 
+                overview, 
+                index,
+                players as u8, 
+                rating.try_into().log_message_if_fail("Unknown rating value"), 
+                boxart, 
+                banner));
+        }
     });
 
     result

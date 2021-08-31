@@ -49,7 +49,7 @@ impl JobQueue {
 /// Starts a single producer multiple consumer job threading system
 /// Jobs can be sent to this system using the returned JobQueue
 pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
-    const NUM_THREADS: u32 = 4;
+    const NUM_THREADS: u32 = 8;
 
     let (tx, rx) = spmc::channel();
     let (notify_tx, notify_rx) = std::sync::mpsc::channel();
