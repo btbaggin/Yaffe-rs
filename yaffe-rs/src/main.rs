@@ -16,7 +16,6 @@ type V2 = Vector2<f32>;
 /*
     TODO:
     button remapping?
-    scale factor
 */
 
 pub mod colors {
@@ -184,7 +183,6 @@ impl windowing::WindowHandler for WidgetTree {
             }
             Ok(plugins) => {
                 if let Some(mut plugins) = plugins {
-                    //TODO update settings for plugins
                     for p in self.data.plugins.iter_mut() {
                         plugins::update_settings(p, &mut plugins);
                     }
