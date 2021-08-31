@@ -17,8 +17,6 @@ type V2 = Vector2<f32>;
     TODO:
     button remapping?
     scale factor
-    move yaffe-service logic here
-    move api key to settings file
 */
 
 pub mod colors {
@@ -178,11 +176,26 @@ impl YaffeState {
 }
 
 impl windowing::WindowHandler for WidgetTree {
-    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
-        if let Err(e) = settings::update_settings(&mut self.data.settings) {
-            logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
+    fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper) -> bool {
+        match settings::update_settings(&mut self.data.settings) {
+            Err(e) => {
+                logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
+                false
+            }
+            Ok(plugins) => {
+                if let Some(mut plugins) = plugins {
+                    //TODO update settings for plugins
+                    for p in self.data.plugins.iter_mut() {
+                        plugins::update_settings(p, &mut plugins);
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
         }
-
+    }
+    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
         assets::load_texture_atlas(graphics);
 
         if !self.data.overlay.borrow().is_active() {

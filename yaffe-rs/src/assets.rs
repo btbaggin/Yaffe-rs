@@ -233,7 +233,7 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
 
     //TODO 
     //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
-    // assert_eq!(std::path::Path::new(&slot.path).exists(), true);
+    //assert_eq!(std::path::Path::new(&slot.path).exists(), true);
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {

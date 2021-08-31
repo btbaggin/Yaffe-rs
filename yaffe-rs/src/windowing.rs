@@ -59,7 +59,7 @@ impl WindowHelper {
 
 pub(crate) trait WindowHandler {
     fn on_start(&mut self) { }
-    fn on_fixed_update(&mut self, _: &mut WindowHelper) { }
+    fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool { false }
     fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_resize(&mut self, _: u32, _: u32) { }
@@ -189,7 +189,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                     if let Some(action) = action { 
                         for (_, window) in windows.iter_mut() {
-                            if send_action_to_window(window, &mut ct, action, false) { return; }
+                            if send_action_to_window(window, &mut ct, action) { return; }
                         }
                     }
                 },
@@ -199,7 +199,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     let action = &crate::Actions::KeyPress(InputType::Key(c));
 
                     for (_, window) in windows.iter_mut() {
-                        if send_action_to_window(window, &mut ct, action, false) { return; }
+                        if send_action_to_window(window, &mut ct, action) { return; }
                     }
                 }
 
@@ -240,18 +240,21 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     //Send an action, if its handled remove it so a different window doesnt respond to it
                     let mut handled_actions = Vec::with_capacity(actions.len());
                     for action in actions.iter() {
-                        if send_action_to_window(window, &mut ct, action, true) {
+                        if send_action_to_window(window, &mut ct, action) {
                             handled_actions.push(action.clone());
                         }
                     }
-                    
-                    for action in handled_actions {
-                        actions.remove(&action);
-                    }
+                    for action in handled_actions { actions.remove(&action); }
 
-                    let handle = window.handler.borrow();
-                    if asset_loaded || handle.is_window_dirty() {
-                        let context = ct.get_current(window.context_id).unwrap();
+                    //Raise fixed update every frame so we can do things even if redraws arent happening
+                    let mut handle = window.handler.borrow_mut();
+                    let context = ct.get_current(window.context_id).unwrap();
+                    
+                    let mut helper = WindowHelper { visible: None, };
+                    let fixed_update = handle.on_fixed_update(&mut helper);
+                    helper.resolve(&context.windowed().window());
+
+                    if fixed_update || asset_loaded || handle.is_window_dirty() {
                         context.windowed().window().request_redraw();
                     }
                 }
@@ -264,14 +267,10 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
 fn send_action_to_window(window: &mut YaffeWindow, 
                          ct: &mut context_tracker::ContextTracker,
-                         action: &crate::Actions,
-                         do_fixed_update: bool) -> bool {
+                         action: &crate::Actions) -> bool {
     let mut helper = WindowHelper { visible: None, };
     let context = ct.get_current(window.context_id).unwrap();
     let mut handle = window.handler.borrow_mut();
-
-    //Method that is always called so we can perform actions always
-    if do_fixed_update { handle.on_fixed_update(&mut helper); }
 
     //Send an action, if its handled remove it so a different window doesnt respond to it
     let result = handle.on_input(&mut helper, action);

@@ -51,7 +51,7 @@ impl super::Widget for PlatformList {
         let selected_index = state.selected_platform;
         let right = rect.right();
         let mut y = 10.;
-        let mut plat_kind = -1; //TODO change to actual type
+        let mut plat_kind = -1;
         for (i, p) in state.platforms.iter().enumerate() {
             //Header for the specific platform type
             if p.kind as i32 != plat_kind {

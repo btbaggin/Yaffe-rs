@@ -78,8 +78,8 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         true
     }
 
-    fn on_fixed_update(&mut self, helper: &mut crate::windowing::WindowHelper) {
-        self.process_is_running(helper);
+    fn on_fixed_update(&mut self, helper: &mut crate::windowing::WindowHelper) -> bool {
+        !self.process_is_running(helper)
     }
 
     fn on_input(&mut self, helper: &mut crate::windowing::WindowHelper, action: &crate::Actions) -> bool {

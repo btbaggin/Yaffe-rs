@@ -7,7 +7,8 @@ pub use yaffe_plugin::*;
 
 pub struct Plugin {
 	_container: Container<PluginWrapper>, //There for keeping reference to the library
-	pub settings: HashMap<String, PluginSetting>,
+	settings: HashMap<String, PluginSetting>,
+	name: String,
 	data: Box<dyn YaffePlugin>,
 }
 impl Plugin {
@@ -55,6 +56,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str, mut plugins:
 					let mut plugin = Plugin { 
 						_container: cont, 
 						settings: translate_to_plugin_settings(settings),
+						name: file.to_string(),
 						data 
 					};
 
@@ -70,6 +72,14 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str, mut plugins:
 pub fn unload(plugins: &mut Vec<std::cell::RefCell<Plugin>>) {
 	//TODO this crashes things
 	plugins.clear();
+}
+
+pub fn update_settings(plugin: &std::cell::RefCell<Plugin>, settings: &mut crate::settings::PluginSettings) {
+	let mut plugin = plugin.borrow_mut();
+	let settings = if let Some(settings) = settings.remove(&plugin.name) { settings } 
+								   else { HashMap::new() };
+
+	plugin.settings = translate_to_plugin_settings(settings);
 }
 
 fn translate_to_plugin_settings(settings: HashMap<String, SettingValue>) -> HashMap<String, PluginSetting> {
