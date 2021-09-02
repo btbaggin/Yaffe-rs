@@ -64,7 +64,7 @@ impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn get_height(&self) -> f32 { crate::font::FONT_SIZE }
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
-        let name_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &self.message);
+        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &self.message, rect.width());
         piet.draw_text(*rect.top_left(), get_font_color(settings), &name_label,);
     }
 }

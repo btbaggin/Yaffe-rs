@@ -7,6 +7,7 @@ use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment}
 use crate::{YaffeState, Actions, V2, Rect};
 use std::ops::Deref;
 use crate::widgets::animations::*;
+use crate::logger::UserMessage;
 
 pub mod animations;
 mod platform_list;
@@ -329,14 +330,12 @@ impl DeferredAction {
             if let Some(plugin) = state.get_platform().get_plugin(state) {
 
                 let items = plugin.borrow_mut().load_items(initial);
-                match items {
-                    Ok(items) => {
-                        let platform = &mut state.platforms[state.selected_platform];
-                        for i in items {
-                            platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
-                        }
-                    },
-                    Err(e) => crate::logger::log_entry(crate::logger::LogTypes::Warning, e),
+                if let Some(items) = items.display_failure("Error loading plugin:", state) {
+                    let platform = &mut state.platforms[state.selected_platform];
+                    platform.apps.clear();
+                    for i in items {
+                        platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
+                    }
                 }
             }
         }
@@ -371,7 +370,7 @@ pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBloc
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
-fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
+pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
     let font =  crate::assets::request_font(crate::assets::Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);

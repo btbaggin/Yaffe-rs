@@ -100,13 +100,22 @@ impl Platform {
 
 impl Executable {
     pub fn plugin_item(platform_index: usize, item: yaffe_plugin::YaffePluginItem) -> Executable {
+        let (boxart, banner) = match item.thumbnail {
+            yaffe_plugin::PathType::Url(s) => {
+                (Rc::new(RefCell::new(AssetSlot::new_url(&s))), Rc::new(RefCell::new(AssetSlot::new_url(&s))))
+            },
+            yaffe_plugin::PathType::File(s) => {
+                (Rc::new(RefCell::new(AssetSlot::new(&s))), Rc::new(RefCell::new(AssetSlot::new(&s))))
+            },
+        };
+
         super::Executable {
             file: item.path,
             name: item.name,
             description: item.description,
             platform_index: platform_index,
-            boxart: Rc::new(RefCell::new(AssetSlot::new_url(&item.thumbnail))),
-            banner: Rc::new(RefCell::new(AssetSlot::new_url(&item.thumbnail))),
+            boxart,
+            banner,
             players: 1,
             rating: if !item.restricted { Rating::Everyone } else { Rating::Mature },
         }

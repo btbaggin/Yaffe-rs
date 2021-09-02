@@ -6,7 +6,7 @@ use std::collections::HashMap;
 pub struct YaffePluginItem {
     pub name: String,
     pub path: String,
-    pub thumbnail: String,
+    pub thumbnail: PathType,
     pub restricted: bool,
     pub description: String,
 }
@@ -17,9 +17,14 @@ pub enum PluginSetting {
     F32(f32),
     I32(i32),
 }
+
+pub enum PathType {
+    Url(String),
+    File(String),
+}
   
 impl YaffePluginItem {
-    pub fn new(name: String, path: String, thumbnail: String, restricted: bool, description: String) -> YaffePluginItem {
+    pub fn new(name: String, path: String, thumbnail: PathType, restricted: bool, description: String) -> YaffePluginItem {
         YaffePluginItem {
             name,
             path,
