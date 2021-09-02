@@ -16,6 +16,7 @@ type V2 = Vector2<f32>;
 /*
     TODO:
     button remapping?
+    use Path in AssetSlot?
 */
 
 pub mod colors {

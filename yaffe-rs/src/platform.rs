@@ -105,7 +105,9 @@ impl Executable {
                 (Rc::new(RefCell::new(AssetSlot::new_url(&s))), Rc::new(RefCell::new(AssetSlot::new_url(&s))))
             },
             yaffe_plugin::PathType::File(s) => {
-                (Rc::new(RefCell::new(AssetSlot::new(&s))), Rc::new(RefCell::new(AssetSlot::new(&s))))
+                let canon = std::fs::canonicalize(format!("./plugins/{}", s)).unwrap();
+                let path = canon.to_string_lossy();
+                (Rc::new(RefCell::new(AssetSlot::new(&path))), Rc::new(RefCell::new(AssetSlot::new(&path))))
             },
         };
 
