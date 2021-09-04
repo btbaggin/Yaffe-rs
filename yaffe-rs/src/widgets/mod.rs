@@ -201,6 +201,9 @@ impl WidgetTree {
     }
 
     fn finalize_restricted_action(&mut self, tag: &'static str) {
+        //Check if the restricted action is to turn it off
+        //This is specially handled because we don't want every widget to 
+        //have to code for it
         if crate::restrictions::try_disable_restrictions(&mut self.data, tag) { return; }
 
         let mut handle = DeferredAction::new();
@@ -231,13 +234,7 @@ pub struct WidgetContainer {
 }
 impl WidgetContainer {
     pub fn root(widget: impl Widget + 'static) -> WidgetContainer {
-        WidgetContainer {
-            children: vec!(),
-            widget: Box::new(widget),
-            ratio: V2::new(1.0, 1.0),
-            original_layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
-            alignment: ContainerAlignment::Left,
-        }
+        WidgetContainer::new(widget, V2::new(1.0, 1.0), ContainerAlignment::Left)
     }
     fn new(widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> WidgetContainer {
          WidgetContainer {
@@ -276,10 +273,12 @@ impl WidgetContainer {
     }
 
     pub fn render(&mut self, state: &YaffeState, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
+        //These measure the offset from the edges to begin or end rendering
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
         let mut left_stack = 0.;
         let mut right_stack = 0.;
+
         let rect = self.widget.layout();
         self.widget.render(state, rect.clone(), delta_time, piet);
 

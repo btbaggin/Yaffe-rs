@@ -1,7 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::Rect;
-use crate::{Actions, V2};
+use crate::{Actions, V2, Rect};
 use crate::colors::*;
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::{RestrictedPasscode, PasscodeEquality, passcodes_equal};

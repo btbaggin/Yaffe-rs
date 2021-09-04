@@ -4,6 +4,8 @@ use speedy2d::shape::Rectangle;
 use crate::colors::*;
 use crate::modals::{ModalResult, ModalContent, default_modal_action};
 
+/// Allow displaying a list of items that can be selected
+/// Items must implement `ListItem` trait
 pub struct ListModal<T: ListItem> {
     items: Vec<T>,
     title: Option<String>,
@@ -20,6 +22,10 @@ impl<T: ListItem> ListModal<T> {
 
     pub fn add_item(&mut self, item: T) {
         self.items.push(item);
+    }
+
+    pub fn get_selected(&self) -> &T {
+        &self.items[self.index]
     }
 }
 
@@ -80,11 +86,5 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
             piet.draw_text(pos, get_font_color(settings), &item_label);
             pos.y += 30.;
         }
-    }
-}
-
-impl<T: ListItem> ListModal<T> {
-    pub fn get_selected(&self) -> &T {
-        &self.items[self.index]
     }
 }
