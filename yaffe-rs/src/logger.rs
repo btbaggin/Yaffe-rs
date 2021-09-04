@@ -79,6 +79,7 @@ pub trait LogEntry<T> {
 }
 pub trait UserMessage<T> {
     fn display_failure(self, message: &str, state: &mut crate::YaffeState) -> Option<T>;
+    fn display_failure_deferred(self, message: &str, handle: &mut crate::DeferredAction) -> Option<T>;
 }
 impl<T, E: Debug> LogEntry<T> for std::result::Result<T, E> {
     /// Logs the type with an additional message if it is `Err` then panics  
@@ -112,6 +113,17 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
                 let message = format!("{}: {:?}", message, e);
                 let message = Box::new(crate::modals::MessageModalContent::new(&message));
                 crate::modals::display_modal(state, "Error", None, message, crate::modals::ModalSize::Half, None);
+                None
+            }
+            Ok(r) => Some(r),
+        }
+    }
+
+    fn display_failure_deferred(self, message: &str, handle: &mut crate::DeferredAction) -> Option<T> {
+        match self {
+            Err(e) => {
+                let message = format!("{}: {:?}", message, e);
+                handle.display_message(message);
                 None
             }
             Ok(r) => Some(r),

@@ -7,6 +7,7 @@ use std::convert::{TryFrom, TryInto};
 use crate::logger::LogEntry;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -90,9 +91,11 @@ impl Platform {
         }
     }
 
-    pub fn get_plugin<'a>(&self, state: &'a YaffeState) -> Option<&'a RefCell<Plugin>> {
+    pub fn get_plugin<'a>(&self, state: &'a YaffeState) -> Option<(&'a RefCell<Plugin>, HashMap<String, yaffe_plugin::PluginSetting>)> {
         if let PlatformType::Plugin = self.kind {
-            return Some(&state.plugins[self.plugin_index]);
+            let plugin = &state.plugins[self.plugin_index];
+            let settings = state.settings.plugin(&plugin.borrow().file);
+            return Some((plugin, settings));
         }
         None
     }

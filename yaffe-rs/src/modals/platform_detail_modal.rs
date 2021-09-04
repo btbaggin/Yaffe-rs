@@ -72,7 +72,7 @@ impl ModalContent for PlatformDetailModal {
         (crate::font::FONT_SIZE + crate::ui::MARGIN) * 4.
     }
 
-    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> modal::ModalResult {
+    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Down => {
                 let index = self.fields.iter().enumerate().find(|&f| f.1.focused);
@@ -87,7 +87,7 @@ impl ModalContent for PlatformDetailModal {
                     }
                 }
                 
-                modal::ModalResult::None
+                ModalResult::None
             }
             Actions::Up => {
                 let index = self.fields.iter().enumerate().find(|&f| f.1.focused);
@@ -101,7 +101,7 @@ impl ModalContent for PlatformDetailModal {
                         }
                     }
                 }
-                modal::ModalResult::None
+                ModalResult::None
 
             }
             Actions::KeyPress(c) => {
@@ -114,7 +114,7 @@ impl ModalContent for PlatformDetailModal {
                         }
                     }
                 }
-                modal::ModalResult::None
+                ModalResult::None
             }
             _ => default_modal_action(action)
         }
@@ -145,7 +145,7 @@ fn draw_field_with_label(piet: &mut Graphics2D,
 
     //Focus outline
     if field.focused {
-        modal::outline_rectangle(piet, &value_rect, 2., get_accent_color(settings));
+        outline_rectangle(piet, &value_rect, 2., get_accent_color(settings));
         if !field.text.is_empty() {
             let x = position.x + crate::ui::LABEL_SIZE + value.width();
             piet.draw_line(V2::new(x, position.y + 1.), V2::new(x, position.y + value.height() - 1.), 1., get_font_color(settings));
@@ -159,7 +159,7 @@ fn draw_field_with_label(piet: &mut Graphics2D,
     Rectangle::from_tuples((rect.left(), rect.bottom() + crate::ui::MARGIN), (rect.right(), rect.bottom() + crate::font::FONT_SIZE + crate::ui::MARGIN))
 }
 
-pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
 
@@ -169,7 +169,7 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
     }
 }
 
-pub fn on_update_application_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+pub fn on_update_application_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
         state.refresh_list = true;
@@ -178,7 +178,7 @@ pub fn on_update_application_close(state: &mut YaffeState, result: ModalResult, 
     }
 }
 
-pub fn on_platform_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+pub fn on_platform_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<crate::modals::ListModal<crate::database::PlatformData>>().unwrap();
 
@@ -187,7 +187,7 @@ pub fn on_platform_found_close(state: &mut YaffeState, result: ModalResult, cont
     }
 }
 
-pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<crate::modals::ListModal<crate::database::GameData>>().unwrap();
 

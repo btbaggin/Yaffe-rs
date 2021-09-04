@@ -1,8 +1,8 @@
 use crate::{YaffeState, modals::ModalContent, modals::ModalResult, modals::SetRestrictedModal, modals::VerifyRestrictedModal };
 
 pub const MAX_ATTEMPTS: u8 = 3;
+const DISABLE_TAG: &'static str = "disable";
 const PIN_SIZE: usize = 8;
-
 
 #[derive(Default, Copy, Clone)]
 pub struct RestrictedPasscode {
@@ -43,7 +43,7 @@ pub fn passcodes_equal(source: &RestrictedPasscode, target: &RestrictedPasscode)
     PasscodeEquality::None
 }
 
-pub fn on_restricted_modal_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+pub fn on_restricted_modal_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SetRestrictedModal>().unwrap();
         let pass = content.get_passcode();
@@ -54,16 +54,28 @@ pub fn on_restricted_modal_close(state: &mut YaffeState, result: ModalResult, co
     }
 }
 
-fn on_verify_restricted_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+fn on_verify_restricted_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, handler: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<VerifyRestrictedModal>().unwrap();
 
-        content.run_action();
+        handler.finalize_restricted_action(content.tag());
         state.restricted_last_approve = Some(std::time::Instant::now());
     }
 }
 
-pub fn verify_restricted_action(state: &mut YaffeState, action: fn(&mut dyn std::any::Any)) {
+pub fn try_disable_restrictions(state: &mut YaffeState, tag: &'static str) -> bool {
+    if tag == DISABLE_TAG {
+        state.restricted_mode = RestrictedMode::Off;
+        return true;
+    }
+    false
+}
+
+pub fn disable_restrictions(state: &mut YaffeState, handler: &mut crate::DeferredAction) {
+    verify_restricted_action(state, DISABLE_TAG, handler)
+}
+
+pub fn verify_restricted_action(state: &mut YaffeState, tag: &'static str, handler: &mut crate::DeferredAction) {
     if let RestrictedMode::On(pass) = state.restricted_mode {
         //Only as for approval if its past the last approval is no longer valid
         let approve = match state.restricted_last_approve {
@@ -72,13 +84,12 @@ pub fn verify_restricted_action(state: &mut YaffeState, action: fn(&mut dyn std:
         };
         
         if approve {
-            let data = state as *mut dyn std::any::Any;
-            let content = VerifyRestrictedModal::new(pass, action, data);
+            let content = VerifyRestrictedModal::new(pass, tag);
             let content = Box::new(content);
             crate::modals::display_modal(state, "Verify actions", None, content, crate::modals::ModalSize::Third, Some(on_verify_restricted_close));
             return;
-        }
+        } 
     } 
 
-    action(state);
+    handler.finalize_restricted_action(tag);
 }

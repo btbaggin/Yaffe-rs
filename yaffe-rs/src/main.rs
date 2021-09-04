@@ -16,7 +16,7 @@ type V2 = Vector2<f32>;
 /*
     TODO:
     button remapping?
-    use Path in AssetSlot?
+    change plugin settings from yaffe
 */
 
 pub mod colors {
@@ -85,7 +85,7 @@ mod platform;
 mod platform_layer;
 mod overlay;
 mod restrictions;
-mod game_db;
+mod game_api;
 mod job_system;
 mod logger;
 mod settings;
@@ -182,16 +182,7 @@ impl windowing::WindowHandler for WidgetTree {
                 logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
                 false
             }
-            Ok(plugins) => {
-                if let Some(mut plugins) = plugins {
-                    for p in self.data.plugins.iter_mut() {
-                        plugins::update_settings(p, &mut plugins);
-                    }
-                    true
-                } else {
-                    false
-                }
-            }
+            Ok(_) => { true }
         }
     }
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
@@ -213,7 +204,7 @@ impl windowing::WindowHandler for WidgetTree {
 
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
-                modals::modal::render_modal(&self.data.settings, m, &window_rect, graphics);
+                modals::render_modal(&self.data.settings, m, &window_rect, graphics);
             }
 
         }
@@ -243,15 +234,15 @@ impl windowing::WindowHandler for WidgetTree {
             },
             Actions::ToggleOverlay => { return false; /* Overlay handles this */ }
             _ => {
-                if !modals::modal::is_modal_open(&self.data) {
-                    let mut handler = DeferredAction::new();
+                let mut handler = DeferredAction::new();
+                if !modals::is_modal_open(&self.data) {
                     let focus = self.focus.last().log_if_fail();
         
                     self.root.action(&mut self.data, &action, focus, &mut handler);
-                    handler.resolve(self);
                 } else {
-                    modals::modal::update_modal(&mut self.data, helper, &action);
+                    modals::update_modal(&mut self.data, helper, &action, &mut handler);
                 }
+                handler.resolve(self);
                 return true;
             }
         }
@@ -265,8 +256,6 @@ impl windowing::WindowHandler for WidgetTree {
         self.layout_valid = false;
     }
 
-    //TODO check settings in on_fixed_update?
-
     fn is_window_dirty(&self) -> bool {
         self.anims.len() > 0
     }
@@ -276,11 +265,11 @@ fn main() {
     logger::initialize_log();
     let (queue, notify) = job_system::start_job_system();
 
-    let (settings, plugins) = match settings::load_settings("./settings.txt") {
+    let settings = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
         Err(e) => {
             logger::log_entry(logger::LogTypes::Error, e);
-            (settings::SettingsFile::default(), settings::PluginSettings::default())
+            settings::SettingsFile::default()
         },
     };
 
@@ -297,7 +286,7 @@ fn main() {
     let input_map = input::get_input_map();
     let gamepad = platform_layer::initialize_gamepad().log_message_if_fail("Unable to initialize input");
 
-    plugins::load_plugins(&mut ui.data, "./plugins", plugins);
+    plugins::load_plugins(&mut ui.data, "./plugins");
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
@@ -312,7 +301,7 @@ fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
     root
 }
 
-fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &Box<dyn modals::ModalContent>) {
+fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &Box<dyn modals::ModalContent>, handler: &mut crate::DeferredAction) {
     if let modals::ModalResult::Ok = result {
         let list_content = content.as_any().downcast_ref::<modals::ListModal<String>>().unwrap();
         
@@ -330,10 +319,7 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
                 display_modal(state, "Settings", Some("Confirm"), content, modals::ModalSize::Third, Some(modals::on_settings_close));
             },
             "Disable Restricted Mode" => {
-                restrictions::verify_restricted_action(state, |state| { 
-                    let state = state.downcast_mut::<YaffeState>().unwrap();
-                    state.restricted_mode = RestrictedMode::Off; 
-                });
+                restrictions::disable_restrictions(state, handler);
             },
             "Enable Restricted Mode" => {
                 state.restricted_mode = RestrictedMode::Pending;

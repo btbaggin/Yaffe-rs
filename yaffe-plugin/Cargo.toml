@@ -10,3 +10,4 @@ edition = "2018"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
+#uuid = { version = "0.8", features = ["v4"] }

@@ -7,7 +7,6 @@ use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment}
 use crate::{YaffeState, Actions, V2, Rect};
 use std::ops::Deref;
 use crate::widgets::animations::*;
-use crate::logger::UserMessage;
 
 pub mod animations;
 mod platform_list;
@@ -50,6 +49,9 @@ pub trait Widget: FocusableWidget {
 
     /// Called when the control loses focus
     fn lost_focus(&mut self, _: Rectangle, _: &mut DeferredAction) {}
+
+    /// Called when a restricted action has been validated
+    fn on_restricted_action_finalized(&self, _: &YaffeState, _: &'static str, _: &mut DeferredAction) {}
 }
 
 #[macro_export]
@@ -130,17 +132,22 @@ impl WidgetTree {
         self.root.render(&self.data, piet, delta_time, invalidate);
     }
 
+    fn current_focus(&mut self) -> Option<&mut WidgetContainer> {
+        if let Some(last) = self.focus.last() {
+            return self.root.find_widget_mut(*last);
+        }
+        None
+    }
+
     pub fn focus(&mut self, widget: WidgetId) {
         let mut handle = DeferredAction::new();
         //Find current focus so we can notify it is about to lose
-        if let Some(last) = self.focus.last() {
-            if let Some(lost) = self.root.find_widget(*last) {
-                lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
-            }
+        if let Some(lost) = self.current_focus() {
+            lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
         }
-        
+    
         //Find new focus
-        if let Some(got) = self.root.find_widget(widget) {
+        if let Some(got) = self.root.find_widget_mut(widget) {
             got.widget.got_focus(got.original_layout.clone(), &mut handle);
             self.focus.push(widget);
         }
@@ -148,25 +155,36 @@ impl WidgetTree {
         handle.resolve(self);
     }
 
-    pub fn revert_focus(&mut self) {
+    fn revert_focus(&mut self) {
         let mut handle = DeferredAction::new();
         //Find current focus so we can notify it is about to lose
         if let Some(last) = self.focus.pop() {
-            if let Some(lost) = self.root.find_widget(last) {
+            if let Some(lost) = self.root.find_widget_mut(last) {
                 lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
             }
         }
 
         //Revert to previous focus
-        if let Some(f) = self.focus.last() {
-            if let Some(got) = self.root.find_widget(*f) {
-                got.widget.got_focus(got.original_layout.clone(), &mut handle);
-            }
+        if let Some(got) = self.current_focus() {
+            got.widget.got_focus(got.original_layout.clone(), &mut handle);
         }
 
         handle.resolve(self);
     }
+
+    fn finalize_restricted_action(&mut self, tag: &'static str) {
+        if crate::restrictions::try_disable_restrictions(&mut self.data, tag) { return; }
+
+        let mut handle = DeferredAction::new();
+        if let Some(last) = self.focus.last() {
+            if let Some(focus) = self.find_widget(*last) {
+                focus.widget.on_restricted_action_finalized(&self.data, tag, &mut handle);
+            }
+        }
+        handle.resolve(self);
+    }
 }
+
 impl Deref for WidgetTree {
     type Target = WidgetContainer;
     fn deref(&self) -> &Self::Target {
@@ -271,11 +289,22 @@ impl WidgetContainer {
         }
     }
 
-    fn find_widget(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer> {
+    fn find_widget_mut(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer> {
         let id = self.widget.get_id();
         if widget == id { return Some(self) }
 
         for i in self.children.iter_mut() {
+            let widget = i.find_widget_mut(widget);
+            if widget.is_some() { return widget; }
+        }
+        None
+    }
+
+    fn find_widget(&self, widget: WidgetId) -> Option<&WidgetContainer> {
+        let id = self.widget.get_id();
+        if widget == id { return Some(self) }
+
+        for i in self.children.iter() {
             let widget = i.find_widget(widget);
             if widget.is_some() { return widget; }
         }
@@ -293,7 +322,9 @@ enum FocusType {
 pub struct DeferredAction {
     focus: Option<FocusType>,
     anims: Vec<Animation>,
-    load_plugin: Option<bool>,
+    load_plugin: Option<crate::plugins::PluginLoadType>,
+    restricted_action: Option<&'static str>,
+    message: Option<String>,
 }
 impl DeferredAction {
     pub fn new() -> DeferredAction {
@@ -301,6 +332,8 @@ impl DeferredAction {
             focus: None,
             load_plugin: None,
             anims: vec!(),
+            restricted_action: None,
+            message: None,
         }
     }
     pub fn focus_widget(&mut self, widget: WidgetId) {
@@ -309,11 +342,22 @@ impl DeferredAction {
     pub fn revert_focus(&mut self) {
         self.focus = Some(FocusType::Revert);
     }
-    pub fn load_plugin(&mut self, initial: bool) {
-        self.load_plugin = Some(initial);
+    pub fn load_plugin(&mut self, kind: crate::plugins::PluginLoadType) {
+        self.load_plugin = Some(kind);
+    }
+    pub fn finalize_restricted_action(&mut self, tag: &'static str) {
+        self.restricted_action = Some(tag);
+    }
+    pub fn display_message(&mut self, message: String) {
+        self.message = Some(message);
     }
 
     pub fn resolve(self, ui: &mut WidgetTree) {
+        if let Some(tag) = self.restricted_action {
+            ui.finalize_restricted_action(tag);
+        }
+
+        //TODO track revert focus time for a hard revert?
         match self.focus {
             None => { /*do nothing*/ }
             Some(FocusType::Revert) => ui.revert_focus(),
@@ -325,22 +369,16 @@ impl DeferredAction {
             ui.anims.push(i);
         }
 
-        if let Some(initial) = self.load_plugin {
+        if let Some(kind) = self.load_plugin {
             let state = &mut ui.data;
-            if let Some(plugin) = state.get_platform().get_plugin(state) {
+            crate::plugins::load_plugin_items(kind, state);
+        }
 
-                let items = plugin.borrow_mut().load_items(initial);
-                if let Some(items) = items.display_failure("Error loading plugin:", state) {
-                    let platform = &mut state.platforms[state.selected_platform];
-                    platform.apps.clear();
-                    for i in items {
-                        platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
-                    }
-                }
-            }
+        if let Some(message) = self.message {
+            let message = Box::new(crate::modals::MessageModalContent::new(&message));
+            crate::modals::display_modal(&mut ui.data, "Error", None, message, crate::modals::ModalSize::Half, None);
         }
     }
-
 }
 
 //

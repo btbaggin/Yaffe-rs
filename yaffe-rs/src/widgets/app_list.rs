@@ -17,6 +17,13 @@ widget!(pub struct AppList {
 });
 
 impl super::Widget for AppList {
+    fn on_restricted_action_finalized(&self, state: &YaffeState, tag: &'static str, handler: &mut DeferredAction) {
+        match tag {
+            "start" => start_game(state, handler),
+            _ => panic!("not supported"),
+        }
+    }
+
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
@@ -38,10 +45,7 @@ impl super::Widget for AppList {
                 true 
             }
             Actions::Accept => {
-                crate::restrictions::verify_restricted_action(state, |state| {
-                    let state = state.downcast_mut::<YaffeState>().unwrap();
-                    start_game(state);
-                });
+                crate::restrictions::verify_restricted_action(state, "start", handler);
                 true
             },
             Actions::Info => {
@@ -118,22 +122,22 @@ impl AppList {
         self.tiles_y = tiles_y;
 
         let mut effective_i = 0;
-        for exe in self.tiles.iter_mut() {
-            exe.apply_filter(&state.search_info, &platform.apps);
+        for tile in self.tiles.iter_mut() {
+            tile.apply_filter(&state.search_info, &platform.apps);
 
             //Size each tile according to its aspect ratio and the ideal size
-            AppList::size_individual_tile(state, exe, &ideal_tile_size);
+            AppList::size_individual_tile(state, tile, &ideal_tile_size);
 
             let x = (effective_i % self.tiles_x) as f32;
             let y = ((effective_i / self.tiles_x) - (self.first_visible / self.tiles_x)) as f32;
 
-            let offset = (ideal_tile_size - exe.size) / 2.0;
+            let offset = (ideal_tile_size - tile.size) / 2.0;
 
             let position = V2::new(ideal_tile_size.x * x + offset.x + list_rect.left(), 
                                    ideal_tile_size.y * y + offset.y + list_rect.top());
-            exe.position = position;
+            tile.position = position;
 
-            if exe.is_visible() { effective_i += 1; }
+            if tile.is_visible() { effective_i += 1; }
         }
     }
 
@@ -242,22 +246,30 @@ impl AppList {
 
             if let crate::platform::PlatformType::Plugin = state.get_platform().kind {
                 if self.first_visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {
-                    handler.load_plugin(false);
+                    handler.load_plugin(crate::plugins::PluginLoadType::Append);
                 }
             }
         }
     }
 }
 
-fn start_game(state: &mut YaffeState) {
+fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
     if let Some(exe) = state.get_executable() {
 
         if let Some(platform) = state.platforms.get(exe.platform_index) {
             let child = match platform.kind {
                 crate::platform::PlatformType::Plugin => {
-                    let plugin = platform.get_plugin(state).unwrap().borrow_mut();
-                    let mut process = plugin.start(&exe.name, &exe.file);
-                    process.spawn()
+                    let (plugin, settings) = platform.get_plugin(state).unwrap();
+                    let action = plugin.borrow_mut().on_selected(&exe.name, &exe.file, &settings);
+
+                    match action {
+                        yaffe_plugin::SelectedAction::Load => {
+                            handler.load_plugin(crate::plugins::PluginLoadType::Refresh);
+                            // handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
+                            return;
+                        },
+                        yaffe_plugin::SelectedAction::Start(mut p) => p.spawn(),
+                    }
                 },
 
                 _ => {
@@ -275,7 +287,7 @@ fn start_game(state: &mut YaffeState) {
                 }
             };
 
-            if let Some(process) = child.display_failure("Unable to start game", state) {
+            if let Some(process) = child.display_failure_deferred("Unable to start game", handler) {
                 let mut overlay = state.overlay.borrow_mut();
                 overlay.set_process(process);
                 //We could refresh so our recent games page updates, but I dont think that's desirable

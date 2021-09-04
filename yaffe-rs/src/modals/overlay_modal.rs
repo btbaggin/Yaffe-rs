@@ -48,13 +48,11 @@ impl ModalContent for OverlayModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
-        //TODO this doesnt work because it was loaded with the Piet of another window?
-        // let image_rect = Rectangle::from_tuples((rect.left(), rect.top()), (rect.left() + 32., rect.top() + 32.));
-        // let i = crate::assets::request_preloaded_image(piet, crate::assets::Images::Speaker);
-        // i.render(piet, image_rect);
+        let label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "Volume:");
+        piet.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
 
-        let rect = Rectangle::from_tuples((rect.left() + 35., rect.top()), (rect.right(), rect.bottom()));
-        crate::modals::modal::outline_rectangle(piet, &rect, 2., Color::GRAY);
+        let rect = Rectangle::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
+        crate::modals::outline_rectangle(piet, &rect, 2., Color::GRAY);
 
         let accent = crate::colors::get_accent_color(settings);
         let rect = Rectangle::new(*rect.top_left(), rect.top_left() + V2::new(rect.width() * self.volume, rect.height()));

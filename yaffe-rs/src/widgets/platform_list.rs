@@ -11,14 +11,14 @@ impl super::Widget for PlatformList {
             Actions::Down =>  {
                 if state.selected_platform < state.platforms.len() - 1 { 
                     state.selected_platform += 1;
-                    handler.load_plugin(true);
+                    handler.load_plugin(crate::plugins::PluginLoadType::Initial);
                 }
                 true
             }
             Actions::Up => {
                 if state.selected_platform > 0 { 
                     state.selected_platform -= 1;
-                    handler.load_plugin(true);
+                    handler.load_plugin(crate::plugins::PluginLoadType::Initial);
                 }
                 true
             }

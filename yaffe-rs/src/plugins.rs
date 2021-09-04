@@ -1,23 +1,70 @@
 use yaffe_plugin::YaffePlugin;
 use dlopen::wrapper::{Container, WrapperApi};
 use crate::logger::{LogEntry, UserMessage};
-use crate::settings::SettingValue;
-use std::collections::HashMap;
 pub use yaffe_plugin::*;
+use std::ops::{DerefMut, Deref};
+use std::collections::HashMap;
+
+#[derive(Copy, Clone)]
+pub enum PluginLoadType {
+	Initial,
+	Refresh,
+	Append,
+}
 
 pub struct Plugin {
 	_container: Container<PluginWrapper>, //There for keeping reference to the library
-	settings: HashMap<String, PluginSetting>,
-	name: String,
+	pub file: String,
+	pub page: yaffe_plugin::LoadStatus,
 	data: Box<dyn YaffePlugin>,
 }
 impl Plugin {
-	//We cant impl Deref because we need to own the settings.
-	//We will get borrow settings when we try to call a mut method passing in out immut settings
-	pub fn name(&self) -> &'static str { self.data.name() }
-    pub fn initialize(&mut self) -> InitializeResult { self.data.initialize(&self.settings) }
-    pub fn load_items(&mut self, initial: bool) -> LoadResult { self.data.load_items(initial, &self.settings) }
-	pub fn start(&self, name: &str, path: &str) -> std::process::Command { self.data.start(name, path, &self.settings) }
+	pub fn load(&mut self, kind: PluginLoadType, size: u32, settings: &HashMap<String, PluginSetting>) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
+		match kind {
+			PluginLoadType::Initial => {
+				self.data.initial_load();
+				self.page = yaffe_plugin::LoadStatus::Initial;
+			},
+			PluginLoadType::Refresh => {
+				self.page = yaffe_plugin::LoadStatus::Initial;
+			},
+			PluginLoadType::Append => {},
+		}
+
+		if Plugin::needs_load(self.page) {
+			let result = self.data.load_items(size, settings);
+			match result {
+				Ok((items, page)) => {
+					self.page = yaffe_plugin::LoadStatus::Refresh(page);
+					return Ok(items)
+				}
+				Err(s) => Err(s)
+			}
+		} else
+		{
+			Ok(vec!())
+		}
+	}
+
+	fn needs_load(page: LoadStatus) -> bool {
+		match page {
+			LoadStatus::Initial => true,
+			LoadStatus::Refresh(p) => p,
+		}
+	}
+}
+
+impl Deref for Plugin {
+    type Target = Box<dyn YaffePlugin>;
+
+    fn deref(&self) -> &Box<dyn YaffePlugin> {
+        &self.data
+    }
+}
+impl DerefMut for Plugin {
+    fn deref_mut(&mut self) -> &mut Box<dyn YaffePlugin> {
+        &mut self.data
+    }
 }
 
 #[derive(WrapperApi)]
@@ -25,7 +72,7 @@ struct PluginWrapper {
 	initialize: fn() -> Box<dyn yaffe_plugin::YaffePlugin>,
 }
 
-pub fn load_plugins(state: &mut crate::YaffeState, directory: &str, mut plugins: crate::settings::PluginSettings) {
+pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 	let path = std::fs::canonicalize(directory).unwrap();
 
 	for entry in std::fs::read_dir(path).log_if_fail() {
@@ -48,19 +95,16 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str, mut plugins:
 					//Create our YaffePlugin object
 					let data = cont.initialize();
 					
-					//Get an owned reference to our settings
-					let settings = if let Some(settings) = plugins.remove(&file.to_string()) { settings } 
-								   else { HashMap::new() };
-
 					//Do any initialization work on the object
 					let mut plugin = Plugin { 
 						_container: cont, 
-						settings: translate_to_plugin_settings(settings),
-						name: file.to_string(),
+						file: file.to_string(),
+						page: yaffe_plugin::LoadStatus::Initial,
 						data 
 					};
 
-					if plugin.data.initialize(&plugin.settings).display_failure(&message, state).is_some() {
+					let settings = state.settings.plugin(&plugin.file);
+					if plugin.data.initialize(&settings).display_failure(&message, state).is_some() {
 						state.plugins.push(std::cell::RefCell::new(plugin));
 					}
 				}
@@ -69,32 +113,26 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str, mut plugins:
 	}
 }
 
+pub fn load_plugin_items(kind: PluginLoadType, state: &mut crate::YaffeState) {
+	if let Some((plugin, settings)) = state.get_platform().get_plugin(state) {
+		let x = state.settings.get_i32(crate::SettingNames::ItemsPerRow);
+		let y = state.settings.get_i32(crate::SettingNames::ItemsPerColumn);
+
+		let items = plugin.borrow_mut().load(kind, (x * y) as u32, &settings);
+		if let Some(items) = items.display_failure("Error loading plugin", state) {
+			let platform = &mut state.platforms[state.selected_platform];
+			match kind {
+				PluginLoadType::Initial | PluginLoadType::Refresh => platform.apps.clear(),
+				_ => {},
+			}
+			for i in items {
+				platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
+			}
+		}
+	}
+}
+
 pub fn unload(plugins: &mut Vec<std::cell::RefCell<Plugin>>) {
 	//TODO this crashes things
 	plugins.clear();
-}
-
-pub fn update_settings(plugin: &std::cell::RefCell<Plugin>, settings: &mut crate::settings::PluginSettings) {
-	let mut plugin = plugin.borrow_mut();
-	let settings = if let Some(settings) = settings.remove(&plugin.name) { settings } 
-								   else { HashMap::new() };
-
-	plugin.settings = translate_to_plugin_settings(settings);
-}
-
-fn translate_to_plugin_settings(settings: HashMap<String, SettingValue>) -> HashMap<String, PluginSetting> {
-	let mut result = HashMap::new();
-	for (key, value) in settings.iter() {
-
-		let value = match value {
-			SettingValue::F32(f) => Some(PluginSetting::F32(*f)),
-			SettingValue::I32(i) => Some(PluginSetting::I32(*i)),
-			SettingValue::String(s) => Some(PluginSetting::String(s.clone())),
-			SettingValue::Color(_) => None
-		};
-		if let Some(value) = value {
-			result.insert(key.clone(), value);
-		}
-	}
-	result
 }

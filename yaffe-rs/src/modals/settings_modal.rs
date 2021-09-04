@@ -57,7 +57,7 @@ impl ModalContent for SettingsModal {
     }
 }
 
-pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>) {
+pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
         crate::platform_layer::set_run_at_startup(STARTUP_TASK, content.run_at_startup).display_failure("Unable to set Yaffe to run at startup", state);

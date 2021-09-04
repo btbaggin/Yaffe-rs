@@ -72,7 +72,7 @@ pub fn run_animations(tree: &mut crate::widgets::WidgetTree, delta_time: f32) {
     for animation in tree.anims.iter_mut() {
         animation.remaining -= delta_time;
     
-        if let Some(widget) = tree.root.find_widget(animation.widget) {
+        if let Some(widget) = tree.root.find_widget_mut(animation.widget) {
 
             let widget = widget.widget.as_mut();
             match animation.target {

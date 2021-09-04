@@ -104,6 +104,7 @@ pub struct SettingsFile {
     settings: HashMap<String, SettingValue>,
     path: std::path::PathBuf,
     last_write: SystemTime,
+    plugins: PluginSettings,
 }
 impl SettingsFile {
     pub fn default() -> SettingsFile {
@@ -111,7 +112,15 @@ impl SettingsFile {
             settings: HashMap::default(), 
             path: std::path::PathBuf::default(), 
             last_write: SystemTime::now(),
+            plugins: PluginSettings::default(),
         }
+    }
+
+    pub fn plugin(&self, name: &str) -> HashMap<String, yaffe_plugin::PluginSetting> {
+        if let Some(settings) = self.plugins.get(name) {
+            return translate_to_plugin_settings(settings);
+        }
+        HashMap::default()
     }
 
     settings_get!(get_f32, f32, SettingValue::F32);
@@ -120,8 +129,25 @@ impl SettingsFile {
     settings_get!(get_color, Color, SettingValue::Color);
 }
 
+fn translate_to_plugin_settings(settings: &HashMap<String, SettingValue>) -> HashMap<String, yaffe_plugin::PluginSetting> {
+	let mut result = HashMap::new();
+	for (key, value) in settings.iter() {
+
+		let value = match value {
+			SettingValue::F32(f) => Some(yaffe_plugin::PluginSetting::F32(*f)),
+			SettingValue::I32(i) => Some(yaffe_plugin::PluginSetting::I32(*i)),
+			SettingValue::String(s) => Some(yaffe_plugin::PluginSetting::String(s.clone())),
+			SettingValue::Color(_) => None
+		};
+		if let Some(value) = value {
+			result.insert(key.clone(), value);
+		}
+	}
+	result
+}
+
 /// Loads settings from a file path
-pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<(SettingsFile, PluginSettings)> {
+pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<SettingsFile> {
     let mut path_buf = std::path::PathBuf::new(); path_buf.push(path);
     let data = std::fs::read_to_string(path_buf.clone())?;
     let last_write = std::fs::metadata(path_buf.clone())?.modified();
@@ -129,18 +155,18 @@ pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<(Setting
         settings: HashMap::new(), 
         path: path_buf, 
         last_write: last_write.unwrap(), 
+        plugins: PluginSettings::new(),
     };
     
-    let plugins = populate_settings(&mut settings, data)?;
+    populate_settings(&mut settings, data)?;
 
-    Ok((settings, plugins))
+    Ok(settings)
 }
 
 /// Checks for and loads any updates to the settings file
-pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<Option<PluginSettings>> {
+pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<()> {
     //We log an error if the file isnt found in load_settings
     //Since this is already logged we dont need to get logging it every frame
-    let mut plugins = None;
     if settings.path.as_path().exists() {
         let last_write = std::fs::metadata(settings.path.clone())?.modified()?;
 
@@ -149,23 +175,21 @@ pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<Option<Plu
             settings.last_write = last_write;
 
             settings.settings.clear();
-            plugins = Some(populate_settings(settings, data)?);
+            return populate_settings(settings, data);
         }
     }
 
-    Ok(plugins)
+    Ok(())
 }
 
-fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResult<PluginSettings> {
+fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResult<()> {
     let mut current_settings = &mut settings.settings;
-    let mut plugins = PluginSettings::new();
     for line in data.lines() {
 
         if line.starts_with("--") {
             let (_, name) = line.split_at(2);
-            let plugin = HashMap::default();
-            plugins.insert(String::from(name), plugin);
-            current_settings = plugins.get_mut(name).unwrap();
+            settings.plugins.insert(String::from(name), HashMap::default());
+            current_settings = settings.plugins.get_mut(name).unwrap();
 
         }
         //# denotes a comment
@@ -187,7 +211,7 @@ fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResul
         }
     }
 
-    Ok(plugins)
+    Ok(())
 }
 
 fn color_from_string(value: &str) -> SettingsResult<Color> {

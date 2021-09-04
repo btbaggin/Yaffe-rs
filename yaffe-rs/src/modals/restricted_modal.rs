@@ -48,23 +48,20 @@ pub struct VerifyRestrictedModal {
     pass: RestrictedPasscode,
     target: RestrictedPasscode,
     attempts: u8,
-    request: fn(&mut dyn std::any::Any),
-    data: *mut dyn std::any::Any,
+    tag: &'static str,
 }
 impl VerifyRestrictedModal {
-    pub fn new(target: RestrictedPasscode, action: fn(&mut dyn std::any::Any), data: *mut dyn std::any::Any) -> VerifyRestrictedModal {
+    pub fn new(target: RestrictedPasscode, tag: &'static str) -> VerifyRestrictedModal {
         VerifyRestrictedModal {
             pass: RestrictedPasscode::default(),
             target: target,
             attempts: 0,
-            request: action,
-            data: data
+            tag,
         }
     }
 
-    pub fn run_action(&self) {
-        let data = unsafe { &mut *self.data };
-        (self.request)(data);
+    pub fn tag(&self) -> &'static str {
+        self.tag
     }
 }
 
