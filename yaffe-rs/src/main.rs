@@ -197,8 +197,7 @@ impl windowing::WindowHandler for WidgetTree {
             }
 
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(window_rect.clone(), graphics, delta_time, !self.layout_valid);
-            self.layout_valid = true;
+            self.render_all(window_rect.clone(), graphics, delta_time);
 
             crate::widgets::animations::run_animations(self, delta_time);
 
@@ -253,11 +252,11 @@ impl windowing::WindowHandler for WidgetTree {
     }
 
     fn on_resize(&mut self, _: u32, _: u32) { 
-        self.layout_valid = false;
+        self.invalidate()
     }
 
     fn is_window_dirty(&self) -> bool {
-        self.anims.len() > 0
+        self.needs_new_frame()
     }
 }
 

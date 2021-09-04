@@ -7,6 +7,8 @@ use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment}
 use crate::{YaffeState, Actions, V2, Rect};
 use std::ops::Deref;
 use crate::widgets::animations::*;
+use std::time::Instant;
+
 
 pub mod animations;
 mod platform_list;
@@ -113,8 +115,9 @@ pub struct WidgetTree {
     pub root: WidgetContainer,
     pub focus: Vec<WidgetId>,
     pub data: YaffeState,
-    pub anims: Vec<Animation>,
-    pub layout_valid: bool,
+    anims: Vec<Animation>,
+    layout_valid: bool,
+    last_revert: Instant,
 }
 impl WidgetTree {
     pub fn new(root: WidgetContainer, data: YaffeState) -> WidgetTree {
@@ -124,12 +127,22 @@ impl WidgetTree {
             data: data,
             anims: vec!(),
             layout_valid: false,
+            last_revert: Instant::now(),
         }
     }
 
-    pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
-        if invalidate { self.root.widget.set_layout(layout); }
-        self.root.render(&self.data, piet, delta_time, invalidate);
+    pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32) {
+        if !self.layout_valid { self.root.widget.set_layout(layout); }
+        self.root.render(&self.data, piet, delta_time, !self.layout_valid);
+        self.layout_valid = true;
+    }
+
+    pub fn invalidate(&mut self) {
+        self.layout_valid = false;
+    }
+
+    pub fn needs_new_frame(&self) -> bool {
+        self.anims.len() > 0
     }
 
     fn current_focus(&mut self) -> Option<&mut WidgetContainer> {
@@ -156,9 +169,24 @@ impl WidgetTree {
     }
 
     fn revert_focus(&mut self) {
+        let now = Instant::now();
+
+        //Check if we have pressed back multiple times in quick succession
+        //If we have revert all the way to the last different widget
+        //This will allow us to get back to the platform list after going deep in a plugin
+        //items
+        let mut last = self.focus.pop();
+        if (now - self.last_revert).as_millis() < 200 {
+            while last.as_ref() == self.focus.last() {
+                last = self.focus.pop();
+            }
+        }
+        self.last_revert = now;
+        
+        //TODO pass something to indicate that the focused changed to itself
         let mut handle = DeferredAction::new();
         //Find current focus so we can notify it is about to lose
-        if let Some(last) = self.focus.pop() {
+        if let Some(last) = last {
             if let Some(lost) = self.root.find_widget_mut(last) {
                 lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
             }
@@ -357,7 +385,6 @@ impl DeferredAction {
             ui.finalize_restricted_action(tag);
         }
 
-        //TODO track revert focus time for a hard revert?
         match self.focus {
             None => { /*do nothing*/ }
             Some(FocusType::Revert) => ui.revert_focus(),

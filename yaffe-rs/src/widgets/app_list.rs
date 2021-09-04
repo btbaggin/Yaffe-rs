@@ -265,7 +265,7 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
                     match action {
                         yaffe_plugin::SelectedAction::Load => {
                             handler.load_plugin(crate::plugins::PluginLoadType::Refresh);
-                            // handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
+                            handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
                             return;
                         },
                         yaffe_plugin::SelectedAction::Start(mut p) => p.spawn(),
