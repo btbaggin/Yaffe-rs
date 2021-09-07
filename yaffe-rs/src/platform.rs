@@ -110,7 +110,7 @@ impl Executable {
             yaffe_plugin::PathType::File(s) => {
                 let canon = std::fs::canonicalize(format!("./plugins/{}", s)).unwrap();
                 let path = canon.to_string_lossy();
-                (Rc::new(RefCell::new(AssetSlot::new(&path))), Rc::new(RefCell::new(AssetSlot::new(&path))))
+                crate::assets::get_cached_asset(path.to_string(), path.to_string())
             },
         };
 
@@ -192,7 +192,7 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: us
                     let mut queue = state.queue.borrow_mut();
                     if let Ok((name, overview, players, rating)) = get_game_info(id, &file) {
 
-                        let (boxart, banner) = crate::assets::get_asset_slot(&platform.name, &name);
+                        let (boxart, banner) = crate::assets::get_cached_game_slot(&platform.name, &name);
     
                         platform.apps.push(Executable::new_game(String::from(file), 
                                                                 name, 

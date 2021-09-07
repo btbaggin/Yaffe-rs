@@ -220,7 +220,7 @@ pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable>
         let platform_id = r.read::<i64>(5).unwrap();
         let platform_name = r.read::<String>(6).unwrap();
 
-        let (boxart, banner) = crate::assets::get_asset_slot(&platform_name, &name);
+        let (boxart, banner) = crate::assets::get_cached_game_slot(&platform_name, &name);
         let index = map.iter().position(|s| s.id == Some(platform_id));
         if let Some(index) = index {
             result.push(Executable::new_game(file, 

@@ -306,8 +306,12 @@ pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
     (boxart.to_string_lossy().to_string(), banner.to_string_lossy().to_string())
 }
 
-pub fn get_asset_slot(platform: &str, name: &str) -> (Rc<RefCell<AssetSlot>>, Rc<RefCell<AssetSlot>>) {
+pub fn get_cached_game_slot(platform: &str, name: &str) -> (Rc<RefCell<AssetSlot>>, Rc<RefCell<AssetSlot>>) {
     let (boxart, banner) = get_asset_path(platform, name);
+    get_cached_asset(boxart, banner)
+}
+
+pub fn get_cached_asset(boxart: String, banner: String) -> (Rc<RefCell<AssetSlot>>, Rc<RefCell<AssetSlot>>) {
 
     //This acts as a cache of exe images
     //If our list ever reloads or we reqeust the same image (recent vs emulator)
