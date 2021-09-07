@@ -3,7 +3,7 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{V2, input::ControllerInput, input::InputType};
+use crate::{V2, input::ControllerInput, input::InputType, Actions};
 use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -104,9 +104,9 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
 
 pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                                    mut gamepad: impl crate::input::PlatformGamepad + 'static,
-                                   input_map: crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>,
-                                   handler: std::rc::Rc<RefCell<impl WindowHandler + 'static>>,
-                                   overlay: std::rc::Rc<RefCell<impl WindowHandler + 'static>>) -> ! {
+                                   input_map: crate::input::InputMap<VirtualKeyCode, ControllerInput, Actions>,
+                                   handler: Rc<RefCell<impl WindowHandler + 'static>>,
+                                   overlay: Rc<RefCell<impl WindowHandler + 'static>>) -> ! {
     let el = EventLoop::new();
 
     let mut ct = context_tracker::ContextTracker::default();
@@ -158,6 +158,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                     let size = Vector2::new(physical_size.width, physical_size.height);
                     window.size = size;
+
                     context.windowed().resize(physical_size);
                     window.renderer.set_viewport_size_pixels(size);
                     window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
@@ -205,6 +206,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                 _ => {}
             },
+
             Event::RedrawRequested(id) => {
                 let window = windows.get_mut(&id).unwrap();
                 let context = ct.get_current(window.context_id).unwrap();
@@ -283,15 +285,15 @@ fn send_action_to_window(window: &mut YaffeWindow,
     result
 }
 
-fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, crate::Actions>, 
-                   input: &mut dyn crate::input::PlatformGamepad) -> std::collections::HashSet<crate::Actions> {
+fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, Actions>, 
+                   input: &mut dyn crate::input::PlatformGamepad) -> std::collections::HashSet<Actions> {
 
     let mut result = std::collections::HashSet::new();
     for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(action.clone());
         } else {
-            result.insert(crate::Actions::KeyPress(crate::input::InputType::Key(g as u8 as char)));
+            result.insert(Actions::KeyPress(InputType::Key(g as u8 as char)));
         }
     }
 

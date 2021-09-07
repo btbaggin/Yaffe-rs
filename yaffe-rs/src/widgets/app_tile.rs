@@ -28,8 +28,19 @@ impl AppTile {
             size: V2::new(0., 0.),
         }
     }
-}
-impl AppTile {
+
+    pub fn intersects(&self, rect: &speedy2d::shape::Rectangle) -> bool {
+        let x1_y1 = self.position;
+        let x2_y2 = self.position + self.size;
+        let b_x1_y1 = rect.top_left();
+        let b_x2_y2 = rect.bottom_right();
+
+        x1_y1.x < b_x2_y2.x &&
+        x2_y2.x > b_x1_y1.x &&
+        x1_y1.y < b_x2_y2.y &&
+        x2_y2.y > b_x1_y1.y
+    }
+
     pub fn is_visible(&self) -> bool {
         (self.flags & VISIBLE_FLAG) != 0
     }

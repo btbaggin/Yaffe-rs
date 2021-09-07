@@ -81,7 +81,10 @@ impl super::Widget for AppList {
             if i == state.selected_app && focused { continue; }
 
             let tile = &mut self.tiles[i];
-            tile.render(&state.settings, false, self.tile_animation, &plat.apps[i], piet);
+            //Only render tiles inside visible area
+            if tile.intersects(&rect) {
+                tile.render(&state.settings, false, self.tile_animation, &plat.apps[i], piet);
+            }
         }
 
         if let Some(tile) = self.tiles.get_mut(state.selected_app) {

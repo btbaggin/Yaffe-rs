@@ -1,7 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{Actions, V2, Rect};
-use crate::colors::*;
+use crate::{Actions, V2, Rect, colors::*, font::*, ui::*};
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::{RestrictedPasscode, PasscodeEquality, passcodes_equal};
 use std::hash::{Hash, Hasher};
@@ -21,7 +20,7 @@ impl SetRestrictedModal {
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 { crate::font::FONT_SIZE + crate::ui::MARGIN }
+    fn get_height(&self) -> f32 { FONT_SIZE + MARGIN }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         let code = match action {
@@ -35,10 +34,9 @@ impl ModalContent for SetRestrictedModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
-        let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "*");
+        let item_label = crate::widgets::get_drawable_text(FONT_SIZE, "*");
         for i in 0..self.pass.len() {
-            piet.draw_text(V2::new(rect.left() + i as f32 * crate::font::FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
-
+            piet.draw_text(V2::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }
@@ -66,7 +64,7 @@ impl VerifyRestrictedModal {
 
 impl ModalContent for VerifyRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 { crate::font::FONT_SIZE + crate::ui::MARGIN }
+    fn get_height(&self) -> f32 { FONT_SIZE + MARGIN }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         //Get the key (or action which can be translated to a key)
@@ -91,9 +89,9 @@ impl ModalContent for VerifyRestrictedModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
-        let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "*");
+        let item_label = crate::widgets::get_drawable_text(FONT_SIZE, "*");
         for i in 0..self.pass.len() {
-            piet.draw_text(V2::new(rect.left() + i as f32 * crate::font::FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
+            piet.draw_text(V2::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }
