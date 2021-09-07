@@ -117,7 +117,7 @@ pub struct WidgetTree {
     pub data: YaffeState,
     anims: Vec<Animation>,
     layout_valid: bool,
-    last_revert: Instant,
+    last_focus: (Option<WidgetId>, Instant),
 }
 impl WidgetTree {
     pub fn new(root: WidgetContainer, data: YaffeState) -> WidgetTree {
@@ -127,7 +127,7 @@ impl WidgetTree {
             data: data,
             anims: vec!(),
             layout_valid: false,
-            last_revert: Instant::now(),
+            last_focus: (None, Instant::now()),
         }
     }
 
@@ -157,6 +157,7 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(lost) = self.current_focus() {
             lost.widget.lost_focus(lost.original_layout.clone(), &mut handle);
+            self.last_focus = (Some(lost.widget.get_id()), Instant::now());
         }
     
         //Find new focus
@@ -176,14 +177,14 @@ impl WidgetTree {
         //This will allow us to get back to the platform list after going deep in a plugin
         //items
         let mut last = self.focus.pop();
-        if (now - self.last_revert).as_millis() < 200 {
+        if (now - self.last_focus.1).as_millis() < 200 {
             while last.as_ref() == self.focus.last() {
                 last = self.focus.pop();
             }
         }
-        self.last_revert = now;
+        let different = last != self.last_focus.0;
+        self.last_focus = (last, now);
         
-        //TODO pass something to indicate that the focused changed to itself
         let mut handle = DeferredAction::new();
         //Find current focus so we can notify it is about to lose
         if let Some(last) = last {
@@ -195,6 +196,11 @@ impl WidgetTree {
         //Revert to previous focus
         if let Some(got) = self.current_focus() {
             got.widget.got_focus(got.original_layout.clone(), &mut handle);
+        }
+
+        if !different {
+            //The only scenario this could happen is plugins
+            handle.load_plugin(crate::plugins::PluginLoadType::Back);
         }
 
         handle.resolve(self);
