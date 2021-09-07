@@ -56,6 +56,7 @@ pub trait YaffePlugin {
     fn initial_load(&mut self);
     fn load_items(&mut self, size: u32, settings: &HashMap<String, PluginSetting>) -> LoadResult;
     fn on_selected(&mut self, name: &str, path: &str, settings: &HashMap<String, PluginSetting>) -> SelectedAction;
+    fn on_back(&mut self) -> bool { false }
 }
 
 pub fn load_next_page(results: Vec<YaffePluginItem>) -> LoadResult {

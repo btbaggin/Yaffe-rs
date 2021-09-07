@@ -10,6 +10,7 @@ pub enum PluginLoadType {
 	Initial,
 	Refresh,
 	Append,
+	Back,
 }
 
 pub struct Plugin {
@@ -29,6 +30,11 @@ impl Plugin {
 				self.page = yaffe_plugin::LoadStatus::Initial;
 			},
 			PluginLoadType::Append => {},
+			PluginLoadType::Back => {
+				if self.data.on_back() {
+					self.page = yaffe_plugin::LoadStatus::Initial;
+				}
+			}
 		}
 
 		if Plugin::needs_load(self.page) {
@@ -122,7 +128,7 @@ pub fn load_plugin_items(kind: PluginLoadType, state: &mut crate::YaffeState) {
 		if let Some(items) = items.display_failure("Error loading plugin", state) {
 			let platform = &mut state.platforms[state.selected_platform];
 			match kind {
-				PluginLoadType::Initial | PluginLoadType::Refresh => platform.apps.clear(),
+				PluginLoadType::Initial | PluginLoadType::Refresh | PluginLoadType::Back => platform.apps.clear(),
 				_ => {},
 			}
 			for i in items {
