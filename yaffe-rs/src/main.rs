@@ -17,6 +17,7 @@ type V2 = Vector2<f32>;
     TODO:
     button remapping?
     change plugin settings from yaffe
+    memory management for assets? (clear asset cache, downloaded image??)
 */
 
 pub mod colors {

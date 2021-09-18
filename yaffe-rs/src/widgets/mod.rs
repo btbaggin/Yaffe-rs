@@ -1,5 +1,3 @@
-//https://docs.rs/piet/0.0.7/piet/trait.RenderContext.html
-//https://github.com/linebender/druid/blob/master/druid/src/widget/image.rs
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use speedy2d::color::Color;

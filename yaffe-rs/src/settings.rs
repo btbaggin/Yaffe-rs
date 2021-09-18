@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use speedy2d::color::Color;
 use crate::logger::{LogTypes, log_entry};
 use std::convert::AsRef;
+use std::io::Write;
 
 #[derive(Debug)]
 pub enum SettingLoadError {
@@ -127,6 +128,36 @@ impl SettingsFile {
     settings_get!(get_i32, i32, SettingValue::I32);
     settings_get!(get_str, String, SettingValue::String);
     settings_get!(get_color, Color, SettingValue::Color);
+
+    pub fn serialize(&self, path: &std::path::Path) -> Result<(), std::io::Error> {
+        fn write_line(name: &str, value: &SettingValue, file: &mut std::fs::File) -> Result<(), std::io::Error> {
+            let line = match value {
+                SettingValue::String(s) => format!("{}: {} = {}\n", name, "str", s),
+                SettingValue::I32(i) => format!("{}: {} = {}\n", name, "i32", i),
+                SettingValue::F32(f) => format!("{}: {} = {}\n", name, "f32", f),
+                SettingValue::Color(c) => format!("{}: {} = {:?}\n", name, "color", c), //TODO look at this
+            };
+
+            file.write_all(line.as_bytes())
+        }
+
+        //write base settings
+        let mut file = std::fs::OpenOptions::new().write(true).truncate(true).open(path)?;
+        for (key, value) in self.settings.iter() {
+            write_line(key, value, &mut file)?;
+        }
+
+        //write settings for each plugin
+        for (plugin, settings) in self.plugins.iter() {
+            file.write_all(format!("\n--{}\n", plugin).as_bytes())?;
+
+            for (key, value) in settings.iter() {
+                write_line(key, value, &mut file)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn translate_to_plugin_settings(settings: &HashMap<String, SettingValue>) -> HashMap<String, yaffe_plugin::PluginSetting> {
