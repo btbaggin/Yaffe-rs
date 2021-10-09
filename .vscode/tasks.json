@@ -1,0 +1,18 @@
+{
+	"version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Rust: cargo build --release",
+            "type": "shell",
+            "windows": {
+                "command": "cargo rustc --release --package yaffe-rs -- -C link-args=\"Yaffe.res\" ",
+                "problemMatcher": ["$rustc"],
+            },
+            "linux": {
+                "command": "cargo rustc --release",
+                "problemMatcher": ["$rustc"],
+            },
+            "group": "build",
+        }
+    ]
+}

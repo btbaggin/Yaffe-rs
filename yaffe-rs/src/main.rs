@@ -93,6 +93,7 @@ mod settings;
 mod windowing;
 mod input;
 mod plugins;
+mod controls;
 use windowing::{Rect, Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
@@ -315,7 +316,7 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
                 display_modal(state, "New Application", Some("Confirm"), content, modals::ModalSize::Half, Some(modals::on_add_platform_close));
             },
             "Settings" => {
-                let content = Box::new(modals::SettingsModal::new());
+                let content = Box::new(modals::SettingsModal::new(&state.settings, None));
                 display_modal(state, "Settings", Some("Confirm"), content, modals::ModalSize::Third, Some(modals::on_settings_close));
             },
             "Disable Restricted Mode" => {

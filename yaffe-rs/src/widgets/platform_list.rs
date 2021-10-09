@@ -1,8 +1,8 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, Actions, DeferredAction, widget, V2, Rect};
+use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, V2, Rect};
 use crate::{colors::*, ui::*, font::*};
-use crate::modals::{PlatformDetailModal, ModalSize, display_modal};
+use crate::modals::{PlatformDetailModal, SettingsModal, on_update_application_close, ModalSize, display_modal};
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -28,9 +28,16 @@ impl super::Widget for PlatformList {
             }
             Actions::Info => {
                 let platform = state.get_platform();
-                if let crate::platform::PlatformType::Emulator = platform.kind {
-                    let modal = Box::new(PlatformDetailModal::from_existing(platform, platform.id.unwrap()));
-                    display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(crate::modals::on_update_application_close));
+                match platform.kind {
+                    PlatformType::Emulator => {
+                        let modal = Box::new(PlatformDetailModal::from_existing(platform, platform.id.unwrap()));
+                        display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(on_update_application_close));
+                    },
+                    PlatformType::Plugin => {
+                        let modal = Box::new(SettingsModal::new(&state.settings, Some(&platform.name)));
+                        display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, None); //TODO update on close
+                    },
+                    _ => {},
                 }
                 true
             }
@@ -71,9 +78,9 @@ impl super::Widget for PlatformList {
             }
             
             //Label
-            piet.draw_text(V2::new(crate::ui::MARGIN, y), text_color, &name_label);
+            piet.draw_text(V2::new(MARGIN, y), text_color, &name_label);
     
-            if let crate::platform::PlatformType::Emulator = p.kind {
+            if let PlatformType::Emulator = p.kind {
                 //Count
                 let num_label = super::get_drawable_text(FONT_SIZE, &p.apps.len().to_string());
                 piet.draw_text(V2::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
@@ -83,11 +90,11 @@ impl super::Widget for PlatformList {
     }
 }
 
-fn draw_header(piet: &mut Graphics2D, state: &YaffeState, y: f32, width: f32, kind: crate::platform::PlatformType, icon_size: f32) -> f32 {
+fn draw_header(piet: &mut Graphics2D, state: &YaffeState, y: f32, width: f32, kind: PlatformType, icon_size: f32) -> f32 {
     let image = match kind {
-        crate::platform::PlatformType::Emulator => crate::assets::Images::Emulator,
-        crate::platform::PlatformType::Plugin => crate::assets::Images::App,
-        crate::platform::PlatformType::Recents => crate::assets::Images::Recent,
+        PlatformType::Emulator => crate::assets::Images::Emulator,
+        PlatformType::Plugin => crate::assets::Images::App,
+        PlatformType::Recents => crate::assets::Images::Recent,
     };
 
     let y = y + MARGIN * 2.;

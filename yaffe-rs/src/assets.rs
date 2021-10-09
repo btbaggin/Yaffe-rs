@@ -9,6 +9,7 @@ use crate::job_system::JobQueue;
 use crate::logger::LogEntry;
 use speedy2d::font::*;
 use speedy2d::image::*;
+// use std::assert_matches::assert_matches;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Images {
@@ -50,6 +51,7 @@ pub enum AssetTypes {
     Font(Fonts),
 }
 
+#[derive(Debug)]
 pub enum AssetPathType {
     File(String),
     Url(String),
@@ -232,8 +234,7 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
     let slot = get_slot_mut(AssetTypes::Image(image));
 
     //TODO 
-    //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
-    //assert_eq!(std::path::Path::new(&slot.path).exists(), true);
+    //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
@@ -254,7 +255,6 @@ pub fn request_font(font: Fonts) -> &'static Font {
 
     //TODO
     //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
-    //assert_eq!(std::path::Path::new(&slot.path).exists(), true);
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {

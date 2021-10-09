@@ -185,6 +185,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                         },
                         (true, _) => None,
                         (false, VirtualKeyCode::Delete) => Some(&crate::Actions::KeyPress(InputType::Delete)),
+                        (false, VirtualKeyCode::Back) => Some(&crate::Actions::KeyPress(InputType::Delete)),
                         (false, _) => input_map.get(input.virtual_keycode, None),
                     };
 

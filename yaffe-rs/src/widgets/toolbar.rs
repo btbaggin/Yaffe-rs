@@ -30,7 +30,7 @@ impl super::Widget for Toolbar {
         } else if state.focused_widget == crate::get_widget_id!(crate::widgets::PlatformList) {
             let platform = state.get_platform();
             if crate::platform::PlatformType::Recents != platform.kind {
-                let text = super::get_drawable_text(crate::font::FONT_SIZE, "Info");
+                let text = super::get_drawable_text(crate::font::FONT_SIZE, "Settings");
                 right = super::right_aligned_text(piet, right, Some(Images::ButtonX), get_font_color(&state.settings), text).shift_x(-crate::ui::MARGIN * 2.);
             }
             let text = super::get_drawable_text(crate::font::FONT_SIZE, "Select");

@@ -124,6 +124,13 @@ impl SettingsFile {
         HashMap::default()
     }
 
+    pub fn get_full_settings(&self, plugin: Option<&str>) -> &HashMap<String, SettingValue> {
+        match plugin {
+            Some(plugin) => &self.plugins[plugin],
+            None =>  &self.settings
+        }
+    }
+
     settings_get!(get_f32, f32, SettingValue::F32);
     settings_get!(get_i32, i32, SettingValue::I32);
     settings_get!(get_str, String, SettingValue::String);
@@ -135,7 +142,7 @@ impl SettingsFile {
                 SettingValue::String(s) => format!("{}: {} = {}\n", name, "str", s),
                 SettingValue::I32(i) => format!("{}: {} = {}\n", name, "i32", i),
                 SettingValue::F32(f) => format!("{}: {} = {}\n", name, "f32", f),
-                SettingValue::Color(c) => format!("{}: {} = {:?}\n", name, "color", c), //TODO look at this
+                SettingValue::Color(c) => format!("{}: {} = {},{},{},{}\n", name, "color", c.r(), c.g(), c.b(), c.a()),
             };
 
             file.write_all(line.as_bytes())
