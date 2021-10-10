@@ -30,7 +30,9 @@ impl UiControl for TextBox {
         graphics.draw_text(*control.top_left(), get_font_color(settings), &text);
 
         if focused {
-            let x = control.left() + self.caret as f32 * 5.;
+            let text = get_drawable_text(FONT_SIZE, &self.text[0..self.caret]);
+            let x = control.left() + text.width();
+            
             graphics.draw_line(V2::new(x, control.top() + 2.), V2::new(x, control.bottom() - 2.), 2., get_font_color(settings));
         }
     }
@@ -40,7 +42,7 @@ impl UiControl for TextBox {
             Actions::KeyPress(InputType::Key(c)) => self.text.push(*c),
             Actions::KeyPress(InputType::Paste(t)) => self.text.push_str(t),
             Actions::KeyPress(InputType::Delete) => { self.text.pop(); },
-            Actions::Right => if self.caret < self.text.len() - 1 { self.caret += 1 },
+            Actions::Right => if self.caret < self.text.len() { self.caret += 1 },
             Actions::Left => if self.caret > 0 { self.caret -= 1 },
             _ => {},
         }
