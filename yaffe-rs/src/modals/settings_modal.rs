@@ -4,20 +4,18 @@ use crate::{font::*, ui::*, YaffeState, Actions};
 use crate::modals::*;
 use crate::controls::*;
 use crate::logger::{UserMessage, LogTypes};
-use std::collections::HashMap;
 use crate::settings::{SettingsFile, SettingValue};
+use std::str::FromStr;
 
 const STARTUP_TASK: &str = "Yaffe";
 
 pub struct SettingsModal {
-    settings: HashMap<String, Box<dyn UiControl>>,
-    focus: Option<String>,
+    settings: FocusGroup<dyn UiControl>,
 }
 impl SettingsModal {
     pub fn new(settings: &SettingsFile, plugin: Option<&str>) -> SettingsModal {
-        //TODO update this settings thing!
-        let mut controls: HashMap<String, Box<dyn UiControl>> = HashMap::new();
-        let settings = settings.get_full_settings(plugin);
+        let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
+        let setting_names = settings.get_full_settings(plugin);
         if let None = plugin {
             let set = match crate::platform_layer::get_run_at_startup(STARTUP_TASK) {
                 Ok(v) => v,
@@ -26,20 +24,22 @@ impl SettingsModal {
                     false
                 }
             };
-            controls.insert(String::from("run_at_startup"), Box::new(CheckBox::new(set)));
+            controls.insert("run_at_startup", Box::new(CheckBox::new(set)));
         }
 
-        for (k, v) in settings {
-            let control = match v {
-                SettingValue::Color(c) => TextBox::new(format!("{},{},{},{}", c.r(), c.g(), c.b(), c.a())),
+        let mut setting_names = setting_names.to_vec();
+        setting_names.sort();
+        for name in setting_names {
+            let control = match settings.get_raw(name) {
+                SettingValue::Color(c) => TextBox::new(rgba_string(&c)),
                 SettingValue::F32(f) => TextBox::new(f.to_string()),
                 SettingValue::I32(i) => TextBox::new(i.to_string()),
                 SettingValue::String(s) => TextBox::new(s.clone()),
             };
-            controls.insert(k.to_string(), Box::new(control));
+            controls.insert(name, Box::new(control));
         }
 
-        SettingsModal { settings: controls, focus: None }
+        SettingsModal { settings: controls }
     }
 }
 
@@ -53,62 +53,35 @@ impl ModalContent for SettingsModal {
         let mut y = rect.top();
         for (k, v) in &self.settings {
             let rect = Rectangle::from_tuples((rect.left(), y), (rect.right(), y + FONT_SIZE));
-            let focused = match &self.focus {
-                Some(f) => f == k,
-                None => false,
-            };
-            v.render(piet, settings, &rect, &k, focused);
+            v.render(piet, settings, &rect, &k, self.settings.is_focused(&v));
             y += FONT_SIZE + MARGIN;
         }
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
-        match action {
-            Actions::Up => {
-                self.focus = move_focus(self, false);
-                ModalResult::None
-            },
-            Actions::Down => {
-                self.focus = move_focus(self, true);
-                ModalResult::None
-            },
-            _ => {
-                if let Some(focus) = &self.focus {
-                    if let Some(control) = self.settings.get_mut(focus){
-                        control.action(action);
-                    }
-                }
-                default_modal_action(action)
-            } ,
-        }
-    }
-}
-
-fn move_focus(modal: &SettingsModal, next: bool) -> Option<String> {
-    let mut keys = modal.settings.keys();
-    let key = match &modal.focus {
-        None => if next { keys.next() } else { keys.last() },
-        Some(focus) => {
-            //don't use keys reference because position advances the iterator
-            let i = modal.settings.keys().position(|k| k == focus).unwrap();
-
-            if next { keys.skip(i + 1).next() } 
-            else { 
-                if i == 0 { None } 
-                else { keys.skip(i - 1).next() }
+        if !self.settings.action(action) {
+            if let Some(focus) = self.settings.focus() {
+                focus.action(action);
+                return ModalResult::None;
             }
-        },
-    };
-
-    match key {
-        Some(c) => Some(c.clone()),
-        None => None
+        }
+        default_modal_action(action)
     }
 }
 
 pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
-        //TODO crate::platform_layer::set_run_at_startup(STARTUP_TASK, content.run_at_startup).display_failure("Unable to set Yaffe to run at startup", state);
+        for (name, control) in &content.settings {
+            if name == "run_at_startup_REMOVE_ME" { //TODO fix set_run_at_startup and remove
+                let value = bool::from_str(control.value()).unwrap();
+                crate::platform_layer::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state);
+            } else if name == "run_at_startup" {
+
+            } else {
+                state.settings.set_setting(&name, control.value()).display_failure("Unable to save settings", state);
+            }
+        }
+        state.settings.serialize().display_failure("Unable to save settings", state);
     }
 }

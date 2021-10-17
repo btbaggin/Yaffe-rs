@@ -2,7 +2,7 @@ use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, V2, Rect};
 use crate::{colors::*, ui::*, font::*};
-use crate::modals::{PlatformDetailModal, SettingsModal, on_update_application_close, ModalSize, display_modal};
+use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, ModalSize, display_modal};
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -31,11 +31,11 @@ impl super::Widget for PlatformList {
                 match platform.kind {
                     PlatformType::Emulator => {
                         let modal = Box::new(PlatformDetailModal::from_existing(platform, platform.id.unwrap()));
-                        display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(on_update_application_close));
+                        display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(on_update_platform_close));
                     },
                     PlatformType::Plugin => {
                         let modal = Box::new(SettingsModal::new(&state.settings, Some(&platform.name)));
-                        display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, None); //TODO update on close
+                        display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, None);
                     },
                     _ => {},
                 }

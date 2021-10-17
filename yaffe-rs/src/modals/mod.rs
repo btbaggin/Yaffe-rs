@@ -15,7 +15,7 @@ pub use list_modal::{ListItem, ListModal};
 pub use overlay_modal::OverlayModal;
 pub use restricted_modal::{SetRestrictedModal, VerifyRestrictedModal};
 pub use settings_modal::{SettingsModal, on_settings_close};
-pub use platform_detail_modal::{PlatformDetailModal, on_add_platform_close, on_platform_found_close, on_game_found_close, on_update_application_close};
+pub use platform_detail_modal::{PlatformDetailModal, on_add_platform_close, on_platform_found_close, on_game_found_close, on_update_platform_close};
 
 #[repr(u8)]
 pub enum ModalResult {

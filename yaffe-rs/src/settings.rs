@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::SystemTime;
 use speedy2d::color::Color;
-use crate::logger::{LogTypes, log_entry};
 use std::convert::AsRef;
 use std::io::Write;
+use crate::colors::rgba_string;
 
 #[derive(Debug)]
 pub enum SettingLoadError {
@@ -38,6 +38,34 @@ pub enum SettingValue {
     I32(i32),
     Color(Color),
 }
+impl SettingValue {
+    fn from_string(&self, value: &str) -> Result<Option<SettingValue>, SettingLoadError> {
+        if value.is_empty() { return Ok(None); }
+
+        let value = match self {
+            SettingValue::Color(c) => {
+                let v = color_from_string(value)?;
+                if &v == c { None }
+                else { Some(SettingValue::Color(v)) }
+            },
+            SettingValue::F32(f) => {
+                let v = value.parse::<f32>()?; 
+                if &v == f { None }
+                else { Some(SettingValue::F32(v)) }
+            },
+            SettingValue::I32(i) => {
+                let v = value.parse::<i32>()?; 
+                if &v == i { None }
+                else { Some(SettingValue::I32(v)) }
+            },
+            SettingValue::String(s) => {
+                if s == value { None }
+                else { Some(SettingValue::String(value.to_string())) }
+            },
+        };
+        Ok(value)
+    }
+}
 
 macro_rules! stringy_enum {
     (pub enum $name:ident {
@@ -47,17 +75,19 @@ macro_rules! stringy_enum {
         pub enum $name {
             $($value,)+
         } 
+        const SETTINGS: &[&str] = &[$($display,)+];
 
         impl $name {
-            pub fn to_string(value: $name) -> &'static str {
+            fn to_string(value: $name) -> &'static str {
                 match value {
                     $($name::$value => $display,)+
                 }
             }
 
-            pub fn get_default(value: $name) -> SettingValue {
+            fn get_default(value: &str) -> SettingValue {
                 match value {
-                    $($name::$value => $default,)+
+                    $($display => $default,)+
+                    &_ => panic!("cant happen"),
                 }
             }
         }
@@ -81,18 +111,13 @@ stringy_enum! {
 }
 
 macro_rules! settings_get {
-    ($name:ident, $ty:ty, $setting:path) => {
+    ($name:ident, $nameraw:ident, $ty:ty, $setting:path) => {
         #[allow(dead_code)]
         pub fn $name(&self, setting: crate::settings::SettingNames) -> $ty {
             let key = crate::settings::SettingNames::to_string(setting);
-            if let Some(f) = self.settings.get(key) {
-                if let $setting(value) = f {
-                    return value.clone();
-                }
-                log_entry(LogTypes::Warning, format!("Attemted to retrieve setting {} but type expected type {}", key, stringify!($ty)));
-            }
-            if let $setting(value) = crate::settings::SettingNames::get_default(setting) {
-                return value;
+
+            if let $setting(value) = self.get_raw(key) {
+                return value.clone();
             }
             panic!("Accessed setting using incorrect type");
         }
@@ -102,7 +127,7 @@ macro_rules! settings_get {
 type SettingsResult<T> = Result<T, SettingLoadError>;
 #[derive(Clone)]
 pub struct SettingsFile {
-    settings: HashMap<String, SettingValue>,
+    settings: HashMap<String, SettingValue>, 
     path: std::path::PathBuf,
     last_write: SystemTime,
     plugins: PluginSettings,
@@ -124,32 +149,61 @@ impl SettingsFile {
         HashMap::default()
     }
 
-    pub fn get_full_settings(&self, plugin: Option<&str>) -> &HashMap<String, SettingValue> {
+    pub fn get_full_settings(&self, plugin: Option<&str>) -> &[&'static str] {
         match plugin {
-            Some(plugin) => &self.plugins[plugin],
-            None =>  &self.settings
+            Some(plugin) => panic!("not implemented"),//&self.plugins[plugin], //TODO
+            None => &SETTINGS,
         }
     }
 
-    settings_get!(get_f32, f32, SettingValue::F32);
-    settings_get!(get_i32, i32, SettingValue::I32);
-    settings_get!(get_str, String, SettingValue::String);
-    settings_get!(get_color, Color, SettingValue::Color);
+    pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
+        assert!(SETTINGS.iter().position(|&n| n == name).is_some());
 
-    pub fn serialize(&self, path: &std::path::Path) -> Result<(), std::io::Error> {
+        let setting = SettingNames::get_default(name);
+        let value = setting.from_string(value)?;
+
+        //Value was either removed or the default, don't add it
+        if value.is_none() { 
+            self.settings.remove(name);
+            return Ok(()); 
+        }
+
+        //Add or insert new value
+        let value = value.unwrap();
+        if let None = self.settings.get(name) {
+            self.settings.insert(name.to_string(), value);
+        } else {
+            *self.settings.get_mut(name).unwrap() = value;
+        }
+        Ok(())
+    }
+
+    settings_get!(get_f32, get_f32_raw, f32, SettingValue::F32);
+    settings_get!(get_i32, get_i32_raw, i32, SettingValue::I32);
+    settings_get!(get_str, get_str_raw, String, SettingValue::String);
+    settings_get!(get_color, get_color_raw, Color, SettingValue::Color);
+
+    pub fn get_raw(&self, setting: &str) -> SettingValue {
+        if let Some(f) = self.settings.get(setting) {
+            return f.clone();
+        }
+        SettingNames::get_default(setting)
+    }
+
+    pub fn serialize(&self) -> Result<(), std::io::Error> {
         fn write_line(name: &str, value: &SettingValue, file: &mut std::fs::File) -> Result<(), std::io::Error> {
             let line = match value {
                 SettingValue::String(s) => format!("{}: {} = {}\n", name, "str", s),
                 SettingValue::I32(i) => format!("{}: {} = {}\n", name, "i32", i),
                 SettingValue::F32(f) => format!("{}: {} = {}\n", name, "f32", f),
-                SettingValue::Color(c) => format!("{}: {} = {},{},{},{}\n", name, "color", c.r(), c.g(), c.b(), c.a()),
+                SettingValue::Color(c) => format!("{}: {} = {}\n", name, "color", rgba_string(c)),
             };
 
             file.write_all(line.as_bytes())
         }
 
         //write base settings
-        let mut file = std::fs::OpenOptions::new().write(true).truncate(true).open(path)?;
+        let mut file = std::fs::OpenOptions::new().write(true).truncate(true).open(self.path.clone())?;
         for (key, value) in self.settings.iter() {
             write_line(key, value, &mut file)?;
         }
@@ -189,6 +243,7 @@ pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<Settings
     let mut path_buf = std::path::PathBuf::new(); path_buf.push(path);
     let data = std::fs::read_to_string(path_buf.clone())?;
     let last_write = std::fs::metadata(path_buf.clone())?.modified();
+    
     let mut settings = SettingsFile { 
         settings: HashMap::new(), 
         path: path_buf, 

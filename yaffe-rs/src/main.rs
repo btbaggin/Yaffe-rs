@@ -61,6 +61,10 @@ pub mod colors {
 
         return Color::from_rgba(r, g, b, a);
     }
+
+    pub fn rgba_string(c: &Color) -> String {
+        format!("{},{},{},{}", c.r(), c.g(), c.b(), c.a())
+    }
 }
 
 pub mod font {
@@ -75,7 +79,7 @@ pub mod font {
 
 pub mod ui {
     pub const MARGIN: f32 = 10.;
-    pub const LABEL_SIZE: f32 = 200.;
+    pub const LABEL_SIZE: f32 = 250.;
 }
 
 mod widgets;
