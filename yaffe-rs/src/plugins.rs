@@ -109,6 +109,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 						data 
 					};
 
+					state.settings.populate_plugin_settings(&plugin);
 					let settings = state.settings.plugin(&plugin.file);
 					if plugin.data.initialize(&settings).display_failure(&message, state).is_some() {
 						state.plugins.push(std::cell::RefCell::new(plugin));
