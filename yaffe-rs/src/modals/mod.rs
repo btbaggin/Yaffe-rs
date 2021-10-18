@@ -56,7 +56,7 @@ impl Modal {
 
 pub trait ModalContent {
     fn as_any(&self) -> &dyn std::any::Any;
-    fn get_height(&self) -> f32;
+    fn get_height(&self, width: f32) -> f32;
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D);
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult { 
         default_modal_action(action)
@@ -69,15 +69,21 @@ pub struct MessageModalContent {
 }
 impl MessageModalContent {
     pub fn new(message: &str) -> MessageModalContent {
-        MessageModalContent { message: String::from(message), }
+        MessageModalContent {
+            message: String::from(message), 
+        }
     }
 }
 impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 { crate::font::FONT_SIZE }
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+    fn get_height(&self, width: f32) -> f32 { 
+        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &self.message, width);
+        name_label.height()
+    }
+
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, graphics: &mut Graphics2D) {
         let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &self.message, rect.width());
-        piet.draw_text(*rect.top_left(), get_font_color(settings), &name_label,);
+        graphics.draw_text(*rect.top_left(), get_font_color(settings), &name_label);
     }
 }
 
@@ -157,9 +163,18 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rec
     const ICON_SIZE_WITH_MARGIN: f32 = ICON_SIZE + MARGIN * 2.;
 
     let content_size = match modal.size {
-        ModalSize::Third => V2::new(rect.width() * 0.33, modal.content.get_height()),
-        ModalSize::Half => V2::new(rect.width() * 0.5, modal.content.get_height()),
-        ModalSize::Full => V2::new(rect.width(), modal.content.get_height()),
+        ModalSize::Third => {
+            let width = rect.width() * 0.33;
+            V2::new(width, modal.content.get_height(width))
+        }
+        ModalSize::Half => {
+            let width = rect.width() * 0.5;
+            V2::new(width, modal.content.get_height(width))
+        }
+        ModalSize::Full => {
+            let width = rect.width();
+            V2::new(width, modal.content.get_height(width))
+        }
     };
 
     //Calulate size

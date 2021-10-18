@@ -34,7 +34,8 @@ impl super::Widget for PlatformList {
                         display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(on_update_platform_close));
                     },
                     PlatformType::Plugin => {
-                        let modal = Box::new(SettingsModal::new(&state.settings, Some(&platform.name)));
+                        let (plugin, _) = platform.get_plugin(state).unwrap();
+                        let modal = Box::new(SettingsModal::new(&state.settings, Some(&plugin)));
                         display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, None);
                     },
                     _ => {},

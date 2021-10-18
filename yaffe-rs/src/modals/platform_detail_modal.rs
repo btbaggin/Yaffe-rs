@@ -47,7 +47,7 @@ impl PlatformDetailModal {
 
 impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 {
+    fn get_height(&self, _: f32) -> f32 {
         (crate::font::FONT_SIZE + crate::ui::MARGIN) * 4.
     }
 

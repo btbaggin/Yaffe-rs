@@ -20,7 +20,7 @@ impl SetRestrictedModal {
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 { FONT_SIZE + MARGIN }
+    fn get_height(&self, _: f32) -> f32 { FONT_SIZE + MARGIN }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         let code = match action {
@@ -64,7 +64,7 @@ impl VerifyRestrictedModal {
 
 impl ModalContent for VerifyRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 { FONT_SIZE + MARGIN }
+    fn get_height(&self, _: f32) -> f32 { FONT_SIZE + MARGIN }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         //Get the key (or action which can be translated to a key)

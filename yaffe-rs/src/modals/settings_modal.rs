@@ -13,7 +13,7 @@ pub struct SettingsModal {
     settings: FocusGroup<dyn UiControl>,
 }
 impl SettingsModal {
-    pub fn new(settings: &SettingsFile, plugin: Option<&str>) -> SettingsModal {
+    pub fn new(settings: &SettingsFile, plugin: Option<&std::cell::RefCell<crate::plugins::Plugin>>) -> SettingsModal {
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         let setting_names = settings.get_full_settings(plugin);
         if let None = plugin {
@@ -45,7 +45,7 @@ impl SettingsModal {
 
 impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 {
+    fn get_height(&self, _: f32) -> f32 {
         (FONT_SIZE + MARGIN) * self.settings.len() as f32
     }
 

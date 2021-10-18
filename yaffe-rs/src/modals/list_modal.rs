@@ -41,7 +41,7 @@ impl ListItem for String {
 
 impl<T: 'static + ListItem> ModalContent for ListModal<T> {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 {
+    fn get_height(&self, _: f32) -> f32 {
         let mut count = self.items.len();
         if let Some(_) = self.title {
             count += 1;

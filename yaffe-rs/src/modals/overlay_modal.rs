@@ -22,7 +22,7 @@ impl OverlayModal {
 
 impl ModalContent for OverlayModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self) -> f32 {
+    fn get_height(&self, _: f32) -> f32 {
         32.
     }
 

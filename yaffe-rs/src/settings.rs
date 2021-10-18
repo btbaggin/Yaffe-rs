@@ -149,7 +149,7 @@ impl SettingsFile {
         HashMap::default()
     }
 
-    pub fn get_full_settings(&self, plugin: Option<&str>) -> &[&'static str] {
+    pub fn get_full_settings(&self, plugin: Option<&std::cell::RefCell<crate::plugins::Plugin>>) -> &[&'static str] {
         match plugin {
             Some(plugin) => panic!("not implemented"),//&self.plugins[plugin], //TODO
             None => &SETTINGS,
