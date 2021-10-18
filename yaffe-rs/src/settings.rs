@@ -4,7 +4,6 @@ use std::time::SystemTime;
 use speedy2d::color::Color;
 use std::convert::{AsRef, TryFrom};
 use std::io::Write;
-use std::cell::RefCell;
 use crate::colors::rgba_string;
 
 #[derive(Debug)]
@@ -61,27 +60,27 @@ impl TryFrom<&SettingValue> for yaffe_plugin::PluginSetting {
 }
 
 impl SettingValue {
-    fn from_string(&self, value: &str) -> Result<Option<SettingValue>, SettingLoadError> {
+    fn from_string(&self, value: &str, allow_clear: bool) -> Result<Option<SettingValue>, SettingLoadError> {
         if value.is_empty() { return Ok(None); }
 
         let value = match self {
             SettingValue::Color(c) => {
                 let v = color_from_string(value)?;
-                if &v == c { None }
+                if &v == c && allow_clear { None }
                 else { Some(SettingValue::Color(v)) }
             },
             SettingValue::F32(f) => {
                 let v = value.parse::<f32>()?; 
-                if &v == f { None }
+                if &v == f && allow_clear { None }
                 else { Some(SettingValue::F32(v)) }
             },
             SettingValue::I32(i) => {
                 let v = value.parse::<i32>()?; 
-                if &v == i { None }
+                if &v == i && allow_clear { None }
                 else { Some(SettingValue::I32(v)) }
             },
             SettingValue::String(s) => {
-                if s == value { None }
+                if s == value && allow_clear { None }
                 else { Some(SettingValue::String(value.to_string())) }
             },
         };
@@ -174,19 +173,25 @@ impl SettingsFile {
         HashMap::default()
     }
 
-    pub fn get_full_settings<'a>(&'a self, plugin: Option<&'a RefCell<crate::plugins::Plugin>>) -> Vec<(&'a str, SettingValue)> {
+    pub fn populate_plugin_settings(&mut self, plugin: &crate::plugins::Plugin) {
+        let settings = self.plugins.entry(plugin.file.clone()).or_insert(HashMap::default());
+
+        for (name, default) in plugin.settings() {
+            //Get configured value if it exists, otherwise default
+            if !settings.contains_key(name) { 
+                settings.insert(name.to_string(), default.into());
+            } 
+        }
+    }
+
+    pub fn get_full_settings(&self, plugin: Option<&str>) -> Vec<(String, SettingValue)> {
         let mut result = vec!();
         match plugin {
             Some(plugin) => {
-                let plugin = plugin.borrow();
-                let settings = self.plugin(&plugin.file);
+                let settings = self.plugins.get(plugin).unwrap();
 
-                for (name, default) in plugin.settings() {
-                    //Get configured value if it exists, otherwise default
-                    let value = if let Some(value) = settings.get(name) { value.clone() } 
-                    else { default };
-
-                    result.push((name, value.into()))
+                for (name, default) in settings {
+                    result.push((name.clone(), default.clone()))
                 }
             }
             None => {
@@ -195,31 +200,42 @@ impl SettingsFile {
                     let value = if let Some(value) = self.settings.get(*name) { value.clone() }
                     else { SettingNames::get_default(name) };
 
-                    result.push((name, value));
+                    result.push((name.to_string(), value));
                 }
             }
         };
         result
     }
 
-    pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
-        assert!(SETTINGS.iter().position(|&n| n == name).is_some());
+    pub fn set_setting(&mut self, plugin: Option<&String>, name: &str, value: &str) -> Result<(), SettingLoadError> {
+        let (settings, value) = match plugin {
+            Some(file) => {
+                //It's ok to do unwrap here because they are gauranteed to be present due to populate_plugin_settings
+                let settings = self.plugins.get_mut(file).unwrap();
+                let setting = settings.get(name).unwrap().clone();
 
-        let setting = SettingNames::get_default(name);
-        let value = setting.from_string(value)?;
+                (settings, setting.from_string(value, false)?)
+            },
+            None => {
+                assert!(SETTINGS.iter().position(|&n| n == name).is_some());
 
+                let setting = SettingNames::get_default(name);
+                (&mut self.settings, setting.from_string(value, true)?)
+            },
+        };
+        
         //Value was either removed or the default, don't add it
         if value.is_none() { 
-            self.settings.remove(name);
+            settings.remove(name);
             return Ok(()); 
         }
 
         //Add or insert new value
         let value = value.unwrap();
-        if let None = self.settings.get(name) {
-            self.settings.insert(name.to_string(), value);
+        if let None = settings.get(name) {
+            settings.insert(name.to_string(), value);
         } else {
-            *self.settings.get_mut(name).unwrap() = value;
+            *settings.get_mut(name).unwrap() = value;
         }
         Ok(())
     }

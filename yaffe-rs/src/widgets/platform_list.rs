@@ -2,7 +2,7 @@ use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, V2, Rect};
 use crate::{colors::*, ui::*, font::*};
-use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, ModalSize, display_modal};
+use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, on_settings_close, ModalSize, display_modal};
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -35,8 +35,10 @@ impl super::Widget for PlatformList {
                     },
                     PlatformType::Plugin => {
                         let (plugin, _) = platform.get_plugin(state).unwrap();
+                        let plugin = plugin.borrow().file.clone();
                         let modal = Box::new(SettingsModal::new(&state.settings, Some(&plugin)));
-                        display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, None);
+                        
+                        display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, Some(on_settings_close));
                     },
                     _ => {},
                 }

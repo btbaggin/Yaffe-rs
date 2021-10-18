@@ -11,9 +11,10 @@ const STARTUP_TASK: &str = "Yaffe";
 
 pub struct SettingsModal {
     settings: FocusGroup<dyn UiControl>,
+    plugin_file: Option<String>,
 }
 impl SettingsModal {
-    pub fn new(settings: &SettingsFile, plugin: Option<&std::cell::RefCell<crate::plugins::Plugin>>) -> SettingsModal {
+    pub fn new(settings: &SettingsFile, plugin: Option<&str>) -> SettingsModal {
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         let mut setting_names = settings.get_full_settings(plugin);
         if let None = plugin {
@@ -27,7 +28,7 @@ impl SettingsModal {
             controls.insert("run_at_startup", Box::new(CheckBox::new(set)));
         }
 
-        setting_names.sort_by(|x, y| x.0.cmp(y.0));
+        setting_names.sort_by(|x, y| x.0.cmp(&y.0));
         for (name, default) in setting_names {
             let control = match default {
                 SettingValue::Color(c) => TextBox::new(rgba_string(&c)),
@@ -35,10 +36,13 @@ impl SettingsModal {
                 SettingValue::I32(i) => TextBox::new(i.to_string()),
                 SettingValue::String(s) => TextBox::new(s.clone()),
             };
-            controls.insert(name, Box::new(control));
+            controls.insert(&name, Box::new(control));
         }
 
-        SettingsModal { settings: controls }
+        let plugin_file = if let Some(plugin) = plugin { Some(plugin.to_string()) } 
+        else { None };
+
+        SettingsModal { settings: controls, plugin_file }
     }
 }
 
@@ -70,7 +74,7 @@ impl ModalContent for SettingsModal {
 pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
-        //TODO plugin stuff
+
         for (name, control) in &content.settings {
             if name == "run_at_startup_REMOVE_ME" { //TODO fix set_run_at_startup and remove
                 let value = bool::from_str(control.value()).unwrap();
@@ -78,7 +82,7 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
             } else if name == "run_at_startup" {
 
             } else {
-                state.settings.set_setting(&name, control.value()).display_failure("Unable to save settings", state);
+                state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state);
             }
         }
         state.settings.serialize().display_failure("Unable to save settings", state);
