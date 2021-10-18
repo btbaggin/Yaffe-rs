@@ -15,7 +15,7 @@ pub struct SettingsModal {
 impl SettingsModal {
     pub fn new(settings: &SettingsFile, plugin: Option<&std::cell::RefCell<crate::plugins::Plugin>>) -> SettingsModal {
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
-        let setting_names = settings.get_full_settings(plugin);
+        let mut setting_names = settings.get_full_settings(plugin);
         if let None = plugin {
             let set = match crate::platform_layer::get_run_at_startup(STARTUP_TASK) {
                 Ok(v) => v,
@@ -27,10 +27,9 @@ impl SettingsModal {
             controls.insert("run_at_startup", Box::new(CheckBox::new(set)));
         }
 
-        let mut setting_names = setting_names.to_vec();
-        setting_names.sort();
-        for name in setting_names {
-            let control = match settings.get_raw(name) {
+        setting_names.sort_by(|x, y| x.0.cmp(y.0));
+        for (name, default) in setting_names {
+            let control = match default {
                 SettingValue::Color(c) => TextBox::new(rgba_string(&c)),
                 SettingValue::F32(f) => TextBox::new(f.to_string()),
                 SettingValue::I32(i) => TextBox::new(i.to_string()),
@@ -62,7 +61,6 @@ impl ModalContent for SettingsModal {
         if !self.settings.action(action) {
             if let Some(focus) = self.settings.focus() {
                 focus.action(action);
-                return ModalResult::None;
             }
         }
         default_modal_action(action)
@@ -72,6 +70,7 @@ impl ModalContent for SettingsModal {
 pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
+        //TODO plugin stuff
         for (name, control) in &content.settings {
             if name == "run_at_startup_REMOVE_ME" { //TODO fix set_run_at_startup and remove
                 let value = bool::from_str(control.value()).unwrap();

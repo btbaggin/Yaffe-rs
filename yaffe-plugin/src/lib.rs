@@ -53,6 +53,7 @@ pub type Page = bool;
 pub trait YaffePlugin {
     fn name(&self) -> &'static str;
     fn initialize(&mut self, settings: &HashMap<String, PluginSetting>) -> InitializeResult;
+    fn settings(&self) -> Vec<(&'static str, PluginSetting)>;
     fn initial_load(&mut self);
     fn load_items(&mut self, size: u32, settings: &HashMap<String, PluginSetting>) -> LoadResult;
     fn on_selected(&mut self, name: &str, path: &str, settings: &HashMap<String, PluginSetting>) -> SelectedAction;

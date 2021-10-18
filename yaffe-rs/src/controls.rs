@@ -158,13 +158,15 @@ impl UiControl for TextBox {
         match action {
             Actions::KeyPress(InputType::Key(k)) => {
                 match k {
-                    //TODO split
-                    VirtualKeyCode::Delete | VirtualKeyCode::Back => {
+                    VirtualKeyCode::Back => {
                         if self.caret > 0 {
-                            if self.caret == self.text.len() { self.text.pop(); }
-                            else { self.text.remove(self.caret); }
-                            
+                            self.text.remove(self.caret - 1);
                             self.caret -= 1;
+                        }
+                    },
+                    VirtualKeyCode::Delete => {
+                        if self.caret < self.text.len() {
+                            self.text.remove(self.caret);
                         }
                     },
                     VirtualKeyCode::Home => self.caret = 0,

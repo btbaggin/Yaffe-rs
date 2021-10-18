@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::SystemTime;
 use speedy2d::color::Color;
-use std::convert::AsRef;
+use std::convert::{AsRef, TryFrom};
 use std::io::Write;
+use std::cell::RefCell;
 use crate::colors::rgba_string;
 
 #[derive(Debug)]
@@ -38,6 +39,27 @@ pub enum SettingValue {
     I32(i32),
     Color(Color),
 }
+impl From<yaffe_plugin::PluginSetting> for SettingValue {
+    fn from(setting: yaffe_plugin::PluginSetting) -> Self {
+        match setting {
+            yaffe_plugin::PluginSetting::F32(f) => SettingValue::F32(f),
+            yaffe_plugin::PluginSetting::I32(i) => SettingValue::I32(i),
+            yaffe_plugin::PluginSetting::String(s) => SettingValue::String(s),
+        }
+    }
+}
+impl TryFrom<&SettingValue> for yaffe_plugin::PluginSetting {
+    type Error = &'static str;
+    fn try_from(setting: &SettingValue) -> Result<Self, Self::Error> {
+        match setting {
+            SettingValue::F32(f) => Ok(yaffe_plugin::PluginSetting::F32(*f)),
+            SettingValue::I32(i) => Ok(yaffe_plugin::PluginSetting::I32(*i)),
+            SettingValue::String(s) => Ok(yaffe_plugin::PluginSetting::String(s.clone())),
+            SettingValue::Color(_) => Err("Invalid plugin setting"),
+        }
+    }
+}
+
 impl SettingValue {
     fn from_string(&self, value: &str) -> Result<Option<SettingValue>, SettingLoadError> {
         if value.is_empty() { return Ok(None); }
@@ -116,7 +138,10 @@ macro_rules! settings_get {
         pub fn $name(&self, setting: crate::settings::SettingNames) -> $ty {
             let key = crate::settings::SettingNames::to_string(setting);
 
-            if let $setting(value) = self.get_raw(key) {
+            let value = if let Some(value) = self.settings.get(key) { value.clone() }
+            else { SettingNames::get_default(key) };
+
+            if let $setting(value) = value {
                 return value.clone();
             }
             panic!("Accessed setting using incorrect type");
@@ -149,11 +174,32 @@ impl SettingsFile {
         HashMap::default()
     }
 
-    pub fn get_full_settings(&self, plugin: Option<&std::cell::RefCell<crate::plugins::Plugin>>) -> &[&'static str] {
+    pub fn get_full_settings<'a>(&'a self, plugin: Option<&'a RefCell<crate::plugins::Plugin>>) -> Vec<(&'a str, SettingValue)> {
+        let mut result = vec!();
         match plugin {
-            Some(plugin) => panic!("not implemented"),//&self.plugins[plugin], //TODO
-            None => &SETTINGS,
-        }
+            Some(plugin) => {
+                let plugin = plugin.borrow();
+                let settings = self.plugin(&plugin.file);
+
+                for (name, default) in plugin.settings() {
+                    //Get configured value if it exists, otherwise default
+                    let value = if let Some(value) = settings.get(name) { value.clone() } 
+                    else { default };
+
+                    result.push((name, value.into()))
+                }
+            }
+            None => {
+                for name in SETTINGS {
+                    //Get configured value if it exists, otherwise default
+                    let value = if let Some(value) = self.settings.get(*name) { value.clone() }
+                    else { SettingNames::get_default(name) };
+
+                    result.push((name, value));
+                }
+            }
+        };
+        result
     }
 
     pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
@@ -182,13 +228,6 @@ impl SettingsFile {
     settings_get!(get_i32, i32, SettingValue::I32);
     settings_get!(get_str, String, SettingValue::String);
     settings_get!(get_color, Color, SettingValue::Color);
-
-    pub fn get_raw(&self, setting: &str) -> SettingValue {
-        if let Some(f) = self.settings.get(setting) {
-            return f.clone();
-        }
-        SettingNames::get_default(setting)
-    }
 
     pub fn serialize(&self) -> Result<(), std::io::Error> {
         fn write_line(name: &str, value: &SettingValue, file: &mut std::fs::File) -> Result<(), std::io::Error> {
@@ -225,13 +264,7 @@ fn translate_to_plugin_settings(settings: &HashMap<String, SettingValue>) -> Has
 	let mut result = HashMap::new();
 	for (key, value) in settings.iter() {
 
-		let value = match value {
-			SettingValue::F32(f) => Some(yaffe_plugin::PluginSetting::F32(*f)),
-			SettingValue::I32(i) => Some(yaffe_plugin::PluginSetting::I32(*i)),
-			SettingValue::String(s) => Some(yaffe_plugin::PluginSetting::String(s.clone())),
-			SettingValue::Color(_) => None
-		};
-		if let Some(value) = value {
+		if let Ok(value) = yaffe_plugin::PluginSetting::try_from(value) {
 			result.insert(key.clone(), value);
 		}
 	}
