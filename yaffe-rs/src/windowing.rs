@@ -1,6 +1,6 @@
 use speedy2d::*;
 use speedy2d::dimen::Vector2;
-use glutin::event::{Event, WindowEvent, VirtualKeyCode};
+use glutin::event::{Event, WindowEvent, VirtualKeyCode, ModifiersState};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
 use crate::{V2, input::ControllerInput, input::InputType, Actions};
@@ -138,6 +138,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
     let mut delta_time = 0f32;
     let mut last_time = Instant::now();
+    let mut mods = ModifiersState::empty();
     
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -164,41 +165,34 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
                 },
 
+                WindowEvent::ModifiersChanged(state) => mods = state,
+
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let glutin::event::ElementState::Released = input.state { return; }
                     if let None = input.virtual_keycode { return; }
 
-                    let kp;
-                    #[allow(deprecated)]
-                    let action = match (input.modifiers.ctrl(), input.virtual_keycode.unwrap()) {
-                        (true, VirtualKeyCode::V) => {
+                    let action = if let Some(action) = input_map.get(input.virtual_keycode, None) {
+                        action.clone()
+                    } else if matches!(input.virtual_keycode, Some(VirtualKeyCode::V)) && mods.ctrl() {
                             let window = windows.get_mut(&window_id).unwrap();
                             let context = ct.get_current(window.context_id).unwrap();
 
                             match crate::platform_layer::get_clipboard(context.windowed().window()) {
-                                Some(clip) => {
-                                    kp = crate::Actions::KeyPress(InputType::Paste(clip));
-                                    Some(&kp)
-                                }
-                                _ => None,
+                                Some(clip) => crate::Actions::KeyPress(InputType::Paste(clip)),
+                                _ => return,
                             }
-                        },
-                        (true, _) => None,
-                        (false, VirtualKeyCode::Delete) => Some(&crate::Actions::KeyPress(InputType::Delete)),
-                        (false, VirtualKeyCode::Back) => Some(&crate::Actions::KeyPress(InputType::Delete)),
-                        (false, _) => input_map.get(input.virtual_keycode, None),
+                    } else {
+                        crate::Actions::KeyPress(InputType::Key(input.virtual_keycode.unwrap()))
                     };
 
-                    if let Some(action) = action { 
-                        for (_, window) in windows.iter_mut() {
-                            if send_action_to_window(window, &mut ct, action) { return; }
-                        }
+                    for (_, window) in windows.iter_mut() {
+                        if send_action_to_window(window, &mut ct, &action) { return; }
                     }
                 },
 
                 WindowEvent::ReceivedCharacter(c) => {
                     if c.is_control() { return; }
-                    let action = &crate::Actions::KeyPress(InputType::Key(c));
+                    let action = &crate::Actions::KeyPress(InputType::Char(c));
 
                     for (_, window) in windows.iter_mut() {
                         if send_action_to_window(window, &mut ct, action) { return; }
@@ -294,7 +288,7 @@ fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, Controller
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(action.clone());
         } else {
-            result.insert(Actions::KeyPress(InputType::Key(g as u8 as char)));
+            result.insert(Actions::KeyPress(InputType::Char(g as u8 as char)));
         }
     }
 
@@ -324,8 +318,7 @@ mod context_tracker {
             fw: FW,
         ) -> Result<ContextWrapper<T2>, (Self, ContextError)>
         where
-            FW: FnOnce(WindowedContext<T>, )
-                -> Result<WindowedContext<T2>, (WindowedContext<T>, ContextError)>,
+            FW: FnOnce(WindowedContext<T>) -> Result<WindowedContext<T2>, (WindowedContext<T>, ContextError)>,
         {
             match self {
                 ContextWrapper::Windowed(ctx) => match fw(ctx) {
@@ -346,10 +339,7 @@ mod context_tracker {
         where
             F: FnOnce(
                 ContextWrapper<PossiblyCurrent>,
-            ) -> Result<
-                ContextWrapper<NotCurrent>,
-                (ContextWrapper<PossiblyCurrent>, ContextError),
-            >,
+            ) -> Result<ContextWrapper<NotCurrent>, (ContextWrapper<PossiblyCurrent>, ContextError)>,
         {
             match self {
                 ret @ ContextCurrentWrapper::NotCurrent(_) => Ok(ret),
@@ -364,10 +354,7 @@ mod context_tracker {
         where
             F: FnOnce(
                 ContextWrapper<NotCurrent>,
-            ) -> Result<
-                ContextWrapper<PossiblyCurrent>,
-                (ContextWrapper<NotCurrent>, ContextError),
-            >,
+            ) -> Result<ContextWrapper<PossiblyCurrent>, (ContextWrapper<NotCurrent>, ContextError)>,
         {
             match self {
                 ret @ ContextCurrentWrapper::PossiblyCurrent(_) => Ok(ret),
@@ -397,9 +384,7 @@ mod context_tracker {
                     unsafe {
                         self.modify(old_current, |ctx| {
                             ctx.map_possibly(|ctx| {
-                                ctx.map(
-                                    |ctx| Ok(ctx.treat_as_not_current()),
-                                )
+                                ctx.map(|ctx| Ok(ctx.treat_as_not_current()), )
                             })
                         })
                         .unwrap()
@@ -414,10 +399,7 @@ mod context_tracker {
 
         fn modify<F>(&mut self, id: ContextId, f: F) -> Result<(), ContextError>
         where
-            F: FnOnce(
-                ContextCurrentWrapper,
-            )
-                -> Result<ContextCurrentWrapper, (ContextCurrentWrapper, ContextError)>,
+            F: FnOnce(ContextCurrentWrapper) -> Result<ContextCurrentWrapper, (ContextCurrentWrapper, ContextError)>,
         {
             let this_index = self.others.binary_search_by(|(sid, _)| sid.cmp(&id)).unwrap();
 
@@ -454,15 +436,10 @@ mod context_tracker {
                         if let Some(old_current) = old_current {
                             if let Err(err2) = self.modify(old_current, |ctx| {
                                 ctx.map_possibly(|ctx| {
-                                    ctx.map(
-                                        |ctx| ctx.make_not_current(),
-                                    )
+                                    ctx.map(|ctx| ctx.make_not_current(), )
                                 })
                             }) {
-                                panic!(
-                                    "Could not `make_current` nor `make_not_current`, {:?}, {:?}",
-                                    err, err2
-                                );
+                                panic!("Could not `make_current` nor `make_not_current`, {:?}, {:?}", err, err2);
                             }
                         }
 
@@ -471,10 +448,7 @@ mod context_tracker {
                                 ctx.map(|ctx| ctx.make_not_current())
                             })
                         }) {
-                            panic!(
-                                "Could not `make_current` nor `make_not_current`, {:?}, {:?}",
-                                err, err2
-                            );
+                            panic!("Could not `make_current` nor `make_not_current`, {:?}, {:?}", err, err2);
                         }
 
                         return Err(err);
@@ -485,9 +459,7 @@ mod context_tracker {
                     if let Some(old_current) = old_current {
                         self.modify(old_current, |ctx| {
                             ctx.map_possibly(|ctx| {
-                                ctx.map(
-                                    |ctx| Ok(ctx.treat_as_not_current()),
-                                )
+                                ctx.map(|ctx| Ok(ctx.treat_as_not_current()), )
                             })
                         })
                         .unwrap();

@@ -15,6 +15,7 @@ type V2 = Vector2<f32>;
 
 /*
     TODO:
+    only use backtrace in debug builds
     button remapping?
     change plugin settings from yaffe
     memory management for assets? (clear asset cache, downloaded image??)
@@ -235,20 +236,21 @@ impl windowing::WindowHandler for WidgetTree {
                 l.add_item(String::from("Add Application"));
     
                 display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
-                return true;
+                true
             },
-            Actions::ToggleOverlay => { return false; /* Overlay handles this */ }
+            Actions::ToggleOverlay => { false /* Overlay handles this */ }
             _ => {
                 let mut handler = DeferredAction::new();
-                if !modals::is_modal_open(&self.data) {
+                let result = if !modals::is_modal_open(&self.data) {
                     let focus = self.focus.last().log_if_fail();
         
-                    self.root.action(&mut self.data, &action, focus, &mut handler);
+                    self.root.action(&mut self.data, &action, focus, &mut handler)
                 } else {
                     modals::update_modal(&mut self.data, helper, &action, &mut handler);
-                }
+                    true
+                };
                 handler.resolve(self);
-                return true;
+                result
             }
         }
     }

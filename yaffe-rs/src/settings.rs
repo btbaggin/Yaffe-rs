@@ -111,7 +111,7 @@ stringy_enum! {
 }
 
 macro_rules! settings_get {
-    ($name:ident, $nameraw:ident, $ty:ty, $setting:path) => {
+    ($name:ident, $ty:ty, $setting:path) => {
         #[allow(dead_code)]
         pub fn $name(&self, setting: crate::settings::SettingNames) -> $ty {
             let key = crate::settings::SettingNames::to_string(setting);
@@ -178,10 +178,10 @@ impl SettingsFile {
         Ok(())
     }
 
-    settings_get!(get_f32, get_f32_raw, f32, SettingValue::F32);
-    settings_get!(get_i32, get_i32_raw, i32, SettingValue::I32);
-    settings_get!(get_str, get_str_raw, String, SettingValue::String);
-    settings_get!(get_color, get_color_raw, Color, SettingValue::Color);
+    settings_get!(get_f32, f32, SettingValue::F32);
+    settings_get!(get_i32, i32, SettingValue::I32);
+    settings_get!(get_str, String, SettingValue::String);
+    settings_get!(get_color, Color, SettingValue::Color);
 
     pub fn get_raw(&self, setting: &str) -> SettingValue {
         if let Some(f) = self.settings.get(setting) {

@@ -5,6 +5,7 @@ use speedy2d::Graphics2D;
 use crate::modals::outline_rectangle;
 use crate::input::InputType;
 use crate::windowing::Rect;
+use glutin::event::VirtualKeyCode;
 
 pub struct FocusGroup<T: ?Sized> {
     control: Vec<(String, Box<T>)>,
@@ -154,9 +155,24 @@ impl UiControl for TextBox {
     }
 
     fn action(&mut self, action: &Actions) {
-        //TODO home/end
         match action {
-            Actions::KeyPress(InputType::Key(c)) => {
+            Actions::KeyPress(InputType::Key(k)) => {
+                match k {
+                    //TODO split
+                    VirtualKeyCode::Delete | VirtualKeyCode::Back => {
+                        if self.caret > 0 {
+                            if self.caret == self.text.len() { self.text.pop(); }
+                            else { self.text.remove(self.caret); }
+                            
+                            self.caret -= 1;
+                        }
+                    },
+                    VirtualKeyCode::Home => self.caret = 0,
+                    VirtualKeyCode::End => self.caret = self.text.len(),
+                    _ => {},
+                }
+            }
+            Actions::KeyPress(InputType::Char(c)) => {
                 self.text.insert(self.caret, *c);
                 self.caret += 1;
             }
@@ -164,14 +180,6 @@ impl UiControl for TextBox {
                 self.text.insert_str(self.caret, t);
                 self.caret += t.len();
             }
-            Actions::KeyPress(InputType::Delete) => { 
-                if self.caret > 0 {
-                    if self.caret == self.text.len() { self.text.pop(); }
-                    else { self.text.remove(self.caret); }
-                    
-                    self.caret -= 1;
-                }
-            },
             Actions::Right => if self.caret < self.text.len() { self.caret += 1 },
             Actions::Left => if self.caret > 0 { self.caret -= 1 },
             _ => {},
@@ -204,7 +212,7 @@ impl UiControl for CheckBox {
     }
 
     fn action(&mut self, action: &Actions) {
-        if let Actions::Select = action {
+        if let Actions::KeyPress(InputType::Key(VirtualKeyCode::Space)) = action {
             self.checked = !self.checked;
         }
     }

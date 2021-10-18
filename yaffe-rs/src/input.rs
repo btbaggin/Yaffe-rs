@@ -33,7 +33,6 @@ impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
 pub enum Actions {
     Info,
     Accept,
-    Select,
     Back,
     Up,
     Down,
@@ -62,8 +61,8 @@ pub enum ControllerInput {
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum InputType {
-    Key(char),
-    Delete,
+    Char(char),
+    Key(VirtualKeyCode),
     Paste(String),
 }
 
@@ -77,7 +76,6 @@ pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {
     m.insert(VirtualKeyCode::Down, ControllerInput::DirectionDown, Actions::Down);
     m.insert(VirtualKeyCode::Right, ControllerInput::DirectionRight, Actions::Right);
     m.insert(VirtualKeyCode::Left, ControllerInput::DirectionLeft, Actions::Left);
-    m.insert(VirtualKeyCode::Tab, ControllerInput::ButtonBack, Actions::Select);
     m.insert(VirtualKeyCode::F1, ControllerInput::ButtonStart, Actions::ShowMenu);
     m.insert(VirtualKeyCode::F2, ControllerInput::ButtonGuide, Actions::ToggleOverlay);
     m
