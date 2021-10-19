@@ -167,23 +167,24 @@ impl SettingsFile {
     }
 
     pub fn plugin(&self, name: &str) -> HashMap<String, yaffe_plugin::PluginSetting> {
-        if let Some(settings) = self.plugins.get(name) {
-            return translate_to_plugin_settings(settings);
-        }
-        HashMap::default()
+        let settings = self.plugins.get(name).unwrap();
+        translate_to_plugin_settings(settings)
     }
 
+    /// Ensures the plugin settings have all possible values.
+    /// Should only be called on plugin initialization
     pub fn populate_plugin_settings(&mut self, plugin: &crate::plugins::Plugin) {
         let settings = self.plugins.entry(plugin.file.clone()).or_insert(HashMap::default());
 
         for (name, default) in plugin.settings() {
-            //Get configured value if it exists, otherwise default
+            //Add any missing settings
             if !settings.contains_key(name) { 
                 settings.insert(name.to_string(), default.into());
             } 
         }
     }
 
+    /// Returns all possible settings that can be set and their current (or default) values
     pub fn get_full_settings(&self, plugin: Option<&str>) -> Vec<(String, SettingValue)> {
         let mut result = vec!();
         match plugin {

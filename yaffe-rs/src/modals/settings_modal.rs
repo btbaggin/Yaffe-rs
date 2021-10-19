@@ -75,6 +75,7 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
 
+        //Update settings values
         for (name, control) in &content.settings {
             if name == "run_at_startup_REMOVE_ME" { //TODO fix set_run_at_startup and remove
                 let value = bool::from_str(control.value()).unwrap();
@@ -85,6 +86,8 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
                 state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state);
             }
         }
+
+        //Save settings
         state.settings.serialize().display_failure("Unable to save settings", state);
     }
 }
