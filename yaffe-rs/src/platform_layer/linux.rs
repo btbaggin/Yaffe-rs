@@ -210,63 +210,65 @@ macro_rules! intern_atom {
     }};
 }
 pub(super) fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
-    let mut result = None;
-    unsafe {
-        let w = window.xlib_window().unwrap(); //TODO this shoudl be better than unwrap
-        let d = window.xlib_display().unwrap();
-        let d = &mut *(d as *mut x11::xlib::_XDisplay);
+    // let mut result = None;
+    // unsafe {
+    //     let w = window.xlib_window().unwrap(); //TODO this shoudl be better than unwrap
+    //     let d = window.xlib_display().unwrap();
+    //     let d = &mut *(d as *mut x11::xlib::_XDisplay);
 
-        let utf8 = intern_atom!(d, "UTF8_STRING", 1);
-        if utf8 != 0 { result = x_paste_type(utf8, d, w, utf8); }
-        if result.is_none() { result = x_paste_type(XA_STRING, d, w, utf8); }
-    }
-    result
+    //     let utf8 = intern_atom!(d, "UTF8_STRING", 1);
+    //     if utf8 != 0 { result = x_paste_type(utf8, d, w, utf8); }
+    //     if result.is_none() { result = x_paste_type(XA_STRING, d, w, utf8); }
+    // }
+    // result
+    None
 }
 
 unsafe fn x_paste_type(atom: u64, display: &mut x11::xlib::Display, window: u64, utf8: u64) -> Option<String> {
-    let mut result = None;
-	let clipboard = intern_atom!(display, "CLIPBOARD", 0);
-	let xsel_data = intern_atom!(display, "XSEL_DATA", 0);
-	XConvertSelection(display, clipboard, atom, xsel_data, window, CurrentTime);
-	XSync(display, 0);
+    // let mut result = None;
+	// let clipboard = intern_atom!(display, "CLIPBOARD", 0);
+	// let xsel_data = intern_atom!(display, "XSEL_DATA", 0);
+	// XConvertSelection(display, clipboard, atom, xsel_data, window, CurrentTime);
+	// XSync(display, 0);
 
-    let mut event: XEvent = std::mem::zeroed();
-	XNextEvent(display, &mut event as *mut XEvent);
+    // let mut event: XEvent = std::mem::zeroed();
+	// XNextEvent(display, &mut event as *mut XEvent);
 	
-	if event.type_ == SelectionNotify {
-        if event.selection.selection != clipboard { return None; }
+	// if event.type_ == SelectionNotify {
+    //     if event.selection.selection != clipboard { return None; }
 
-        if event.selection.property != 0 {
-            let mut target = 0u64;
-            let mut size = 0u64;
-            let mut format = 0;
+    //     if event.selection.property != 0 {
+    //         let mut target = 0u64;
+    //         let mut size = 0u64;
+    //         let mut format = 0;
 
-            let mut data: *mut u8 = std::ptr::null_mut();
-            XGetWindowProperty(event.selection.display, 
-                               event.selection.requestor,
-                               event.selection.property, 
-                               0,
-                               !0, 
-                               0, 
-                               AnyPropertyType as u64, 
-                               &mut target as *mut u64,
-                               &mut format as *mut i32, 
-                               &mut size as *mut u64, 
-                               &mut 0u64 as *mut u64,
-                               &mut data as *mut *mut u8);
+    //         let mut data: *mut u8 = std::ptr::null_mut();
+    //         XGetWindowProperty(event.selection.display, 
+    //                            event.selection.requestor,
+    //                            event.selection.property, 
+    //                            0,
+    //                            !0, 
+    //                            0, 
+    //                            AnyPropertyType as u64, 
+    //                            &mut target as *mut u64,
+    //                            &mut format as *mut i32, 
+    //                            &mut size as *mut u64, 
+    //                            &mut 0u64 as *mut u64,
+    //                            &mut data as *mut *mut u8);
 
-            if target == utf8 || target == XA_STRING {
-                result = Some(data.as_ref().into_iter().take(size.try_into().unwrap()).map(|c| *c as char).collect::<String>());
-                XFree(data as *mut std::ffi::c_void);
-            }
-            XDeleteProperty(event.selection.display, event.selection.requestor, event.selection.property);
-        }
-	}
+    //         if target == utf8 || target == XA_STRING {
+    //             result = Some(data.as_ref().into_iter().take(size.try_into().unwrap()).map(|c| *c as char).collect::<String>());
+    //             XFree(data as *mut std::ffi::c_void);
+    //         }
+    //         XDeleteProperty(event.selection.display, event.selection.requestor, event.selection.property);
+    //     }
+	// }
 
-    result
+    // result
+    None
 }
 
 pub(super) fn get_and_update_volume(_: f32) -> VolumeResult<f32> {
     //TODO
-    panic!();
+    Ok(1.)
 }

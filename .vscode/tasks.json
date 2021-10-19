@@ -9,7 +9,7 @@
                 "problemMatcher": ["$rustc"],
             },
             "linux": {
-                "command": "cargo rustc --release",
+                "command": "cargo rustc --release --package yaffe-rs",
                 "problemMatcher": ["$rustc"],
             },
             "group": "build",
