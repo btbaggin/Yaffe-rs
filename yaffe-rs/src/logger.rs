@@ -28,10 +28,13 @@ macro_rules! log_entry_internal {
         let time = chrono::Local::now();
         let time_string = time.format("%x %X");
         let message = match $type {
+            #[cfg(debug_assertions)]
             LogTypes::Error => {
                 let trace = backtrace::Backtrace::new();
                 format!("Error {{{}}}: {} {:?}\n", time_string, format_args!($string, $($element)*), trace)
             },
+            #[cfg(not(debug_assertions))]
+            LogTypes::Error => format!("Error {{{}}}: {}\n", time_string, format_args!($string, $($element)*)),
             LogTypes::Warning => format!("Warning {{{}}}: {}\n", time_string, format_args!($string, $($element)*)),
             LogTypes::Information => format!("Info {{{}}}: {}\n", time_string, format_args!($string, $($element)*)),
         };

@@ -15,9 +15,7 @@ type V2 = Vector2<f32>;
 
 /*
     TODO:
-    only use backtrace in debug builds
     button remapping?
-    change plugin settings from yaffe
     memory management for assets? (clear asset cache, downloaded image??)
 */
 
