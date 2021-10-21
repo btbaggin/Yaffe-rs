@@ -79,6 +79,9 @@ struct PluginWrapper {
 }
 
 pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
+	if !std::path::Path::new(directory).exists() {
+		std::fs::create_dir(directory).log_if_fail();
+	}
 	let path = std::fs::canonicalize(directory).unwrap();
 
 	for entry in std::fs::read_dir(path).log_if_fail() {
