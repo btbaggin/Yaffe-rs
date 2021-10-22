@@ -13,12 +13,6 @@ extern crate dlopen_derive;
 
 type V2 = Vector2<f32>;
 
-/*
-    TODO:
-    button remapping?
-    memory management for assets? (clear asset cache, downloaded image??)
-*/
-
 pub mod colors {
     use speedy2d::color::Color;
     pub const MENU_BACKGROUND: Color = Color::from_rgba(0.2, 0.2, 0.2, 0.7);
@@ -121,8 +115,8 @@ pub struct Executable {
     rating: platform::Rating,
     players: u8,
     platform_index: usize,
-    boxart: Rc<RefCell<assets::AssetSlot>>,
-    banner: Rc<RefCell<assets::AssetSlot>>,
+    boxart: crate::assets::AssetPathType,
+    banner: crate::assets::AssetPathType,
 }
 
 pub struct YaffeState {
@@ -182,6 +176,8 @@ impl YaffeState {
 
 impl windowing::WindowHandler for WidgetTree {
     fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper) -> bool {
+        crate::assets::clear_old_cache(&self.data);
+
         match settings::update_settings(&mut self.data.settings) {
             Err(e) => {
                 logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
