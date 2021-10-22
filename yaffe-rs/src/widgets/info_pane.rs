@@ -33,7 +33,10 @@ impl super::Widget for InfoPane {
             //Banner image
             let mut height = 0.;
             let mut queue = self.queue.borrow_mut();
-            let slot = &mut app.banner.borrow_mut();
+
+            let slot = crate::assets::get_cached_file(&app.banner);
+            let slot = &mut slot.borrow_mut();
+
             let mut image = request_asset_image(piet, &mut queue, slot);
             if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {

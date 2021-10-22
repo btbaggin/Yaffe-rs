@@ -1,12 +1,11 @@
 use crate::database::*;
-use crate::assets::AssetSlot;
+use crate::assets::AssetPathType;
 use crate::{YaffeState};
 use crate::plugins::Plugin;
 use super::{Platform, Executable};
 use std::convert::{TryFrom, TryInto};
 use crate::logger::LogEntry;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::HashMap;
 
 #[repr(u8)]
@@ -105,12 +104,12 @@ impl Executable {
     pub fn plugin_item(platform_index: usize, item: yaffe_plugin::YaffePluginItem) -> Executable {
         let (boxart, banner) = match item.thumbnail {
             yaffe_plugin::PathType::Url(s) => {
-                (Rc::new(RefCell::new(AssetSlot::new_url(&s))), Rc::new(RefCell::new(AssetSlot::new_url(&s))))
+                (AssetPathType::Url(s.clone()), AssetPathType::Url(s))
             },
             yaffe_plugin::PathType::File(s) => {
                 let canon = std::fs::canonicalize(format!("./plugins/{}", s)).unwrap();
                 let path = canon.to_string_lossy();
-                crate::assets::get_cached_asset(path.to_string(), path.to_string())
+                (AssetPathType::File(path.to_string()), AssetPathType::File(path.to_string()))
             },
         };
 
@@ -132,15 +131,15 @@ impl Executable {
                     platform_index: usize, 
                     players: u8,
                     rating: Rating,
-                    boxart: Rc<RefCell<AssetSlot>>, 
-                    banner: Rc<RefCell<AssetSlot>>) -> Executable {
+                    boxart: String, 
+                    banner: String) -> Executable {
         Executable {
             file,
             name,
             description,
             platform_index,
-            boxart,
-            banner,
+            boxart: AssetPathType::File(boxart),
+            banner: AssetPathType::File(banner),
             players,
             rating,
         }
@@ -192,7 +191,7 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: us
                     let mut queue = state.queue.borrow_mut();
                     if let Ok((name, overview, players, rating)) = get_game_info(id, &file) {
 
-                        let (boxart, banner) = crate::assets::get_cached_game_slot(&platform.name, &name);
+                        let (boxart, banner) = crate::assets::get_asset_path(&platform.name, &name);
     
                         platform.apps.push(Executable::new_game(String::from(file), 
                                                                 name, 

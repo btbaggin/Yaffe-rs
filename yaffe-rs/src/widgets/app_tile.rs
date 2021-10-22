@@ -97,7 +97,9 @@ impl AppTile {
 
         use crate::assets::{request_asset_image, request_image, Images};
 
-        let slot = &mut exe.boxart.borrow_mut();
+        let slot = crate::assets::get_cached_file(&exe.boxart);
+        let slot = &mut slot.borrow_mut();
+
         let mut queue = self.queue.borrow_mut();
         if let Some(i) = request_asset_image(piet, &mut queue, slot) {
             i.render(piet, Rect::point_and_size(position, target_size));
@@ -109,7 +111,9 @@ impl AppTile {
     pub fn get_image_size(&self, state: &YaffeState) -> V2 {
         let p = state.get_platform();
         let exe = &p.apps[self.index];
-        if let Ok(slot) = exe.boxart.try_borrow() {
+        let slot = crate::assets::get_cached_file(&exe.boxart);
+
+        if let Ok(slot) = slot.try_borrow() {
             if let Some(size) = slot.get_image_size() {
                 return size;
             }
