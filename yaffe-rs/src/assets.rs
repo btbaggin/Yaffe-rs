@@ -201,7 +201,7 @@ fn asset_path_is_valid(path: &AssetPathType) -> bool {
 }
 
 pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot: &'a mut AssetSlot) -> Option<&'a YaffeTexture> {
-    if slot.state.load(Ordering::Relaxed) == ASSET_STATE_UNLOADED && 
+    if slot.state.load(Ordering::Acquire) == ASSET_STATE_UNLOADED && 
        asset_path_is_valid(&slot.path) {
         if let Ok(ASSET_STATE_UNLOADED) = slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed) {
 
@@ -211,7 +211,7 @@ pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot
     }
 
     if let None = slot.image {
-        if slot.state.load(Ordering::Relaxed) == ASSET_STATE_LOADED {
+        if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
             let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_if_fail();
             slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
             slot.data = Vec::with_capacity(0);
@@ -256,7 +256,7 @@ pub fn request_font(font: Fonts) -> &'static Font {
 
     //TODO
     //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
-    assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
+    assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
         let font = speedy2d::font::Font::new(&slot.data).log_if_fail();
@@ -288,7 +288,7 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
 
     asset_slot.dimensions = buffer.dimensions();
     asset_slot.data = buffer.into_vec();
-    asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::Relaxed);
+    asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
 }
 
 pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
@@ -333,7 +333,7 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
     let mut last_used = ("", Instant::now());
     for (key, value) in map.iter() {
         let slot = value.borrow();
-        if slot.state.load(Ordering::Relaxed) == ASSET_STATE_LOADED {
+        if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
             total_memory += slot.data.len();
 
             //Find oldest asset
