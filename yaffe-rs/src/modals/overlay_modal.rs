@@ -3,6 +3,7 @@ use speedy2d::shape::Rectangle;
 use crate::Rect;
 use crate::{Actions, V2};
 use crate::modals::{ModalResult, ModalContent};
+use crate::logger::LogEntry;
 
 const VOLUME_STEP: f32 = 0.05;
 
@@ -29,17 +30,11 @@ impl ModalContent for OverlayModal {
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         match action {
             Actions::Left => {
-                match crate::platform_layer::get_and_update_volume(-VOLUME_STEP) {
-                    Ok(volume) => self.volume = volume,
-                    Err(e) => crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to get system volume"),
-                }
+                self.volume = crate::platform_layer::get_and_update_volume(-VOLUME_STEP).log_if_fail("Unable to get system volume");
                 ModalResult::None
             }
             Actions::Right => {
-                match crate::platform_layer::get_and_update_volume(VOLUME_STEP) {
-                    Ok(volume) => self.volume = volume,
-                    Err(e) => crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to get system volume"),
-                }
+                self.volume = crate::platform_layer::get_and_update_volume(VOLUME_STEP).log_if_fail("Unable to get system volume");
                 ModalResult::None
             }
             Actions::Accept => ModalResult::Ok,

@@ -76,17 +76,20 @@ pub fn log_entry_with_message(t: LogTypes, err: impl Debug, message: &str) {
 }
 
 
-pub trait LogEntry<T> {
-    fn log_message_if_fail(self, message: &str) -> T;
-    fn log_if_fail(self) -> T;
+pub trait PanicLogEntry<T> {
+    fn log_message_and_panic(self, message: &str) -> T;
+    fn log_and_panic(self) -> T;
+}
+pub trait LogEntry<T: Default> {
+    fn log_if_fail(self, message: &str) -> T;
 }
 pub trait UserMessage<T> {
     fn display_failure(self, message: &str, state: &mut crate::YaffeState) -> Option<T>;
     fn display_failure_deferred(self, message: &str, handle: &mut crate::DeferredAction) -> Option<T>;
 }
-impl<T, E: Debug> LogEntry<T> for std::result::Result<T, E> {
+impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
     /// Logs the type with an additional message if it is `Err` then panics  
-    fn log_message_if_fail(self, message: &str) -> T {
+    fn log_message_and_panic(self, message: &str) -> T {
         match self {
             Err(e) => {
                 log_entry_with_message(LogTypes::Error, e, message);
@@ -97,7 +100,7 @@ impl<T, E: Debug> LogEntry<T> for std::result::Result<T, E> {
     }
 
     /// Logs the type if it is `Err` then panics
-    fn log_if_fail(self) -> T {
+    fn log_and_panic(self) -> T {
         match self {
             Err(e) => {
                 log_entry(LogTypes::Error, e);
@@ -107,6 +110,19 @@ impl<T, E: Debug> LogEntry<T> for std::result::Result<T, E> {
         }
     }
 }
+
+impl <T: Default, E: Debug> LogEntry<T> for std::result::Result<T, E> {
+    fn log_if_fail(self, message: &str) -> T {
+        match self {
+            Err(e) => {
+                log_entry_with_message(LogTypes::Warning, e, message);
+                std::default::Default::default()
+            }
+            Ok(r) => r,
+        }
+    }
+}
+
 impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
     /// Displays a message to the user if it is `Err`
     /// Returns `Some(T)` when there was no error, otherwise `None`
@@ -134,9 +150,9 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
     }
 }
 
-impl<T> LogEntry<T> for Option<T> {
+impl<T> PanicLogEntry<T> for Option<T> {
     /// Logs the type with an additional message if it is `None` then panics
-    fn log_message_if_fail(self, message: &str) -> T {
+    fn log_message_and_panic(self, message: &str) -> T {
         match self {
             Some(t) => t,
             None => {
@@ -147,7 +163,7 @@ impl<T> LogEntry<T> for Option<T> {
     }
 
     /// Logs the type if it is `None` then panics
-    fn log_if_fail(self) -> T {
+    fn log_and_panic(self) -> T {
         match self {
             Some(t) => t,
             None => {

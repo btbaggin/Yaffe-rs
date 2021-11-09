@@ -19,6 +19,7 @@ impl<T: ?Sized> FocusGroup<T> {
         }
     }
 
+    /// Provides default handling for actions
     pub fn action(&mut self, action: &Actions) -> bool {
         match action {
             Actions::Up => {
@@ -33,10 +34,12 @@ impl<T: ?Sized> FocusGroup<T> {
         }
     }
 
+    /// Returns the number of fields in the focus group
     pub fn len(&self) -> usize {
         self.control.len()
     }
 
+    /// Adds a new field to the focus group
     pub fn insert(&mut self, tag: &str, control: Box<T>) {
         if self.focus == std::ptr::null() {
             self.focus = &control as *const Box<T>;
@@ -44,6 +47,7 @@ impl<T: ?Sized> FocusGroup<T> {
         self.control.push((tag.to_string(), control));
     }
 
+    /// Retrieves a field from the group based on the tag
     pub fn by_tag(&self, tag: &str) -> Option<&Box<T>> {
         for (t, control) in &self.control {
             if t == tag {
@@ -53,6 +57,7 @@ impl<T: ?Sized> FocusGroup<T> {
         None
     }
 
+    /// Moves the focus to the next field in the group
     pub fn move_focus(&mut self, next: bool) {
         //Try to find current focus
         let index = self.control.iter().position(|value| std::ptr::eq(&value.1 as *const Box<T>, self.focus));
@@ -74,6 +79,7 @@ impl<T: ?Sized> FocusGroup<T> {
         }
     }
 
+    /// Gets the field that currently has focus
     pub fn focus(&mut self) -> Option<&mut Box<T>> {
         for c in self.control.iter_mut() {
             let ptr = &c.1 as *const Box<T>;

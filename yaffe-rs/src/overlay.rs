@@ -1,6 +1,7 @@
 use speedy2d::shape::Rectangle;
 use speedy2d::dimen::Vector2;
 use crate::modals;
+use crate::logger::LogEntry;
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
@@ -46,9 +47,7 @@ impl OverlayWindow {
                 },
                 Err(_) => {
                     //If we cant kill it, oh well.
-                    if let Err(e) = process.kill() {
-                        crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to determine process status");
-                    }
+                    process.kill().log_if_fail("Unable to determine process status");
                     self.hide(helper);
                     false
                 }
@@ -95,9 +94,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
                     if let modals::ModalResult::Ok = result {
                         // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
                         // see process_is_running
-                        if let Err(e) = self.process.as_mut().unwrap().kill() {
-                            crate::logger::log_entry_with_message(crate::logger::LogTypes::Warning, e, "Unable to kill running process");
-                        }
+                        self.process.as_mut().unwrap().kill().log_if_fail("Unable to kill running process");
                         self.process = None;
                         self.hide(helper);
                         return true;

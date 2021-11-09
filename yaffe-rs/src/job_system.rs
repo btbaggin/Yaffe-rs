@@ -66,14 +66,21 @@ pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
 
 fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Sender<u8>) {
     loop {
-        let msg = queue.recv().log_if_fail();
+        let msg = queue.recv().log_and_panic();
         match msg {
             JobType::LoadImage(slot) => crate::assets::load_image_async(slot),
     
             JobType::DownloadUrl((url, path)) => {
                 let url = std::path::Path::new("https://cdn.thegamesdb.net/images/medium/").join(url);
-                let image = reqwest::blocking::get(url.to_str().unwrap()).unwrap().bytes().unwrap();
-                std::fs::write(path, image).log_if_fail();
+
+                //Download and write file to disk
+                match reqwest::blocking::get(url.to_str().unwrap()) {
+                    Err(e) => crate::logger::log_entry(LogTypes::Error, e),
+                    Ok(bytes) => {
+                        let image = bytes.bytes().unwrap();
+                        std::fs::write(path, image).log_and_panic();
+                    }
+                } 
             }
 
             JobType::SearchPlatform((state, name, path, args, rom)) => {
@@ -99,6 +106,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             JobType::SearchGame((state, exe, name, plat_id)) => {
                 let state = state.get_inner::<crate::YaffeState>();
                 if let Some(result) = search_game(&name, plat_id).display_failure("Unable to send message for game search", state) {
+
                     if result.exact {
                         let game = &result.results[0];
                         let data = crate::database::GameData::new(game, exe.clone(), plat_id);
@@ -116,9 +124,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             }
         }
 
-        if let Err(e) = notify.send(0) {
-            log_entry_with_message(LogTypes::Warning, e, "Unable to notify main loop about finished job");
-        }
+        notify.send(0).log_if_fail("Unable to notify main loop about finished job");
     }
 }
 

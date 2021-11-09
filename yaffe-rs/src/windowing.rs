@@ -3,7 +3,7 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode, ModifiersState};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{V2, input::ControllerInput, input::InputType, Actions};
+use crate::{V2, input::ControllerInput, input::InputType, Actions, logger::LogEntry};
 use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -81,8 +81,9 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  tracker: &mut context_tracker::ContextTracker, 
                  builder: WindowBuilder,
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> Vector2<u32> {
-                    use crate::logger::LogEntry;
-    let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).log_if_fail();
+
+    use crate::logger::PanicLogEntry;
+    let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
     let id = windowed_context.window().id();
@@ -225,9 +226,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 last_time = now;
 
                 //Get controller input
-                if let Err(e) = gamepad.update(0) {
-                    crate::logger::log_entry_with_message(crate::logger::LogTypes::Error, e, "Unable to get controller input");
-                }
+                gamepad.update(0).log_if_fail("Unable to get controller input");
 
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = input_to_action(&input_map, &mut gamepad);

@@ -3,7 +3,7 @@ use speedy2d::shape::Rectangle;
 use crate::{YaffeState, Actions, DeferredAction, widget, V2};
 use crate::widgets::AppTile;
 use crate::Rect;
-use crate::logger::{LogEntry, UserMessage};
+use crate::logger::{PanicLogEntry, LogEntry, UserMessage};
 
 const MARGIN: f32 = 0.1;
 
@@ -274,12 +274,11 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
                         yaffe_plugin::SelectedAction::Start(mut p) => p.spawn(),
                     }
                 },
-
                 _ => {
                     let id = platform.id.unwrap();
                     //This should never fail since we got it from the database
-                    let (path, args, roms) = crate::database::get_platform_info(id).log_message_if_fail("Platform not found");
-                    crate::database::update_game_last_run(exe, id).log_if_fail();
+                    let (path, args, roms) = crate::database::get_platform_info(id).log_message_and_panic("Platform not found");
+                    crate::database::update_game_last_run(exe, id).log_if_fail("Unable to update game last run");
 
                     let mut process = &mut std::process::Command::new(path);
                     let exe_path = std::path::Path::new(&roms).join(&exe.file);

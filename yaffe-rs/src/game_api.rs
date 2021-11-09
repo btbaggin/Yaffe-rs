@@ -107,6 +107,7 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
 
     assert!(resp["data"]["games"].is_array());
     let array = resp["data"]["games"].as_array().unwrap();
+
     let (count, exact) = get_count_and_exact(array, "game_title", name);
     let mut result = ServiceResponse::new(count, exact);
 

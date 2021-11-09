@@ -7,7 +7,6 @@ use std::ops::Deref;
 use crate::widgets::animations::*;
 use std::time::Instant;
 
-
 pub mod animations;
 mod platform_list;
 mod app_list;
@@ -265,15 +264,13 @@ impl WidgetContainer {
     pub fn action(&mut self, state: &mut YaffeState, action: &Actions, current_focus: &WidgetId, handler: &mut DeferredAction) -> bool {
         //Only send action to currently focused widget
         let handled = current_focus == &self.widget.get_id() && self.widget.action(state, action, handler);
+        if handled { return true; }
 
-        if !handled {
-            for i in self.children.iter_mut() {
-                let handled = i.action(state, action, current_focus, handler);
-                if handled { break; }
-            }
+        for i in self.children.iter_mut() {
+            if i.action(state, action, current_focus, handler) { return true; }
         }
 
-        handled
+        false
     }
 
     pub fn render(&mut self, state: &YaffeState, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {

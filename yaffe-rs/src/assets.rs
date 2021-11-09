@@ -6,7 +6,7 @@ use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::V2;
 use crate::job_system::JobQueue;
-use crate::logger::LogEntry;
+use crate::logger::PanicLogEntry;
 use speedy2d::font::*;
 use speedy2d::image::*;
 use std::time::Instant;
@@ -95,8 +95,8 @@ impl AssetSlot {
     }
 
     pub fn font(path: &str) -> AssetSlot {
-        let data = std::fs::read(path).log_if_fail();
-        let font = speedy2d::font::Font::new(&data).log_if_fail();
+        let data = std::fs::read(path).log_and_panic();
+        let font = speedy2d::font::Font::new(&data).log_and_panic();
 
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
@@ -154,10 +154,10 @@ pub fn initialize_asset_cache() {
     unsafe { FILE_ASSET_MAP = Some(HashMap::with_capacity(64)); }
 }
 
-pub fn load_texture_atlas(piet: &mut Graphics2D) {
+pub fn load_texture_atlas(graphics: &mut Graphics2D) {
     let map = unsafe { STATIC_ASSET_MAP.as_mut().unwrap() };
     if let None = map.get(&AssetTypes::Image(Images::Error)) {
-        let data = piet.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_if_fail();
+        let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
 
         for tex in read_texture_atlas(r"./Assets/atlas.tex") {
@@ -190,7 +190,7 @@ pub fn load_texture_atlas(piet: &mut Graphics2D) {
 }
 
 fn get_slot_mut(t: AssetTypes) -> &'static mut AssetSlot {
-    unsafe { STATIC_ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_if_fail("Invalid asset slot reqeust") }
+    unsafe { STATIC_ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_and_panic("Invalid asset slot reqeust") }
 }
 
 fn asset_path_is_valid(path: &AssetPathType) -> bool {
@@ -212,7 +212,7 @@ pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot
 
     if let None = slot.image {
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_if_fail();
+            let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
             slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
             slot.data = Vec::with_capacity(0);
         }
@@ -240,7 +240,7 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
-        let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_if_fail();
+        let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
         slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
     }
 
@@ -259,7 +259,7 @@ pub fn request_font(font: Fonts) -> &'static Font {
     assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
-        let font = speedy2d::font::Font::new(&slot.data).log_if_fail();
+        let font = speedy2d::font::Font::new(&slot.data).log_and_panic();
         slot.image = Some(AssetData::Font(font));
     }
 
@@ -273,17 +273,17 @@ pub fn request_font(font: Fonts) -> &'static Font {
 pub fn load_image_async(slot: crate::RawDataPointer) {
     let asset_slot = slot.get_inner::<AssetSlot>();
     let data = match &asset_slot.path {
-        AssetPathType::File(path) => std::fs::read(&path).log_if_fail(),
+        AssetPathType::File(path) => std::fs::read(&path).log_and_panic(),
         AssetPathType::Url(path) =>  {
-            let image = reqwest::blocking::get(path).unwrap().bytes().log_if_fail();
+            let image = reqwest::blocking::get(path).unwrap().bytes().log_and_panic();
             image.to_vec()
         },
     };
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(data.clone()));
-    reader = reader.with_guessed_format().log_if_fail();
+    reader = reader.with_guessed_format().log_and_panic();
 
-    let image = reader.decode().log_if_fail();
+    let image = reader.decode().log_and_panic();
     let buffer = image.into_rgba8();
 
     asset_slot.dimensions = buffer.dimensions();
@@ -300,7 +300,7 @@ pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
 
     let banner = Path::new(&name).join("banner.jpg");
     let boxart = Path::new(&name).join("boxart.jpg");
-    if !name.exists() { std::fs::create_dir(name).log_if_fail(); }
+    if !name.exists() { std::fs::create_dir(name).log_and_panic(); }
 
     (boxart.to_string_lossy().to_string(), banner.to_string_lossy().to_string())
 }
@@ -369,10 +369,10 @@ fn read_texture_atlas(path: &str) -> Vec<(String, Rectangle)> {
             }};
     }
 
-    let file = std::fs::read(path).log_if_fail();
+    let file = std::fs::read(path).log_and_panic();
     let mut index = 0;
-    let total_width = read_type!(i32, file, index);
-    let total_height = read_type!(i32, file, index);
+    let total_width = read_type!(i32, file, index) as f32;
+    let total_height = read_type!(i32, file, index) as f32;
     let count = read_type!(i32, file, index);
 
     let mut result = vec!();
@@ -390,10 +390,10 @@ fn read_texture_atlas(path: &str) -> Vec<(String, Rectangle)> {
         let x = read_type!(i32, file, index);
         let y = read_type!(i32, file, index);
 
-        let width = (x + image_width) as f32 / total_width as f32;
-        let height = (y + image_height) as f32 / total_height as f32;
-        let x = x as f32 / total_width as f32;
-        let y = y as f32 / total_height as f32;
+        let width = (x + image_width) as f32 / total_width;
+        let height = (y + image_height) as f32 / total_height;
+        let x = x as f32 / total_width;
+        let y = y as f32 / total_height;
         result.push((name, Rectangle::from_tuples((x, y), (width, height))));
     }
 

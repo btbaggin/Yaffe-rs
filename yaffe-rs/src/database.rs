@@ -1,7 +1,7 @@
 use core::ops::Deref;
 use crate::{Platform, Executable};
 use std::convert::TryInto;
-use crate::logger::LogEntry;
+use crate::logger::PanicLogEntry;
 
 static QS_GET_PLATFORM: &str = "SELECT Platform, Path, Args, Roms FROM Platforms WHERE ID = @ID";
 static QS_GET_PLATFORM_NAME: &str = "SELECT Platform FROM Platforms WHERE ID = @ID";
@@ -86,7 +86,7 @@ pub struct YaffeConnection {
 }
 impl YaffeConnection {
     pub fn new() -> YaffeConnection {
-        let connection = sqlite3::open("./Yaffe.db").log_if_fail();
+        let connection = sqlite3::open("./Yaffe.db").log_and_panic();
         YaffeConnection { con:  connection }
     }
 }
@@ -102,10 +102,10 @@ impl Deref for YaffeConnection {
 macro_rules! create_statement {
     ($con:ident, $statement:expr, $($x:expr),*) => {{
         #[allow(unused_mut)]
-        let mut statement = $con.prepare($statement).log_message_if_fail("Unable to prepare statement");
+        let mut statement = $con.prepare($statement).log_message_and_panic("Unable to prepare statement");
         let mut _i = 1usize;
     $(
-        statement.bind(_i, $x).log_if_fail();
+        statement.bind(_i, $x).log_and_panic();
         _i = _i + 1;
     )*
     statement
@@ -228,7 +228,7 @@ pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable>
                 overview, 
                 index,
                 players as u8, 
-                rating.try_into().log_message_if_fail("Unknown rating value"), 
+                rating.try_into().log_message_and_panic("Unknown rating value"), 
                 boxart, 
                 banner));
         }

@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use speedy2d::shape::Rectangle;
 use speedy2d::dimen::Vector2;
 pub use crate::settings::SettingNames;
-use crate::logger::{UserMessage, LogEntry};
+use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 
 #[macro_use]
 extern crate dlopen_derive;
@@ -176,15 +176,11 @@ impl YaffeState {
 
 impl windowing::WindowHandler for WidgetTree {
     fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper) -> bool {
+        //Clear any assets that haven't been requested in a long time
         crate::assets::clear_old_cache(&self.data);
 
-        match settings::update_settings(&mut self.data.settings) {
-            Err(e) => {
-                logger::log_entry_with_message(logger::LogTypes::Warning, e, "Unable to retrieve updated settings");
-                false
-            }
-            Ok(_) => { true }
-        }
+        //Check for any updates to the settings file
+        settings::update_settings(&mut self.data.settings).log_if_fail("Unable to retrieve updated settings")
     }
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
         assets::load_texture_atlas(graphics);
@@ -192,6 +188,7 @@ impl windowing::WindowHandler for WidgetTree {
         if !self.data.overlay.borrow().is_active() {
             let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
 
+            //Update the platform and emulator list from database
             if self.data.refresh_list {
                 platform::get_database_info(&mut self.data);
                 self.data.refresh_list = false;
@@ -202,11 +199,11 @@ impl windowing::WindowHandler for WidgetTree {
 
             crate::widgets::animations::run_animations(self, delta_time);
 
+            //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
                 modals::render_modal(&self.data.settings, m, &window_rect, graphics);
             }
-
         }
 
         self.data.running
@@ -236,7 +233,7 @@ impl windowing::WindowHandler for WidgetTree {
             _ => {
                 let mut handler = DeferredAction::new();
                 let result = if !modals::is_modal_open(&self.data) {
-                    let focus = self.focus.last().log_if_fail();
+                    let focus = self.focus.last().log_and_panic();
         
                     self.root.action(&mut self.data, &action, focus, &mut handler)
                 } else {
@@ -285,7 +282,7 @@ fn main() {
     ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
  
     let input_map = input::get_input_map();
-    let gamepad = platform_layer::initialize_gamepad().log_message_if_fail("Unable to initialize input");
+    let gamepad = platform_layer::initialize_gamepad().log_message_and_panic("Unable to initialize input");
 
     plugins::load_plugins(&mut ui.data, "./plugins");
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);

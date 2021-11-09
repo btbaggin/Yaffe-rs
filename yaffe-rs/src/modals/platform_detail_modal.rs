@@ -2,7 +2,7 @@ use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
-use crate::logger::{LogEntry, UserMessage};
+use crate::logger::{PanicLogEntry, UserMessage};
 use crate::controls::*;
 use crate::{font::FONT_SIZE, ui::MARGIN};
 
@@ -33,7 +33,7 @@ impl PlatformDetailModal {
 
     pub fn from_existing(plat: &crate::Platform, id: i64) -> PlatformDetailModal {
         //This should never fail since we orignally got it from the database
-        let (path, args, roms) = crate::database::get_platform_info(id).log_if_fail();
+        let (path, args, roms) = crate::database::get_platform_info(id).log_and_panic();
 
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         controls.insert("Name", Box::new(TextBox::new(plat.name.clone())));

@@ -1,6 +1,6 @@
 use yaffe_plugin::YaffePlugin;
 use dlopen::wrapper::{Container, WrapperApi};
-use crate::logger::{LogEntry, UserMessage};
+use crate::logger::{PanicLogEntry, UserMessage};
 pub use yaffe_plugin::*;
 use std::ops::{DerefMut, Deref};
 use std::collections::HashMap;
@@ -80,11 +80,11 @@ struct PluginWrapper {
 
 pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 	if !std::path::Path::new(directory).exists() {
-		std::fs::create_dir(directory).log_if_fail();
+		std::fs::create_dir(directory).log_and_panic();
 	}
 	let path = std::fs::canonicalize(directory).unwrap();
 
-	for entry in std::fs::read_dir(path).log_if_fail() {
+	for entry in std::fs::read_dir(path).log_and_panic() {
 		let path = entry.unwrap().path();
 
 		if let Some(ext) = path.extension() {

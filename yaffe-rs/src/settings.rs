@@ -308,7 +308,7 @@ pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<Settings
 }
 
 /// Checks for and loads any updates to the settings file
-pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<()> {
+pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<bool> {
     //We log an error if the file isnt found in load_settings
     //Since this is already logged we dont need to get logging it every frame
     if settings.path.as_path().exists() {
@@ -319,11 +319,12 @@ pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<()> {
             settings.last_write = last_write;
 
             settings.settings.clear();
-            return populate_settings(settings, data);
+            populate_settings(settings, data)?;
+            return Ok(true);
         }
     }
 
-    Ok(())
+    Ok(false)
 }
 
 fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResult<()> {

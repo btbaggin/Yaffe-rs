@@ -4,7 +4,7 @@ use crate::{YaffeState};
 use crate::plugins::Plugin;
 use super::{Platform, Executable};
 use std::convert::{TryFrom, TryInto};
-use crate::logger::LogEntry;
+use crate::logger::PanicLogEntry;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -149,7 +149,7 @@ impl Executable {
 pub fn get_database_info(state: &mut YaffeState) {
     crate::logger::log_entry(crate::logger::LogTypes::Information, "Refreshing information");
 
-    create_database().log_message_if_fail("Unable to create database");
+    create_database().log_message_and_panic("Unable to create database");
     let mut platforms = get_all_platforms();
 
     let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
@@ -177,7 +177,7 @@ pub fn get_database_info(state: &mut YaffeState) {
 fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: usize) {
     match platform.kind {
         PlatformType::Emulator => {
-            for entry in std::fs::read_dir(std::path::Path::new(&platform.path)).log_if_fail() {
+            for entry in std::fs::read_dir(std::path::Path::new(&platform.path)).log_and_panic() {
                 let entry = entry.unwrap();
                 let path = entry.path();
                 if path.is_file() && is_allowed_file_type(&path) {
@@ -250,7 +250,7 @@ fn clean_file_name(file: &str) -> &str {
 }
 
 pub fn insert_platform(state: &mut YaffeState, data: &crate::database::PlatformData) {
-    crate::database::insert_platform(data.id, &data.name, &data.path, &data.args, &data.folder).log_if_fail();
+    crate::database::insert_platform(data.id, &data.name, &data.path, &data.args, &data.folder).log_and_panic();
 
     state.refresh_list = true;
 }
@@ -262,7 +262,7 @@ pub fn insert_game(state: &mut YaffeState, data: &crate::database::GameData) {
                                  &data.overview, 
                                  data.players, 
                                  data.rating.try_into().unwrap(), 
-                                 &data.file).log_if_fail();
+                                 &data.file).log_and_panic();
     
     let plat_name = crate::database::get_platform_name(data.platform).unwrap();
 
