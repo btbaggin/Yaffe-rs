@@ -91,6 +91,7 @@ pub fn run_animations(tree: &mut crate::widgets::WidgetTree, delta_time: f32) {
     }
 }
 
+//Inspired, but greatly simplified from https://github.com/Diggsey/rust-field-offset
 #[inline]
 fn apply_mut<'a, T: ?Sized, U>(offset: FieldOffset, x: &'a mut T) -> &'a mut U {
     unsafe { &mut *apply_ptr_mut(offset, x) }

@@ -32,11 +32,11 @@ impl ModalContent for OverlayModal {
             Actions::Left => {
                 self.volume = crate::platform_layer::get_and_update_volume(-VOLUME_STEP).log_if_fail("Unable to get system volume");
                 ModalResult::None
-            }
+            },
             Actions::Right => {
                 self.volume = crate::platform_layer::get_and_update_volume(VOLUME_STEP).log_if_fail("Unable to get system volume");
                 ModalResult::None
-            }
+            },
             Actions::Accept => ModalResult::Ok,
             _ => ModalResult::None
         }
@@ -46,9 +46,11 @@ impl ModalContent for OverlayModal {
         let label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "Volume:");
         piet.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
 
+        //Background rectangle
         let rect = Rectangle::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
         crate::modals::outline_rectangle(piet, &rect, 2., Color::GRAY);
 
+        //Progress rectangle
         let accent = crate::colors::get_accent_color(settings);
         let rect = Rectangle::new(*rect.top_left(), rect.top_left() + V2::new(rect.width() * self.volume, rect.height()));
 

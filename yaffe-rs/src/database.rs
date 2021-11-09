@@ -112,6 +112,7 @@ macro_rules! create_statement {
     }};
 }
 
+/// Runs the provided function for each row returned from the statement
 fn execute_select<F>(mut stmt: sqlite3::Statement, mut f: F)
     where F: FnMut(&sqlite3::Statement) {
     while let sqlite3::State::Row = stmt.next().unwrap() {
@@ -119,6 +120,7 @@ fn execute_select<F>(mut stmt: sqlite3::Statement, mut f: F)
     }
 }
 
+/// Expect one row to be returned from the statement, otherwise errors
 fn execute_select_once(stmt: &mut sqlite3::Statement) -> QueryResult<()> {
     if let sqlite3::State::Row = stmt.next().unwrap() {
         return Ok(());
@@ -127,6 +129,7 @@ fn execute_select_once(stmt: &mut sqlite3::Statement) -> QueryResult<()> {
     Err(QueryError::NoResults)
 }
 
+/// Runs an update statement
 fn execute_update(mut stmt: sqlite3::Statement) -> QueryResult<()> {
     if let sqlite3::State::Done = stmt.next().unwrap() {
         return Ok(());
@@ -135,23 +138,21 @@ fn execute_update(mut stmt: sqlite3::Statement) -> QueryResult<()> {
     Err(QueryError::NoUpdate)
 }
 
+/// Creates the database if it doesn't exist
 pub fn create_database() -> QueryResult<()> {
     if !std::path::Path::new("./Yaffe.db").exists() {
         let con = YaffeConnection::new();
 
-        {
-            let stmt = create_statement!(con, QS_CREATE_GAMES_TABLE, );
-            execute_update(stmt)?;
-        }
+        let stmt = create_statement!(con, QS_CREATE_GAMES_TABLE, );
+        execute_update(stmt)?;
 
-        {
-            let stmt = create_statement!(con, QS_CREATE_PLATFORMS_TABLE, );
-            execute_update(stmt)?;
-        }
+        let stmt = create_statement!(con, QS_CREATE_PLATFORMS_TABLE, );
+        execute_update(stmt)?;
     }
     Ok(())
 }
 
+/// Gets all saved platforms
 pub(super) fn get_all_platforms() -> Vec<Platform> {
     crate::log_function!();
 
@@ -171,6 +172,7 @@ pub(super) fn get_all_platforms() -> Vec<Platform> {
     result
 }
 
+/// Adds a new platform
 pub fn insert_platform(id: i64, name: &str, path: &str, args: &str, folder: &str) -> QueryResult<()> {
     crate::log_function!(id, name, path, args, folder);
     let con = YaffeConnection::new();
@@ -180,6 +182,7 @@ pub fn insert_platform(id: i64, name: &str, path: &str, args: &str, folder: &str
     Ok(())
 }
 
+/// Updates attributes of an existing platform
 pub fn update_platform(platform: i64, path: &str, args: &str, folder: &str) -> QueryResult<()> {
     let con = YaffeConnection::new();
 
@@ -187,6 +190,7 @@ pub fn update_platform(platform: i64, path: &str, args: &str, folder: &str) -> Q
     execute_update(stmt)
 }
 
+/// Gets the name of a platform
 pub fn get_platform_name(platform: i64) -> QueryResult<String> {
     let con = YaffeConnection::new();
     let mut stmt = create_statement!(con, QS_GET_PLATFORM_NAME, platform);
@@ -194,6 +198,7 @@ pub fn get_platform_name(platform: i64) -> QueryResult<String> {
     Ok(stmt.read::<String>(0).unwrap())
 }
 
+/// Gets Name, Path, and Args of a Platform
 pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)> {
     crate::log_function!(platform);
 
@@ -204,6 +209,7 @@ pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)>
     Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<String>(3).unwrap()))
 }
 
+/// Gets the most recent games launched from Yaffe
 pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable> {
     crate::log_function!();
 
@@ -237,6 +243,7 @@ pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable>
     result
 }
 
+/// Gets Name, Overview, Players, and Rating of a game
 pub(super) fn get_game_info(id: i64, file: &str) -> QueryResult<(String, String, i64, i64)> {
     crate::logger::log_entry_with_message(crate::logger::LogTypes::Information, "getting all applications", file);
 
@@ -250,6 +257,7 @@ pub(super) fn get_game_info(id: i64, file: &str) -> QueryResult<(String, String,
     }
 }
 
+/// Adds a new game
 pub(super) fn insert_game(id: i64, platform: i64, name: &str, overview: &str, players: i64, rating: crate::platform::Rating, file: &str) -> QueryResult<()> {
     crate::log_function!(id, platform, name, overview, players, rating, file);
     let con = YaffeConnection::new();
@@ -258,6 +266,7 @@ pub(super) fn insert_game(id: i64, platform: i64, name: &str, overview: &str, pl
     execute_update(stmt)
 }
 
+/// Updates the last run value for a game
 pub fn update_game_last_run(exe: &Executable, id: i64) -> QueryResult<()> {
     crate::log_function!();
     let con = YaffeConnection::new();
