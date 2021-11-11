@@ -152,31 +152,23 @@ pub fn get_database_info(state: &mut YaffeState) {
     create_database().log_message_and_panic("Unable to create database");
     let mut platforms = get_all_platforms();
 
-    let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
-            state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
-            state.settings.get_f32(crate::SettingNames::RecentPageCount);
-
-    //get_all_platforms always sets the first platform to recents
-    assert_eq!(platforms[0].kind, PlatformType::Recents);
-    platforms[0].apps = get_recent_games(max as i64, &platforms);
-
-    for (i, p) in platforms.iter_mut().enumerate() {
-        refresh_executable(state, p, i);
+    for i in 0..platforms.len() {
+        refresh_executable(state, &mut platforms, i);
     }
-
+    
     for (i, p) in state.plugins.iter_mut().enumerate() {
         let name = String::from(p.borrow().name());
 
         platforms.push(Platform::plugin(i, name));
     }
 
-
     state.platforms = platforms;
 }
 
-fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: usize) {
-    match platform.kind {
+fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, index: usize) {
+    match platforms[index].kind {
         PlatformType::Emulator => {
+            let platform = platforms.get_mut(index).unwrap();
             for entry in std::fs::read_dir(std::path::Path::new(&platform.path)).log_and_panic() {
                 let entry = entry.unwrap();
                 let path = entry.path();
@@ -220,11 +212,11 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut Platform, index: us
             assert!(false);
         }
         PlatformType::Recents => {
-            // let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
-            //           state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
-            //           state.settings.get_f32(crate::SettingNames::RecentPageCount);
-            // platform.apps = get_recent_games(max as i64, map);
-        }
+            let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
+                      state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
+                      state.settings.get_f32(crate::SettingNames::RecentPageCount);
+            platforms[index].apps = get_recent_games(max as i64, platforms);
+        }  
     }
 }
 

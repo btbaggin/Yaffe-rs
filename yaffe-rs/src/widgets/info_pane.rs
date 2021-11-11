@@ -45,14 +45,18 @@ impl super::Widget for InfoPane {
             }
 
             //Rating image
-            let rating_image = match app.rating {
-                Rating::Everyone => Some(Images::ErsbEveryone),
-                Rating::Everyone10 => Some(Images::ErsbEveryone10),
-                Rating::Teen => Some(Images::ErsbTeen),
-                Rating::Mature => Some(Images::ErsbMature),
-                Rating::AdultOnly => Some(Images::ErsbAdultOnly),
-                Rating::NotRated => None,
+            let rating_image = if let crate::platform::PlatformType::Plugin = state.get_platform().kind { None }
+            else {
+                match app.rating {
+                    Rating::Everyone => Some(Images::ErsbEveryone),
+                    Rating::Everyone10 => Some(Images::ErsbEveryone10),
+                    Rating::Teen => Some(Images::ErsbTeen),
+                    Rating::Mature => Some(Images::ErsbMature),
+                    Rating::AdultOnly => Some(Images::ErsbAdultOnly),
+                    Rating::NotRated => None,
+                }
             };
+            
             if let Some(image) = rating_image {
                 if let Some(i) = request_image(piet, &mut queue, image) {
                     //Size rating image according to banner height
