@@ -18,7 +18,7 @@ impl SettingsModal {
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         let mut setting_names = settings.get_full_settings(plugin);
         if let None = plugin {
-            let set = crate::platform_layer::get_run_at_startup(STARTUP_TASK).log_if_fail("Unable to get if Yaffe runs at startup");
+            let set = crate::platform_layer::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
             controls.insert("run_at_startup", Box::new(CheckBox::new(set)));
         }
 

@@ -81,7 +81,7 @@ pub trait PanicLogEntry<T> {
     fn log_and_panic(self) -> T;
 }
 pub trait LogEntry<T: Default> {
-    fn log_if_fail(self, message: &str) -> T;
+    fn log(self, message: &str) -> T;
 }
 pub trait UserMessage<T> {
     fn display_failure(self, message: &str, state: &mut crate::YaffeState) -> Option<T>;
@@ -112,7 +112,7 @@ impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
 }
 
 impl <T: Default, E: Debug> LogEntry<T> for std::result::Result<T, E> {
-    fn log_if_fail(self, message: &str) -> T {
+    fn log(self, message: &str) -> T {
         match self {
             Err(e) => {
                 log_entry_with_message(LogTypes::Warning, e, message);

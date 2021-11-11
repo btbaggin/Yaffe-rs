@@ -124,7 +124,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             }
         }
 
-        notify.send(0).log_if_fail("Unable to notify main loop about finished job");
+        notify.send(0).log("Unable to notify main loop about finished job");
     }
 }
 

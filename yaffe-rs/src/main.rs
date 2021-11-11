@@ -180,7 +180,7 @@ impl windowing::WindowHandler for WidgetTree {
         crate::assets::clear_old_cache(&self.data);
 
         //Check for any updates to the settings file
-        settings::update_settings(&mut self.data.settings).log_if_fail("Unable to retrieve updated settings")
+        settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
         assets::load_texture_atlas(graphics);

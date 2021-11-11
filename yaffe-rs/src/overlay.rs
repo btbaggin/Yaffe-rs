@@ -47,7 +47,7 @@ impl OverlayWindow {
                 },
                 Err(_) => {
                     //If we cant kill it, oh well.
-                    process.kill().log_if_fail("Unable to determine process status");
+                    process.kill().log("Unable to determine process status");
                     self.hide(helper);
                     false
                 }
@@ -94,7 +94,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
                     if let modals::ModalResult::Ok = result {
                         // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
                         // see process_is_running
-                        self.process.as_mut().unwrap().kill().log_if_fail("Unable to kill running process");
+                        self.process.as_mut().unwrap().kill().log("Unable to kill running process");
                         self.process = None;
                         self.hide(helper);
                         return true;

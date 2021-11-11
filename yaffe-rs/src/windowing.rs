@@ -226,7 +226,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 last_time = now;
 
                 //Get controller input
-                gamepad.update(0).log_if_fail("Unable to get controller input");
+                gamepad.update(0).log("Unable to get controller input");
 
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = input_to_action(&input_map, &mut gamepad);
