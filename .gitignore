@@ -2,15 +2,12 @@
 yaffe-rs/target
 yaffe-rs/Assets
 yaffe-rs/plugins
-YaffeService.runtimeconfig.json
-Newtonsoft.Json.dll
 log.txt
 settings.txt
 yaffe-rs.exe
 Yaffe.db
-YaffeService.dll
-YaffeService.exe
 Assets/atlas.tex
 Cargo.lock
 RCa21132
 api_key.txt
+yaffe-rs/yaffe-rs

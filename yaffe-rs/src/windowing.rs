@@ -83,7 +83,8 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> Vector2<u32> {
 
     use crate::logger::PanicLogEntry;
-    let windowed_context = glutin::ContextBuilder::new().build_windowed(builder, event_loop).log_and_panic();
+    //TODO WSL seems to require vsync
+    let windowed_context = glutin::ContextBuilder::new().with_vsync(true).build_windowed(builder, event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
     let id = windowed_context.window().id();
