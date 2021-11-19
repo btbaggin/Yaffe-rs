@@ -154,7 +154,7 @@ impl super::Widget for SearchBar {
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
-        let filter_rect = Rectangle::new(*rect.top_left(), V2::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
+        let filter_rect = Rectangle::new(*rect.top_left(), V2::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());
 
         //Highlight
         let mut highlight_position = rect.left() + self.highlight_offset;

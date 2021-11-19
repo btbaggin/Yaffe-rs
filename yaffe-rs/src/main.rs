@@ -11,7 +11,7 @@ use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 #[macro_use]
 extern crate dlopen_derive;
 
-type V2 = Vector2<f32>;
+type V2 = crate::utils::LogicalPosition;
 
 pub mod colors {
     use speedy2d::color::Color;
@@ -91,7 +91,8 @@ mod windowing;
 mod input;
 mod plugins;
 mod controls;
-use windowing::{Rect, Transparent};
+mod utils;
+use utils::{Rect, Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;

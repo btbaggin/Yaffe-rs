@@ -2,7 +2,7 @@ use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
-use crate::{YaffeState, Actions, V2, Rect};
+use crate::{YaffeState, Actions, V2, Rect, utils::Logical};
 use std::ops::Deref;
 use crate::widgets::animations::*;
 use std::time::Instant;
@@ -75,10 +75,11 @@ macro_rules! widget {
         impl crate::widgets::UiElement for $name {
             fn position(&self) -> crate::V2 { self.position }
             fn size(&self) -> crate::V2 { self.size }
-            fn layout(&self) -> Rectangle { Rectangle::new(self.position, self.position + self.size) }
+            fn layout(&self) -> Rectangle { Rectangle::new(self.position.into(), (self.position + self.size).into()) }
             fn set_layout(&mut self, layout: Rectangle) { 
-                self.position = *layout.top_left(); 
-                self.size = layout.size();
+                use crate::utils::Logical;
+                self.position = layout.top_left().to_logical(); 
+                self.size = layout.size().to_logical();
             }
         }
         impl crate::widgets::FocusableWidget for $name {
@@ -309,7 +310,7 @@ impl WidgetContainer {
 
                 let offset = i.widget.offset();
                 let origin = V2::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
-                let r = Rectangle::new(origin, origin + size);
+                let r = Rectangle::new(origin.into(), (origin + size).into());
                 i.original_layout = r.clone();
                 i.widget.set_layout(r);
             }
@@ -422,7 +423,7 @@ pub fn right_aligned_text(piet: &mut Graphics2D, right: V2, image: Option<crate:
     if let Some(i) = image {
         right.x -= size.y;
         let i = crate::assets::request_preloaded_image(piet, i);
-        i.render(piet, Rectangle::new(right, right + V2::new(size.y, size.y)));
+        i.render(piet, Rectangle::new(right.into(), (right + V2::new(size.y, size.y)).into()));
     }
 
     right

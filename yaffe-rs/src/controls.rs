@@ -4,7 +4,7 @@ use crate::settings::SettingsFile;
 use speedy2d::Graphics2D;
 use crate::modals::outline_rectangle;
 use crate::input::InputType;
-use crate::windowing::Rect;
+use crate::utils::{Rect, Logical};
 use glutin::event::VirtualKeyCode;
 
 pub struct FocusGroup<T: ?Sized> {
@@ -143,7 +143,7 @@ impl TextBox {
 impl UiControl for TextBox {
     fn render(&self, graphics: &mut Graphics2D, settings: &SettingsFile, container: &Rectangle, label: &str, focused: bool) {
         let size = container.width() - LABEL_SIZE;
-        let control = draw_label_and_box(graphics, settings, container.top_left(), size, label, focused);
+        let control = draw_label_and_box(graphics, settings, &container.top_left().to_logical(), size, label, focused);
 
         let text = get_drawable_text(FONT_SIZE, &self.text);
         graphics.draw_text(*control.top_left(), get_font_color(settings), &text);
@@ -206,7 +206,7 @@ impl CheckBox {
 
 impl UiControl for CheckBox {
     fn render(&self, graphics: &mut Graphics2D, settings: &SettingsFile, container: &Rectangle, label: &str, focused: bool) {
-        let control = draw_label_and_box(graphics, settings, container.top_left(), FONT_SIZE, label, focused);
+        let control = draw_label_and_box(graphics, settings, &container.top_left().to_logical(), FONT_SIZE, label, focused);
 
         if self.checked {
             let base = crate::colors::get_accent_color(settings);
@@ -233,7 +233,7 @@ fn draw_label_and_box(graphics: &mut Graphics2D, settings: &SettingsFile, pos: &
     let min = V2::new(pos.x + LABEL_SIZE, pos.y);
     let max = V2::new(pos.x + LABEL_SIZE + size, pos.y + FONT_SIZE);
 
-    let control = Rectangle::new(min, max);
+    let control = Rectangle::new(min.into(), max.into());
     let base = crate::colors::get_accent_color(settings);
     let factor = settings.get_f32(crate::SettingNames::DarkShadeFactor);
     graphics.draw_rectangle(control.clone(), change_brightness(&base, factor));

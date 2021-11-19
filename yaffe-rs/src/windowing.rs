@@ -8,30 +8,6 @@ use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub trait Rect {
-    fn left(&self) -> f32;
-    fn right(&self) -> f32;
-    fn top(&self) -> f32;
-    fn bottom(&self) -> f32;
-    fn point_and_size(pos: V2, size: V2) -> Self;
-}
-impl Rect for speedy2d::shape::Rectangle {
-    fn left(&self) -> f32 { self.top_left().x }
-    fn right(&self) -> f32 { self.bottom_right().x }
-    fn top(&self) -> f32 { self.top_left().y }
-    fn bottom(&self) -> f32 { self.bottom_right().y }
-    fn point_and_size(pos: V2, size: V2) -> Self { speedy2d::shape::Rectangle::new(pos, pos + size) }
-}
-
-pub trait Transparent {
-    fn with_alpha(&self, alpha: f32) -> Self;
-}
-impl Transparent for speedy2d::color::Color {
-    fn with_alpha(&self, alpha: f32) -> Self {
-        speedy2d::color::Color::from_rgba(self.r(), self.g(), self.b(), alpha)
-    }
-}
-
 #[repr(u8)]
 enum WindowVisibility {
     Visible,

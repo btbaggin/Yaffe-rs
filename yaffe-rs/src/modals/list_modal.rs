@@ -1,4 +1,4 @@
-use crate::{Rect, V2, Actions};
+use crate::{Rect, V2, Actions, utils::Logical};
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::colors::*;
@@ -64,7 +64,7 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
-        let mut pos = *rect.top_left();
+        let mut pos = rect.top_left().to_logical();
 
         //Title
         if let Some(t) = &self.title {

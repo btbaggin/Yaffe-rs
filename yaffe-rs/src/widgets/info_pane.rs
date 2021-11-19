@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, widget, Actions, DeferredAction, V2, Rect};
+use crate::{YaffeState, widget, Actions, DeferredAction, V2, Rect, utils::Logical};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
@@ -41,7 +41,7 @@ impl super::Widget for InfoPane {
             if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 height = (rect.width() / i.size().x as f32) * i.size().y;
-                i.render(piet, Rect::point_and_size(*rect.top_left(), V2::new(rect.width() ,rect.top() + height)));
+                i.render(piet, Rect::point_and_size(rect.top_left().to_logical(), V2::new(rect.width() ,rect.top() + height)));
             }
 
             //Rating image

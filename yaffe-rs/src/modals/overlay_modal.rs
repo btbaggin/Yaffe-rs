@@ -52,7 +52,7 @@ impl ModalContent for OverlayModal {
 
         //Progress rectangle
         let accent = crate::colors::get_accent_color(settings);
-        let rect = Rectangle::new(*rect.top_left(), rect.top_left() + V2::new(rect.width() * self.volume, rect.height()));
+        let rect = Rectangle::new(*rect.top_left(), rect.top_left() + V2::new(rect.width() * self.volume, rect.height()).into());
 
         piet.draw_rectangle(rect, accent);
     }
