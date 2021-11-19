@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::V2;
+use crate::PhysicalSize;
 use crate::job_system::JobQueue;
 use crate::logger::PanicLogEntry;
 use speedy2d::font::*;
@@ -108,7 +108,7 @@ impl AssetSlot {
         }
     }
 
-    pub fn get_image_size(&self) -> Option<V2> {
+    pub fn get_image_size(&self) -> Option<PhysicalSize> {
         if let Some(texture) = &self.image {
             if let AssetData::Image(i) = texture {
                 return Some(i.size());
@@ -130,9 +130,9 @@ impl YaffeTexture {
         }
     }
 
-    pub fn size(&self) -> V2 {
+    pub fn size(&self) -> PhysicalSize {
         let size = self.image.size();
-        V2::new(size.x as f32, size.y as f32)
+        PhysicalSize::new(size.x as f32, size.y as f32)
     }
 
     pub fn get_handle(&self) -> &Rc<ImageHandle> { &self.image }

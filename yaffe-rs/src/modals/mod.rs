@@ -6,7 +6,7 @@ mod settings_modal;
 
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, Actions, Rect, V2, DeferredAction, windowing::WindowHelper, utils::Logical};
+use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper, utils::Logical};
 use crate::settings::SettingNames;
 use crate::colors::*;
 use crate::assets::{request_preloaded_image, Images};
@@ -165,20 +165,20 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rec
     let content_size = match modal.size {
         ModalSize::Third => {
             let width = rect.width() * 0.33;
-            V2::new(width, modal.content.get_height(width))
+            LogicalSize::new(width, modal.content.get_height(width))
         }
         ModalSize::Half => {
             let width = rect.width() * 0.5;
-            V2::new(width, modal.content.get_height(width))
+            LogicalSize::new(width, modal.content.get_height(width))
         }
         ModalSize::Full => {
             let width = rect.width();
-            V2::new(width, modal.content.get_height(width))
+            LogicalSize::new(width, modal.content.get_height(width))
         }
     };
 
     //Calulate size
-    let mut size = V2::new(MARGIN * 2. + content_size.x, MARGIN * 2. + TITLEBAR_SIZE + content_size.y);
+    let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + TITLEBAR_SIZE + content_size.y);
     if let Some(_) = modal.icon {
         size.y = f32::max(ICON_SIZE_WITH_MARGIN, size.y);
         size.x += ICON_SIZE_WITH_MARGIN;
@@ -198,39 +198,39 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rec
     //Titlebar
     let titlebar_color = get_accent_color(settings);
     let titlebar_color = change_brightness(&titlebar_color, settings.get_f32(SettingNames::LightShadeFactor));
-    let titlebar_pos = window_position + V2::new(2., 2.);
-    let titlebar = Rectangle::new(titlebar_pos.into(), (titlebar_pos + V2::new(size.x - 4., TITLEBAR_SIZE)).into());
+    let titlebar_pos = window_position + LogicalSize::new(2., 2.);
+    let titlebar = Rectangle::new(titlebar_pos.into(), (titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE)).into());
     piet.draw_rectangle(titlebar,  titlebar_color);
 
     let title_text = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &modal.title);
-    piet.draw_text(V2::new(titlebar_pos.x + crate::ui::MARGIN, titlebar_pos.y), get_font_color(settings), &title_text);
+    piet.draw_text(LogicalPosition::new(titlebar_pos.x + crate::ui::MARGIN, titlebar_pos.y), get_font_color(settings), &title_text);
 
     //Icon
-    let mut icon_position = V2::new(window_position.x + MARGIN, window_position.y + MARGIN + TITLEBAR_SIZE); //Window + margin for window + margin for icon
+    let mut icon_position = LogicalPosition::new(window_position.x + MARGIN, window_position.y + MARGIN + TITLEBAR_SIZE); //Window + margin for window + margin for icon
     if let Some(image) = modal.icon {
         let icon = request_preloaded_image(piet, image);
-        let icon_rect = Rectangle::new(icon_position.into(), (icon_position + V2::new(ICON_SIZE, ICON_SIZE)).into());
+        let icon_rect = Rectangle::new(icon_position.into(), (icon_position + LogicalSize::new(ICON_SIZE, ICON_SIZE)).into());
         icon.render(piet, icon_rect);
         icon_position.x += ICON_SIZE;
     }
 
     //Content
-    let content_pos = icon_position + V2::new(2., 2.);
+    let content_pos = icon_position + LogicalSize::new(2., 2.);
     let content_rect = Rectangle::new(content_pos.into(), (content_pos + content_size).into());
     modal.content.render(settings, content_rect, piet);
 
     //Action buttons
     if let Some(s) = &modal.confirmation_button {
         let text = crate::widgets::get_drawable_text(BUTTON_SIZE, &s[..]);
-        crate::widgets::right_aligned_text(piet, V2::new(window.right() - 5., window.bottom() - (BUTTON_SIZE + 10.)), Some(Images::ButtonA), get_font_color(settings), text);
+        crate::widgets::right_aligned_text(piet, LogicalPosition::new(window.right() - 5., window.bottom() - (BUTTON_SIZE + 10.)), Some(Images::ButtonA), get_font_color(settings), text);
     }
 }
 
 pub fn outline_rectangle(graphics: &mut Graphics2D, rect: &Rectangle, size: f32, color: speedy2d::color::Color) {
     let top_left = *rect.top_left();
     let bottom_right = *rect.bottom_right();
-    let top_right = V2::new(bottom_right.x, top_left.y);
-    let bottom_left = V2::new(top_left.x, bottom_right.y);
+    let top_right = LogicalPosition::new(bottom_right.x, top_left.y);
+    let bottom_left = LogicalPosition::new(top_left.x, bottom_right.y);
 
     graphics.draw_line(top_left, top_right, size, color);
     graphics.draw_line(top_right, bottom_right, size, color);

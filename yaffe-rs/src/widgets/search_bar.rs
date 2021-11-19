@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, widget, Actions, DeferredAction, V2};
+use crate::{YaffeState, widget, Actions, DeferredAction, LogicalPosition, LogicalSize};
 use crate::colors::*;
 use crate::Rect;
 const SEARCH_OPTION_NONE: i32 = 0;
@@ -52,7 +52,7 @@ widget!(pub struct SearchBar {
     highlight_offset: f32 = 0.
 });
 impl super::Widget for SearchBar {
-    fn offset(&self) -> V2 { V2::new(0., -1.) }
+    fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., -1.) }
 
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         let mask = get_exists_mask(state.search_info.option, &state.get_platform().apps);
@@ -121,7 +121,7 @@ impl super::Widget for SearchBar {
     }
 
     fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
-        let offset = crate::offset_of!(SearchBar => position: V2 => y);
+        let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
         handle.animate_f32(self, offset, original.bottom(), 0.2);
 
         self.highlight_offset = 0.;
@@ -129,7 +129,7 @@ impl super::Widget for SearchBar {
 
     fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
         if !self.active {
-            let offset = crate::offset_of!(SearchBar => position: V2 => y);
+            let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
             handle.animate_f32(self, offset, original.top(), 0.2);
         }
     }
@@ -154,7 +154,7 @@ impl super::Widget for SearchBar {
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
-        let filter_rect = Rectangle::new(*rect.top_left(), V2::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());
+        let filter_rect = Rectangle::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());
 
         //Highlight
         let mut highlight_position = rect.left() + self.highlight_offset;
@@ -171,19 +171,19 @@ impl super::Widget for SearchBar {
 
         let name_label = super::get_drawable_text(crate::font::FONT_SIZE, &name);
         let half = name_label.width() / 2.;
-        piet.draw_text(V2::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - crate::font::FONT_SIZE / 2.), focused_color, &name_label);
+        piet.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - crate::font::FONT_SIZE / 2.), focused_color, &name_label);
 
         const ARROW_SIZE: f32 = 10.;
         const ARROW_HEIGHT: f32 = 5.;
         if search.option > SEARCH_OPTION_NONE { 
             //Down arrow
-            piet.draw_line(V2::new(mid - ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), V2::new(mid, filter_rect.bottom() - 7.), 2., focused_color); 
-            piet.draw_line(V2::new(mid, filter_rect.bottom() - 7.), V2::new(mid + ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), 2., focused_color);
+            piet.draw_line(LogicalPosition::new(mid - ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), LogicalPosition::new(mid, filter_rect.bottom() - 7.), 2., focused_color); 
+            piet.draw_line(LogicalPosition::new(mid, filter_rect.bottom() - 7.), LogicalPosition::new(mid + ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), 2., focused_color);
         }
         if search.option < SEARCH_OPTION_MAX { 
             //Up arrow
-            piet.draw_line(V2::new(mid - ARROW_SIZE, filter_rect.top() + 12.), V2::new(mid, filter_rect.top() + 7.), 2., focused_color); 
-            piet.draw_line(V2::new(mid, filter_rect.top() + 7.), V2::new(mid + ARROW_SIZE, filter_rect.top() + 12.), 2., focused_color); 
+            piet.draw_line(LogicalPosition::new(mid - ARROW_SIZE, filter_rect.top() + 12.), LogicalPosition::new(mid, filter_rect.top() + 7.), 2., focused_color); 
+            piet.draw_line(LogicalPosition::new(mid, filter_rect.top() + 7.), LogicalPosition::new(mid + ARROW_SIZE, filter_rect.top() + 12.), 2., focused_color); 
         }
 
         let mask = get_exists_mask(search.option, &state.get_platform().apps);
@@ -196,8 +196,8 @@ impl super::Widget for SearchBar {
             let color = if mask & 1 << bit != 0 { focused_color.clone() } else { get_font_unfocused_color(&state.settings) };
             let item_label = super::get_drawable_text(crate::font::FONT_SIZE, &String::from(i as char));
             
-            let label_half = V2::new(item_label.width() / 2., item_label.height() / 2.);
-            piet.draw_text(V2::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);
+            let label_half = LogicalSize::new(item_label.width() / 2., item_label.height() / 2.);
+            piet.draw_text(LogicalPosition::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);
          }
     }
 }

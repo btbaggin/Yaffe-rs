@@ -2,7 +2,7 @@ use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
-use crate::{YaffeState, Actions, V2, Rect, utils::Logical};
+use crate::{YaffeState, Actions, LogicalPosition, LogicalSize, Rect};
 use std::ops::Deref;
 use crate::widgets::animations::*;
 use std::time::Instant;
@@ -24,8 +24,8 @@ pub use app_tile::AppTile;
 pub use info_pane::InfoPane;
 
 pub trait UiElement {
-    fn position(&self) -> V2;
-    fn size(&self) -> V2;
+    fn position(&self) -> LogicalPosition;
+    fn size(&self) -> LogicalSize;
     fn layout(&self) -> Rectangle;
     fn set_layout(&mut self, layout: Rectangle);
 }
@@ -38,7 +38,7 @@ pub trait Widget: FocusableWidget {
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
 
     /// Offset from initial placement to move. Percentage based on widget size
-    fn offset(&self) -> V2 { V2::new(0., 0.) }
+    fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
 
     /// Called when a user action occurs
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
@@ -68,13 +68,13 @@ macro_rules! widget {
         #[allow(unused_variables)]
         pub struct $name { 
             #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, 
-            pub position: crate::V2,
-            pub size: crate::V2,
+            pub position: crate::LogicalPosition,
+            pub size: crate::LogicalSize,
             $($element: $ty),* 
         }
         impl crate::widgets::UiElement for $name {
-            fn position(&self) -> crate::V2 { self.position }
-            fn size(&self) -> crate::V2 { self.size }
+            fn position(&self) -> crate::LogicalPosition { self.position }
+            fn size(&self) -> crate::LogicalSize { self.size }
             fn layout(&self) -> Rectangle { Rectangle::new(self.position.into(), (self.position + self.size).into()) }
             fn set_layout(&mut self, layout: Rectangle) { 
                 use crate::utils::Logical;
@@ -89,8 +89,8 @@ macro_rules! widget {
             pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>) -> $name {
                 $name { 
                     queue: q, 
-                    position: crate::V2::new(0., 0.),
-                    size: crate::V2::new(0., 0.),
+                    position: crate::LogicalPosition::new(0., 0.),
+                    size: crate::LogicalSize::new(0., 0.),
                     $($element: $value),*
                 }
             }
@@ -232,15 +232,15 @@ impl Deref for WidgetTree {
 pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
     widget: Box<dyn Widget>,
-    ratio: V2,
+    ratio: LogicalSize,
     original_layout: Rectangle,
     alignment: ContainerAlignment,
 }
 impl WidgetContainer {
     pub fn root(widget: impl Widget + 'static) -> WidgetContainer {
-        WidgetContainer::new(widget, V2::new(1.0, 1.0), ContainerAlignment::Left)
+        WidgetContainer::new(widget, LogicalSize::new(1.0, 1.0), ContainerAlignment::Left)
     }
-    fn new(widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> WidgetContainer {
+    fn new(widget: impl Widget + 'static, size: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer {
          WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
@@ -250,12 +250,12 @@ impl WidgetContainer {
          }
     }
 
-    pub fn add_child(&mut self, widget: impl Widget + 'static, size: V2, alignment: ContainerAlignment) -> &mut Self {
+    pub fn add_child(&mut self, widget: impl Widget + 'static, size: LogicalSize, alignment: ContainerAlignment) -> &mut Self {
         self.children.push(WidgetContainer::new(widget, size, alignment));
         self
     }
 
-    pub fn with_child(&mut self, widget: impl Widget + 'static, size: V2) -> &mut WidgetContainer {
+    pub fn with_child(&mut self, widget: impl Widget + 'static, size: LogicalSize) -> &mut WidgetContainer {
         self.children.push(WidgetContainer::new(widget, size, ContainerAlignment::Left));
 
         let count = self.children.len();
@@ -286,30 +286,30 @@ impl WidgetContainer {
 
         for i in self.children.iter_mut() {
             if invalidate {
-                let size = V2::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
+                let size = LogicalSize::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
 
                 let origin;
                 match i.alignment {
                     ContainerAlignment::Left => {
-                        origin = V2::new(rect.left() + left_stack, rect.top());
+                        origin = LogicalPosition::new(rect.left() + left_stack, rect.top());
                         left_stack += size.x;
                     },
                     ContainerAlignment::Right => {
-                        origin = V2::new(rect.right() - (size.x + right_stack), rect.top());
+                        origin = LogicalPosition::new(rect.right() - (size.x + right_stack), rect.top());
                         right_stack += size.x;
                     },
                     ContainerAlignment::Top => {
-                        origin = V2::new(rect.left(), rect.top() + top_stack);
+                        origin = LogicalPosition::new(rect.left(), rect.top() + top_stack);
                         top_stack += size.y;
                     },
                     ContainerAlignment::Bottom => {
-                        origin = V2::new(rect.left(), rect.bottom() - (size.y + bottom_stack));
+                        origin = LogicalPosition::new(rect.left(), rect.bottom() - (size.y + bottom_stack));
                         bottom_stack += size.y;
                     },
                 };
 
                 let offset = i.widget.offset();
-                let origin = V2::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
+                let origin = LogicalPosition::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
                 let r = Rectangle::new(origin.into(), (origin + size).into());
                 i.original_layout = r.clone();
                 i.widget.set_layout(r);
@@ -415,15 +415,15 @@ impl DeferredAction {
 /// Draws text that is right aligned to parameter `right`
 /// If an image is passed it will be drawn to the left of the text
 /// Returns the new right-most position
-pub fn right_aligned_text(piet: &mut Graphics2D, right: V2, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> V2 {
-    let size = V2::new(text.width(), text.height());
-    let mut right = V2::new(right.x - size.x, right.y);
+pub fn right_aligned_text(piet: &mut Graphics2D, right: LogicalPosition, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> LogicalPosition {
+    let size = LogicalSize::new(text.width(), text.height());
+    let mut right = LogicalPosition::new(right.x - size.x, right.y);
 
     piet.draw_text(right, color, &text);
     if let Some(i) = image {
         right.x -= size.y;
         let i = crate::assets::request_preloaded_image(piet, i);
-        i.render(piet, Rectangle::new(right.into(), (right + V2::new(size.y, size.y)).into()));
+        i.render(piet, Rectangle::new(right.into(), (right + LogicalSize::new(size.y, size.y)).into()));
     }
 
     right
@@ -446,8 +446,8 @@ pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc
 trait Shifter {
     fn shift_x(&self, amount: f32) -> Self;
 }
-impl Shifter for V2 {
+impl Shifter for LogicalPosition {
     fn shift_x(&self, amount: f32) -> Self {
-        V2::new(self.x + amount, self.y)
+        LogicalPosition::new(self.x + amount, self.y)
     }
 }

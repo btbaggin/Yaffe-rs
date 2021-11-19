@@ -1,4 +1,4 @@
-use crate::{colors::*, Actions, V2, Rectangle, font::FONT_SIZE, ui::*};
+use crate::{colors::*, Actions, LogicalPosition, Rectangle, font::FONT_SIZE, ui::*};
 use crate::widgets::get_drawable_text;
 use crate::settings::SettingsFile;
 use speedy2d::Graphics2D;
@@ -152,7 +152,7 @@ impl UiControl for TextBox {
             let text = get_drawable_text(FONT_SIZE, &self.text[0..self.caret]);
             let x = control.left() + text.width();
             
-            graphics.draw_line(V2::new(x, control.top() + 2.), V2::new(x, control.bottom() - 2.), 2., get_font_color(settings));
+            graphics.draw_line(LogicalPosition::new(x, control.top() + 2.), LogicalPosition::new(x, control.bottom() - 2.), 2., get_font_color(settings));
         }
     }
 
@@ -226,12 +226,12 @@ impl UiControl for CheckBox {
     }
 }
 
-fn draw_label_and_box(graphics: &mut Graphics2D, settings: &SettingsFile, pos: &V2, size: f32, label: &str, focused: bool) -> Rectangle {
+fn draw_label_and_box(graphics: &mut Graphics2D, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str, focused: bool) -> Rectangle {
     let label = get_drawable_text(FONT_SIZE, label);
     graphics.draw_text(*pos, get_font_color(settings), &label); 
 
-    let min = V2::new(pos.x + LABEL_SIZE, pos.y);
-    let max = V2::new(pos.x + LABEL_SIZE + size, pos.y + FONT_SIZE);
+    let min = LogicalPosition::new(pos.x + LABEL_SIZE, pos.y);
+    let max = LogicalPosition::new(pos.x + LABEL_SIZE + size, pos.y + FONT_SIZE);
 
     let control = Rectangle::new(min.into(), max.into());
     let base = crate::colors::get_accent_color(settings);

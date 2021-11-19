@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use crate::Transparent;
-use crate::{YaffeState, V2};
+use crate::{YaffeState, LogicalPosition, LogicalSize, PhysicalSize};
 use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
@@ -15,8 +15,8 @@ pub struct AppTile {
     queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>,
     index: usize,
     flags: u8,
-    pub position: V2,
-    pub size: V2,
+    pub position: LogicalPosition,
+    pub size: LogicalSize,
 }
 impl AppTile {
     pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, index: usize) -> AppTile {
@@ -24,8 +24,8 @@ impl AppTile {
             queue: q,
             index: index,
             flags: VISIBLE_FLAG,
-            position: V2::new(0., 0.),
-            size: V2::new(0., 0.),
+            position: LogicalPosition::new(0., 0.),
+            size: LogicalSize::new(0., 0.),
         }
     }
 
@@ -69,7 +69,7 @@ impl AppTile {
             position = position - (target_size - self.size) / 2.;
 
             //Position of the text and buttons for the focused game
-            let mut menu_position = V2::new(position.x + target_size.x, position.y + target_size.y + 2.);
+            let mut menu_position = LogicalPosition::new(position.x + target_size.x, position.y + target_size.y + 2.);
 
             let name = super::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &exe.name, target_size.x);
             let mut height = name.height();
@@ -81,11 +81,11 @@ impl AppTile {
             }
 
             //Outline background
-            let rect_start = position - V2::new(ROM_OUTLINE_SIZE, ROM_OUTLINE_SIZE);
-            let rect_size = V2::new(target_size.x + ROM_OUTLINE_SIZE * 2., target_size.y + height + ROM_OUTLINE_SIZE * 2.);
+            let rect_start = position - LogicalSize::new(ROM_OUTLINE_SIZE, ROM_OUTLINE_SIZE);
+            let rect_size = LogicalSize::new(target_size.x + ROM_OUTLINE_SIZE * 2., target_size.y + height + ROM_OUTLINE_SIZE * 2.);
             piet.draw_rectangle(Rect::point_and_size(rect_start, rect_size), MODAL_BACKGROUND.with_alpha(alpha * 0.94));
 
-            piet.draw_text(V2::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
+            piet.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
 
             //Help
             let text = super::get_drawable_text(crate::font::FONT_SIZE, "Info");
@@ -108,7 +108,7 @@ impl AppTile {
         }
     }
 
-    pub fn get_image_size(&self, state: &YaffeState) -> V2 {
+    pub fn get_image_size(&self, state: &YaffeState) -> PhysicalSize {
         let p = state.get_platform();
         let exe = &p.apps[self.index];
         let slot = crate::assets::get_cached_file(&exe.boxart);
@@ -121,6 +121,6 @@ impl AppTile {
 
         //I dont want to deal with passing Piet everywhere so we will just hardcode the placeholder size
         //Shouldn't really change
-        V2::new(400., 290.)
+        PhysicalSize::new(400., 290.)
     }
 }

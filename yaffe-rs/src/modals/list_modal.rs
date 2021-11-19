@@ -1,4 +1,4 @@
-use crate::{Rect, V2, Actions, utils::Logical};
+use crate::{Rect, LogicalSize, Actions, utils::Logical};
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
 use crate::colors::*;
@@ -78,7 +78,7 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
             let display = item.to_display();
 
             if self.index == i {
-                let rect = Rect::point_and_size(pos, V2::new(rect.width(), 30.));
+                let rect = Rect::point_and_size(pos, LogicalSize::new(rect.width(), 30.));
                 piet.draw_rectangle(rect, get_accent_color(settings));
             }
 

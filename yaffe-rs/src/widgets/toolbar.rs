@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, widget, V2};
+use crate::{YaffeState, widget, LogicalPosition};
 use crate::colors::*;
 use crate::Rect;
 use crate::assets::{Images};
@@ -15,7 +15,7 @@ impl super::Widget for Toolbar {
         let time_string = time.format("%I:%M%p");
         let text = super::get_drawable_text(crate::font::FONT_SIZE, &time_string.to_string());
 
-        let mut right = V2::new(rect.right() - crate::ui::MARGIN, rect.bottom() - text.height());
+        let mut right = LogicalPosition::new(rect.right() - crate::ui::MARGIN, rect.bottom() - text.height());
         right = super::right_aligned_text(piet, right, None, get_font_color(&state.settings), text).shift_x(-crate::ui::MARGIN * 2.);
 
         //Draw buttons

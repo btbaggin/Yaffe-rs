@@ -5,13 +5,10 @@ use std::sync::Arc;
 use std::cell::RefCell;
 use speedy2d::shape::Rectangle;
 use speedy2d::dimen::Vector2;
-pub use crate::settings::SettingNames;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 
 #[macro_use]
 extern crate dlopen_derive;
-
-type V2 = crate::utils::LogicalPosition;
 
 pub mod colors {
     use speedy2d::color::Color;
@@ -99,6 +96,8 @@ use restrictions::RestrictedMode;
 use modals::{display_modal};
 use job_system::{JobQueue, JobType, RawDataPointer};
 use input::Actions;
+pub use crate::settings::SettingNames;
+pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 
 pub struct Platform {
     id: Option<i64>,
@@ -291,11 +290,11 @@ fn main() {
 
 fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
     let mut root = WidgetContainer::root(widgets::Background::new(queue.clone()));
-    root.add_child(widgets::PlatformList::new(queue.clone()), V2::new(0.25, 1.), ContainerAlignment::Left)
-        .with_child(widgets::AppList::new(queue.clone()), V2::new(0.75, 1.))
-            .add_child(widgets::SearchBar::new(queue.clone()), V2::new(1., 0.05), ContainerAlignment::Top)
-            .add_child(widgets::Toolbar::new(queue.clone()), V2::new(1., 0.075), ContainerAlignment::Bottom)
-            .add_child(widgets::InfoPane::new(queue.clone()), V2::new(0.33, 1.), ContainerAlignment::Right);
+    root.add_child(widgets::PlatformList::new(queue.clone()), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
+        .with_child(widgets::AppList::new(queue.clone()), LogicalSize::new(0.75, 1.))
+            .add_child(widgets::SearchBar::new(queue.clone()), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
+            .add_child(widgets::Toolbar::new(queue.clone()), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
+            .add_child(widgets::InfoPane::new(queue.clone()), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
             
     root
 }

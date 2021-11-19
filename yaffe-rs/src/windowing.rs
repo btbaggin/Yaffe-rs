@@ -3,7 +3,7 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode, ModifiersState};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{V2, input::ControllerInput, input::InputType, Actions, logger::LogEntry};
+use crate::{input::ControllerInput, input::InputType, Actions, logger::LogEntry};
 use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;

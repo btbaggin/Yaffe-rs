@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, widget, Actions, DeferredAction, V2, Rect, utils::Logical};
+use crate::{YaffeState, widget, Actions, DeferredAction, LogicalSize, LogicalPosition, Rect, utils::Logical};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
@@ -11,23 +11,23 @@ widget!(pub struct InfoPane {
     y_offset: f32 = 0.
 });
 impl super::Widget for InfoPane {
-    fn offset(&self) -> V2 { V2::new(1., 0.) }
+    fn offset(&self) -> LogicalPosition { LogicalPosition::new(1., 0.) }
 
     fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
-        let offset = crate::offset_of!(InfoPane => position: V2 => x);
+        let offset = crate::offset_of!(InfoPane => position: LogicalPosition => x);
         handle.animate_f32(self, offset, original.left() - self.layout().width(), 0.2);
         self.scroll_timer = 3.;
         self.y_offset = 0.;
     }
 
     fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
-        let offset = crate::offset_of!(InfoPane => position: V2 => x);
+        let offset = crate::offset_of!(InfoPane => position: LogicalPosition => x);
         handle.animate_f32(self, offset, original.top_left().x, 0.2);
     }
 
     fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) { 
         piet.draw_rectangle(rect.clone(), MODAL_BACKGROUND);
-        const IMAGE_SIZE: V2 = V2::new(64., 96.);
+        const IMAGE_SIZE: LogicalSize = LogicalSize::new(64., 96.);
 
         if let Some(app) = state.get_executable() {
             //Banner image
@@ -41,7 +41,7 @@ impl super::Widget for InfoPane {
             if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 height = (rect.width() / i.size().x as f32) * i.size().y;
-                i.render(piet, Rect::point_and_size(rect.top_left().to_logical(), V2::new(rect.width() ,rect.top() + height)));
+                i.render(piet, Rect::point_and_size(rect.top_left().to_logical(), LogicalSize::new(rect.width() ,rect.top() + height)));
             }
 
             //Rating image
@@ -62,11 +62,11 @@ impl super::Widget for InfoPane {
                     //Size rating image according to banner height
                     let ratio = IMAGE_SIZE.y / height;
                     let rating_size = if ratio > 1. {
-                        V2::new(IMAGE_SIZE.x / ratio, IMAGE_SIZE.y / ratio)
+                        LogicalSize::new(IMAGE_SIZE.x / ratio, IMAGE_SIZE.y / ratio)
                     } else {
                         IMAGE_SIZE
                     };
-                    i.render(piet, Rect::point_and_size(V2::new(rect.right() - rating_size.x - crate::ui::MARGIN, rect.top() + height - rating_size.y), rating_size));
+                    i.render(piet, Rect::point_and_size(LogicalPosition::new(rect.right() - rating_size.x - crate::ui::MARGIN, rect.top() + height - rating_size.y), rating_size));
                 }
             }
 
@@ -86,7 +86,7 @@ impl super::Widget for InfoPane {
                 //Clip text so when it scrolls it wont render above the banner
                 //piet.save().unwrap();
                 //TODO piet.clip(Rectangle::from_tuples((rect.top_left().x, rect.top_left().y + height), (rect.bottom_right().x, rect.bottom_right().y)));
-                piet.draw_text(V2::new(rect.top_left().x + crate::ui::MARGIN, rect.top_left().y + self.y_offset + height), get_font_color(&state.settings), &name_label);
+                piet.draw_text(LogicalPosition::new(rect.top_left().x + crate::ui::MARGIN, rect.top_left().y + self.y_offset + height), get_font_color(&state.settings), &name_label);
                 //piet.restore().unwrap();
             }
         }

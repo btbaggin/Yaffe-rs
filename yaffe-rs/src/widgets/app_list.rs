@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, Actions, DeferredAction, widget, V2};
+use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, PhysicalSize};
 use crate::widgets::AppTile;
 use crate::Rect;
 use crate::logger::{PanicLogEntry, LogEntry, UserMessage};
@@ -136,7 +136,7 @@ impl AppList {
 
             let offset = (ideal_tile_size - tile.size) / 2.0;
 
-            let position = V2::new(ideal_tile_size.x * x + offset.x + list_rect.left(), 
+            let position = LogicalPosition::new(ideal_tile_size.x * x + offset.x + list_rect.left(), 
                                    ideal_tile_size.y * y + offset.y + list_rect.top());
             tile.position = position;
 
@@ -144,12 +144,12 @@ impl AppList {
         }
     }
 
-    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &Rectangle) -> (isize, isize, V2) {
+    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &Rectangle) -> (isize, isize, LogicalSize) {
         let mut width = 0.;
         let mut height = 0.;
         let mut tiles_x = 1;
         let mut tiles_y = 1;
-        let mut bitmap_size = V2::new(0., 0.);
+        let mut bitmap_size = PhysicalSize::new(0., 0.);
         if self.tiles.len() > 0 {
             //Get widest boxart image
             let mut max_width = 0.;
@@ -180,10 +180,10 @@ impl AppList {
             }
         }
 
-        (tiles_x, tiles_y, V2::new(width, height))
+        (tiles_x, tiles_y, LogicalSize::new(width, height))
     }
 
-    fn size_individual_tile(state: &YaffeState, tile: &mut AppTile, size: &V2) {
+    fn size_individual_tile(state: &YaffeState, tile: &mut AppTile, size: &LogicalSize) {
         let mut tile_size = *size;
 
         //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)

@@ -1,4 +1,4 @@
-use crate::V2;
+use crate::LogicalPosition;
 use crate::widgets::WidgetId;
 
 pub type FieldOffset = usize;
@@ -10,7 +10,7 @@ pub trait Animator {
 pub enum AnimationTarget {
     F32((f32, f32)),
     #[allow(dead_code)]
-    V2((V2, V2)),
+    V2((LogicalPosition, LogicalPosition)),
 }
 
 pub struct Animation<> {
@@ -22,9 +22,9 @@ pub struct Animation<> {
 }
 
 
-impl Animator for V2 {
+impl Animator for LogicalPosition {
     fn slerp(&self, from: Self, to: Self, amount: f32) -> Self {
-        V2::new(self.x.slerp(from.x, to.x, amount), self.y.slerp(from.y, to.y, amount))
+        LogicalPosition::new(self.x.slerp(from.x, to.x, amount), self.y.slerp(from.y, to.y, amount))
     }
 }
 
@@ -37,7 +37,7 @@ impl Animator for f32 {
 
 impl crate::DeferredAction {
     #[allow(dead_code)]
-    pub fn animate_v2(&mut self, widget: &impl crate::widgets::FocusableWidget, field: FieldOffset, target: V2, duration: f32) {
+    pub fn animate_v2(&mut self, widget: &impl crate::widgets::FocusableWidget, field: FieldOffset, target: LogicalPosition, duration: f32) {
         let anim = Animation {
             widget: widget.get_id(),
             duration: duration,
@@ -77,7 +77,7 @@ pub fn run_animations(tree: &mut crate::widgets::WidgetTree, delta_time: f32) {
             let widget = widget.widget.as_mut();
             match animation.target {
                 AnimationTarget::V2((from, to)) => {
-                    let animator = apply_mut::<dyn crate::widgets::Widget, V2>(animation.offset, widget);
+                    let animator = apply_mut::<dyn crate::widgets::Widget, LogicalPosition>(animation.offset, widget);
                     *animator = animator.slerp(from, to, delta_time / animation.duration);
                     if animation.remaining <= 0. { *animator = to }
                 }
