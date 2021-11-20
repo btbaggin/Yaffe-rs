@@ -4,7 +4,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
 use speedy2d::shape::Rectangle;
-use speedy2d::dimen::Vector2;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 
 #[macro_use]
@@ -182,11 +181,11 @@ impl windowing::WindowHandler for WidgetTree {
         //Check for any updates to the settings file
         settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
-    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool {
+    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool {
         assets::load_texture_atlas(graphics);
 
         if !self.data.overlay.borrow().is_active() {
-            let window_rect = Rect::new(LogicalPosition::new(0., 0.), LogicalSize::new(size.x as f32, size.y as f32));
+            let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
 
             //Update the platform and emulator list from database
             if self.data.refresh_list {
@@ -195,7 +194,7 @@ impl windowing::WindowHandler for WidgetTree {
             }
 
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(window_rect.clone(), graphics, delta_time);
+            self.render_all(graphics, window_rect.clone(), delta_time, scale_factor);
 
             crate::widgets::animations::run_animations(self, delta_time);
 

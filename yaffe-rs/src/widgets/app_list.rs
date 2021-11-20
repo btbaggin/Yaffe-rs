@@ -1,6 +1,6 @@
 use speedy2d::Graphics2D;
 use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, PhysicalSize};
-use crate::widgets::AppTile;
+use crate::widgets::{AppTile, RenderState};
 use crate::Rect;
 use crate::logger::{PanicLogEntry, LogEntry, UserMessage};
 
@@ -69,8 +69,8 @@ impl super::Widget for AppList {
         handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) {
-        self.update(state, &rect);
+    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) {
+        self.update(state, &render_state.bounds);
 
         let plat = state.get_platform();
 
@@ -81,13 +81,13 @@ impl super::Widget for AppList {
 
             let tile = &mut self.tiles[i];
             //Only render tiles inside visible area
-            if tile.intersects(&rect) {
-                tile.render(&state.settings, false, self.tile_animation, &plat.apps[i], piet);
+            if tile.intersects(&render_state.bounds) {
+                tile.render(&state.settings, false, self.tile_animation, &plat.apps[i], graphics);
             }
         }
 
         if let Some(tile) = self.tiles.get_mut(state.selected_app) {
-            tile.render(&state.settings, focused, self.tile_animation, &plat.apps[state.selected_app], piet);
+            tile.render(&state.settings, focused, self.tile_animation, &plat.apps[state.selected_app], graphics);
         }
     }
 }

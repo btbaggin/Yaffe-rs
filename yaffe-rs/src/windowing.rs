@@ -3,7 +3,7 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode, ModifiersState};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{input::ControllerInput, input::InputType, Actions, logger::LogEntry};
+use crate::{input::ControllerInput, PhysicalSize, input::InputType, Actions, logger::LogEntry};
 use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -36,7 +36,7 @@ impl WindowHelper {
 pub(crate) trait WindowHandler {
     fn on_start(&mut self) { }
     fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool { false }
-    fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: Vector2<u32>) -> bool;
+    fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_resize(&mut self, _: u32, _: u32) { }
     fn on_stop(&mut self) { }
@@ -184,10 +184,11 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 let window = windows.get_mut(&id).unwrap();
                 let context = ct.get_current(window.context_id).unwrap();
 
-                let size = window.size;
+                let scale = context.windowed().window().scale_factor() as f32;
+                let size = PhysicalSize::new(window.size.x as f32, window.size.y as f32);
                 let mut handle = window.handler.borrow_mut();
                 window.renderer.draw_frame(|graphics| {
-                    if !handle.on_frame(graphics, delta_time, size) {
+                    if !handle.on_frame(graphics, delta_time, size, scale) {
                         *control_flow = ControlFlow::Exit;
                         handle.on_stop();
                     }

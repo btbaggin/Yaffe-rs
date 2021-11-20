@@ -3,7 +3,7 @@ use crate::{YaffeState, widget, Actions, DeferredAction, LogicalSize, LogicalPos
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
-use crate::widgets::UiElement;
+use crate::widgets::{UiElement, RenderState};
 
 widget!(pub struct InfoPane { 
     scroll_timer: f32 = 0., 
@@ -24,8 +24,9 @@ impl super::Widget for InfoPane {
         handle.animate_f32(self, offset, original.top_left().x, 0.2);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, delta_time: f32, piet: &mut Graphics2D) { 
-        piet.draw_rectangle(rect.into(), MODAL_BACKGROUND);
+    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) { 
+        let bounds = render_state.bounds;
+        graphics.draw_rectangle(bounds.into(), MODAL_BACKGROUND);
         const IMAGE_SIZE: LogicalSize = LogicalSize::new(64., 96.);
 
         if let Some(app) = state.get_executable() {
@@ -36,11 +37,11 @@ impl super::Widget for InfoPane {
             let slot = crate::assets::get_cached_file(&app.banner);
             let slot = &mut slot.borrow_mut();
 
-            let mut image = request_asset_image(piet, &mut queue, slot);
-            if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
+            let mut image = request_asset_image(graphics, &mut queue, slot);
+            if let None = image { image = request_image(graphics, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
-                height = (rect.width() / i.size().x as f32) * i.size().y;
-                i.render(piet, Rect::point_and_size(*rect.top_left(), LogicalSize::new(rect.width() ,rect.top() + height)).into());
+                height = (bounds.width() / i.size().x as f32) * i.size().y;
+                i.render(graphics, Rect::point_and_size(*bounds.top_left(), LogicalSize::new(bounds.width(), bounds.top() + height)).into());
             }
 
             //Rating image
@@ -57,7 +58,7 @@ impl super::Widget for InfoPane {
             };
             
             if let Some(image) = rating_image {
-                if let Some(i) = request_image(piet, &mut queue, image) {
+                if let Some(i) = request_image(graphics, &mut queue, image) {
                     //Size rating image according to banner height
                     let ratio = IMAGE_SIZE.y / height;
                     let rating_size = if ratio > 1. {
@@ -65,27 +66,27 @@ impl super::Widget for InfoPane {
                     } else {
                         IMAGE_SIZE
                     };
-                    i.render(piet, Rect::point_and_size(LogicalPosition::new(rect.right() - rating_size.x - crate::ui::MARGIN, rect.top() + height - rating_size.y), rating_size).into());
+                    i.render(graphics, Rect::point_and_size(LogicalPosition::new(bounds.right() - rating_size.x - crate::ui::MARGIN, bounds.top() + height - rating_size.y), rating_size).into());
                 }
             }
 
             //Overview
             if !app.description.is_empty() {
-                let name_label = super::get_drawable_text_with_wrap(crate::font::get_title_font_size(state), &app.description, rect.width() - 10.);
+                let name_label = super::get_drawable_text_with_wrap(crate::font::get_title_font_size(state), &app.description, bounds.width() - 10.);
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
-                if name_label.height() + height > rect.height() {
-                    self.scroll_timer -= delta_time;
+                if name_label.height() + height > bounds.height() {
+                    self.scroll_timer -= render_state.delta_time;
                     if self.scroll_timer < 0. { 
-                        self.y_offset -= delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
-                        self.y_offset = f32::max(self.y_offset, rect.height() - height - name_label.height()); 
+                        self.y_offset -= render_state.delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
+                        self.y_offset = f32::max(self.y_offset, bounds.height() - height - name_label.height()); 
                     }
                 }
                 
                 //Clip text so when it scrolls it wont render above the banner
                 //piet.save().unwrap();
                 //TODO piet.clip(Rectangle::from_tuples((rect.top_left().x, rect.top_left().y + height), (rect.bottom_right().x, rect.bottom_right().y)));
-                piet.draw_text(LogicalPosition::new(rect.top_left().x + crate::ui::MARGIN, rect.top_left().y + self.y_offset + height), get_font_color(&state.settings), &name_label);
+                graphics.draw_text(LogicalPosition::new(bounds.top_left().x + crate::ui::MARGIN, bounds.top_left().y + self.y_offset + height), get_font_color(&state.settings), &name_label);
                 //piet.restore().unwrap();
             }
         }

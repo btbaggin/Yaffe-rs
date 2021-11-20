@@ -3,6 +3,7 @@ use speedy2d::shape::Rectangle;
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, Rect};
 use crate::{colors::*, ui::*, font::*};
 use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, on_settings_close, ModalSize, display_modal};
+use crate::widgets::RenderState;
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -48,13 +49,14 @@ impl super::Widget for PlatformList {
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) {
+    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) {
         //Background
-        piet.draw_rectangle(rect.into(), MENU_BACKGROUND);
+        let rect = render_state.bounds;
+        graphics.draw_rectangle(rect.into(), MENU_BACKGROUND);
 
         //Title
         let title = crate::widgets::get_drawable_text(get_title_font_size(state), "Yaffe");
-        piet.draw_text(LogicalPosition::new(rect.width() - title.width() - 30., MARGIN), get_font_color(&state.settings), &title);
+        graphics.draw_text(LogicalPosition::new(rect.width() - title.width() - 30., MARGIN), get_font_color(&state.settings), &title);
 
         let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
@@ -65,7 +67,7 @@ impl super::Widget for PlatformList {
         for (i, p) in state.platforms.iter().enumerate() {
             //Header for the specific platform type
             if p.kind as i32 != plat_kind {
-                y = draw_header(piet, state, y, rect.width(), p.kind, 28.);
+                y = draw_header(graphics, state, y, rect.width(), p.kind, 28.);
                 plat_kind = p.kind as i32;
             }
 
@@ -76,17 +78,17 @@ impl super::Widget for PlatformList {
             if i == selected_index {
                 let rect = Rectangle::from_tuples((rect.left(), y), (right, y + height));
 
-                if state.is_widget_focused(self) { piet.draw_rectangle(rect, get_accent_color(&state.settings)); }
-                else { piet.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
+                if state.is_widget_focused(self) { graphics.draw_rectangle(rect, get_accent_color(&state.settings)); }
+                else { graphics.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
             }
             
             //Label
-            piet.draw_text(LogicalPosition::new(MARGIN, y), text_color, &name_label);
+            graphics.draw_text(LogicalPosition::new(MARGIN, y), text_color, &name_label);
     
             if let PlatformType::Emulator = p.kind {
                 //Count
                 let num_label = super::get_drawable_text(FONT_SIZE, &p.apps.len().to_string());
-                piet.draw_text(LogicalPosition::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
+                graphics.draw_text(LogicalPosition::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
             }
             y += height;
         }

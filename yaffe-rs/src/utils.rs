@@ -17,14 +17,6 @@ impl LogicalPosition {
 }
 impl LogicalPosition {
     #[inline]
-    pub fn from_physical<T: Into<PhysicalPosition>>(
-        physical: T,
-        scale_factor: f32,
-    ) -> Self {
-        physical.into().to_logical(scale_factor)
-    }
-    
-    #[inline]
     pub fn to_physical(&self, scale_factor: f32) -> PhysicalPosition {
         let x = self.x * scale_factor;
         let y = self.y * scale_factor;
@@ -91,38 +83,6 @@ impl PhysicalPosition {
     }
 }
 
-// #[derive(Clone, Copy)]
-// pub struct Rect {
-//     top_left: LogicalPosition,
-//     bottom_right: LogicalPosition,
-// }
-
-// impl Rect {
-//     pub fn left(&self) -> f32 { self.top_left.x }
-//     pub fn right(&self) -> f32 { self.bottom_right.x }
-//     pub fn top(&self) -> f32 { self.top_left.y }
-//     pub fn bottom(&self) -> f32 { self.bottom_right.y }
-//     pub fn width(&self) -> f32 { self.bottom_right.x - self.top_left.x }
-//     pub fn height(&self) -> f32 { self.bottom_right.y - self.top_left.y }
-//     pub fn top_left(&self) -> &LogicalPosition {
-//         &self.top_left
-//     }
-//     pub fn bottom_right(&self) -> &LogicalPosition {
-//         &self.bottom_right
-//     }
-//     pub fn point_and_size(pos: LogicalPosition, size: LogicalSize) -> Self { 
-//         Rect::new(pos, pos + size) 
-//     }
-//     pub fn new(top_left: LogicalPosition, bottom_right: LogicalPosition) -> Self {
-//         Rect { top_left, bottom_right }
-//     }
-// }
-// impl From<Rect> for speedy2d::shape::Rectangle<f32> {
-//     fn from(value: Rect) -> speedy2d::shape::Rectangle<f32> {
-//         speedy2d::shape::Rectangle::from_tuples((value.top_left.x, value.top_left.y), (value.bottom_right.x, value.bottom_right.y))
-//     }
-// }
-
 #[derive(Copy, Clone)]
 pub struct Rect {
     top_left: LogicalPosition,
@@ -161,13 +121,7 @@ impl From<&Rect> for speedy2d::shape::Rectangle<f32> {
         speedy2d::shape::Rectangle::from_tuples((other.top_left.x, other.top_left.y), (other.bottom_right.x, other.bottom_right.y))
     }
 }
-// impl Rect for speedy2d::shape::Rectangle {
-//     fn left(&self) -> f32 { self.top_left().x }
-//     fn right(&self) -> f32 { self.bottom_right().x }
-//     fn top(&self) -> f32 { self.top_left().y }
-//     fn bottom(&self) -> f32 { self.bottom_right().y }
-//     fn point_and_size(pos: LogicalPosition, size: LogicalSize) -> Self { speedy2d::shape::Rectangle::new(pos.into(), (pos + size).into()) }
-// }
+
 
 pub trait Transparent {
     fn with_alpha(&self, alpha: f32) -> Self;

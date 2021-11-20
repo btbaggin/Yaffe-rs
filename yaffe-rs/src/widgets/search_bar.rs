@@ -1,8 +1,8 @@
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, widget, Actions, DeferredAction, LogicalPosition, LogicalSize};
+use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize};
 use crate::colors::*;
-use crate::Rect;
+use crate::widgets::RenderState;
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
 const SEARCH_OPTION_PLAYERS: i32 = 2;
@@ -134,8 +134,8 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) {
-
+    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) {
+        let rect = render_state.bounds;
         let search = &state.search_info;
         let filter_start = rect.left() + NAME_WIDTH;
         let start = search.start;
@@ -150,7 +150,7 @@ impl super::Widget for SearchBar {
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
 
 
-        piet.draw_rectangle(rect.into(), MENU_BACKGROUND);
+        graphics.draw_rectangle(rect.into(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
@@ -165,25 +165,25 @@ impl super::Widget for SearchBar {
         }
 
         let r = Rectangle::from_tuples((highlight_position, rect.top()), (highlight_position + highlight_width, rect.bottom()));
-        piet.draw_rectangle(r, get_accent_color(&state.settings));
+        graphics.draw_rectangle(r, get_accent_color(&state.settings));
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
 
         let name_label = super::get_drawable_text(crate::font::FONT_SIZE, &name);
         let half = name_label.width() / 2.;
-        piet.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - crate::font::FONT_SIZE / 2.), focused_color, &name_label);
+        graphics.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - crate::font::FONT_SIZE / 2.), focused_color, &name_label);
 
         const ARROW_SIZE: f32 = 10.;
         const ARROW_HEIGHT: f32 = 5.;
         if search.option > SEARCH_OPTION_NONE { 
             //Down arrow
-            piet.draw_line(LogicalPosition::new(mid - ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), LogicalPosition::new(mid, filter_rect.bottom() - 7.), 2., focused_color); 
-            piet.draw_line(LogicalPosition::new(mid, filter_rect.bottom() - 7.), LogicalPosition::new(mid + ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), 2., focused_color);
+            graphics.draw_line(LogicalPosition::new(mid - ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), LogicalPosition::new(mid, filter_rect.bottom() - 7.), 2., focused_color); 
+            graphics.draw_line(LogicalPosition::new(mid, filter_rect.bottom() - 7.), LogicalPosition::new(mid + ARROW_SIZE, filter_rect.bottom() - 7. - ARROW_HEIGHT), 2., focused_color);
         }
         if search.option < SEARCH_OPTION_MAX { 
             //Up arrow
-            piet.draw_line(LogicalPosition::new(mid - ARROW_SIZE, filter_rect.top() + 12.), LogicalPosition::new(mid, filter_rect.top() + 7.), 2., focused_color); 
-            piet.draw_line(LogicalPosition::new(mid, filter_rect.top() + 7.), LogicalPosition::new(mid + ARROW_SIZE, filter_rect.top() + 12.), 2., focused_color); 
+            graphics.draw_line(LogicalPosition::new(mid - ARROW_SIZE, filter_rect.top() + 12.), LogicalPosition::new(mid, filter_rect.top() + 7.), 2., focused_color); 
+            graphics.draw_line(LogicalPosition::new(mid, filter_rect.top() + 7.), LogicalPosition::new(mid + ARROW_SIZE, filter_rect.top() + 12.), 2., focused_color); 
         }
 
         let mask = get_exists_mask(search.option, &state.get_platform().apps);
@@ -197,7 +197,7 @@ impl super::Widget for SearchBar {
             let item_label = super::get_drawable_text(crate::font::FONT_SIZE, &String::from(i as char));
             
             let label_half = LogicalSize::new(item_label.width() / 2., item_label.height() / 2.);
-            piet.draw_text(LogicalPosition::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);
+            graphics.draw_text(LogicalPosition::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);
          }
     }
 }

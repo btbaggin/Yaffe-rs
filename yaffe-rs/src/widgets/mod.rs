@@ -22,6 +22,12 @@ pub use background::Background;
 pub use app_tile::AppTile;
 pub use info_pane::InfoPane;
 
+pub struct RenderState {
+    bounds: Rect,
+    delta_time: f32,
+    scale_factor: f32,
+}
+
 pub trait UiElement {
     fn position(&self) -> LogicalPosition;
     fn size(&self) -> LogicalSize;
@@ -34,7 +40,7 @@ pub trait FocusableWidget: UiElement {
 }
 pub trait Widget: FocusableWidget {
     /// Update and draw
-    fn render(&mut self, state: &YaffeState, rect: Rect, delta_time: f32, piet: &mut Graphics2D);
+    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState);
 
     /// Offset from initial placement to move. Percentage based on widget size
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
@@ -127,9 +133,9 @@ impl WidgetTree {
         }
     }
 
-    pub fn render_all(&mut self, layout: Rect, piet: &mut Graphics2D, delta_time: f32) {
-        if !self.layout_valid { self.root.widget.set_layout(layout); }
-        self.root.render(&self.data, piet, delta_time, !self.layout_valid);
+    pub fn render_all(&mut self, graphics: &mut Graphics2D, bounds: Rect, delta_time: f32, scale_factor: f32) {
+        if !self.layout_valid { self.root.widget.set_layout(bounds); }
+        self.root.render(&self.data, graphics, delta_time, scale_factor, !self.layout_valid);
         self.layout_valid = true;
     }
 
@@ -272,7 +278,7 @@ impl WidgetContainer {
         false
     }
 
-    pub fn render(&mut self, state: &YaffeState, piet: &mut Graphics2D, delta_time: f32, invalidate: bool) {
+    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics2D, delta_time: f32, scale_factor: f32, invalidate: bool) {
         //These measure the offset from the edges to begin or end rendering
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
@@ -280,7 +286,8 @@ impl WidgetContainer {
         let mut right_stack = 0.;
 
         let rect = self.widget.layout();
-        self.widget.render(state, rect.clone(), delta_time, piet);
+        let render_state = RenderState { bounds: rect.clone(), delta_time, scale_factor };
+        self.widget.render(graphics, state, render_state);
 
         for i in self.children.iter_mut() {
             if invalidate {
@@ -312,7 +319,7 @@ impl WidgetContainer {
                 i.original_layout = r.clone();
                 i.widget.set_layout(r);
             }
-            i.render(state, piet, delta_time, invalidate);
+            i.render(state, graphics, delta_time, scale_factor, invalidate);
         }
     }
 
