@@ -48,9 +48,9 @@ impl super::Widget for PlatformList {
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
+    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) {
         //Background
-        piet.draw_rectangle(rect.clone(), MENU_BACKGROUND);
+        piet.draw_rectangle(rect.into(), MENU_BACKGROUND);
 
         //Title
         let title = crate::widgets::get_drawable_text(get_title_font_size(state), "Yaffe");
@@ -102,7 +102,7 @@ fn draw_header(piet: &mut Graphics2D, state: &YaffeState, y: f32, width: f32, ki
 
     let y = y + MARGIN * 2.;
     let i = crate::assets::request_preloaded_image(piet, image);
-    i.render(piet, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(icon_size, icon_size)));
+    i.render(piet, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(icon_size, icon_size)).into());
     
     let y = y + icon_size;
     piet.draw_line(LogicalPosition::new(icon_size + MARGIN * 2., y), LogicalPosition::new(width - MARGIN, y), 2., get_font_color(&state.settings));

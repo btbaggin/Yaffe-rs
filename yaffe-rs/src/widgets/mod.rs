@@ -1,5 +1,4 @@
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
 use crate::{YaffeState, Actions, LogicalPosition, LogicalSize, Rect};
@@ -26,8 +25,8 @@ pub use info_pane::InfoPane;
 pub trait UiElement {
     fn position(&self) -> LogicalPosition;
     fn size(&self) -> LogicalSize;
-    fn layout(&self) -> Rectangle;
-    fn set_layout(&mut self, layout: Rectangle);
+    fn layout(&self) -> Rect;
+    fn set_layout(&mut self, layout: Rect);
 }
 pub type WidgetId = std::any::TypeId;
 pub trait FocusableWidget: UiElement {
@@ -35,7 +34,7 @@ pub trait FocusableWidget: UiElement {
 }
 pub trait Widget: FocusableWidget {
     /// Update and draw
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D);
+    fn render(&mut self, state: &YaffeState, rect: Rect, delta_time: f32, piet: &mut Graphics2D);
 
     /// Offset from initial placement to move. Percentage based on widget size
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
@@ -44,10 +43,10 @@ pub trait Widget: FocusableWidget {
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: Rectangle, _: &mut DeferredAction) {}
+    fn got_focus(&mut self, _: Rect, _: &mut DeferredAction) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: Rectangle, _: &mut DeferredAction) {}
+    fn lost_focus(&mut self, _: Rect, _: &mut DeferredAction) {}
 
     /// Called when a restricted action has been validated
     fn on_restricted_action_finalized(&self, _: &YaffeState, _: &'static str, _: &mut DeferredAction) {}
@@ -75,11 +74,10 @@ macro_rules! widget {
         impl crate::widgets::UiElement for $name {
             fn position(&self) -> crate::LogicalPosition { self.position }
             fn size(&self) -> crate::LogicalSize { self.size }
-            fn layout(&self) -> Rectangle { Rectangle::new(self.position.into(), (self.position + self.size).into()) }
-            fn set_layout(&mut self, layout: Rectangle) { 
-                use crate::utils::Logical;
-                self.position = layout.top_left().to_logical(); 
-                self.size = layout.size().to_logical();
+            fn layout(&self) -> crate::Rect { crate::Rect::new(self.position, self.position + self.size) }
+            fn set_layout(&mut self, layout: crate::Rect) { 
+                self.position = *layout.top_left(); 
+                self.size = layout.size();
             }
         }
         impl crate::widgets::FocusableWidget for $name {
@@ -129,7 +127,7 @@ impl WidgetTree {
         }
     }
 
-    pub fn render_all(&mut self, layout: Rectangle, piet: &mut Graphics2D, delta_time: f32) {
+    pub fn render_all(&mut self, layout: Rect, piet: &mut Graphics2D, delta_time: f32) {
         if !self.layout_valid { self.root.widget.set_layout(layout); }
         self.root.render(&self.data, piet, delta_time, !self.layout_valid);
         self.layout_valid = true;
@@ -233,7 +231,7 @@ pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
     widget: Box<dyn Widget>,
     ratio: LogicalSize,
-    original_layout: Rectangle,
+    original_layout: Rect,
     alignment: ContainerAlignment,
 }
 impl WidgetContainer {
@@ -245,7 +243,7 @@ impl WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio: size,
-            original_layout: Rectangle::from_tuples((0., 0.), (0., 0.)),
+            original_layout: Rect::from_tuples((0., 0.), (0., 0.)),
             alignment: alignment,
          }
     }
@@ -310,7 +308,7 @@ impl WidgetContainer {
 
                 let offset = i.widget.offset();
                 let origin = LogicalPosition::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
-                let r = Rectangle::new(origin.into(), (origin + size).into());
+                let r = Rect::new(origin.into(), (origin + size).into());
                 i.original_layout = r.clone();
                 i.widget.set_layout(r);
             }
@@ -423,7 +421,7 @@ pub fn right_aligned_text(piet: &mut Graphics2D, right: LogicalPosition, image: 
     if let Some(i) = image {
         right.x -= size.y;
         let i = crate::assets::request_preloaded_image(piet, i);
-        i.render(piet, Rectangle::new(right.into(), (right + LogicalSize::new(size.y, size.y)).into()));
+        i.render(piet, Rect::new(right, right + LogicalSize::new(size.y, size.y)).into());
     }
 
     right

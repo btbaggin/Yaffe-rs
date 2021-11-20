@@ -6,7 +6,7 @@ mod settings_modal;
 
 use speedy2d::Graphics2D;
 use speedy2d::shape::Rectangle;
-use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper, utils::Logical};
+use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper};
 use crate::settings::SettingNames;
 use crate::colors::*;
 use crate::assets::{request_preloaded_image, Images};
@@ -57,7 +57,7 @@ impl Modal {
 pub trait ModalContent {
     fn as_any(&self) -> &dyn std::any::Any;
     fn get_height(&self, width: f32) -> f32;
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D);
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D);
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult { 
         default_modal_action(action)
     }
@@ -81,7 +81,7 @@ impl ModalContent for MessageModalContent {
         name_label.height()
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, graphics: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut Graphics2D) {
         let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &self.message, rect.width());
         graphics.draw_text(*rect.top_left(), get_font_color(settings), &name_label);
     }
@@ -155,7 +155,7 @@ pub(crate) fn is_modal_open(state: &YaffeState) -> bool {
 }
 
 /// Renders a modal window along with its contents
-pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rect: &Rectangle, piet: &mut Graphics2D) {
+pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rect: &Rect, piet: &mut Graphics2D) {
     const BUTTON_SIZE: f32 = 18.;
     const MARGIN: f32 = 10.;
     const TITLEBAR_SIZE: f32 = 32.;
@@ -187,20 +187,20 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rec
         size.y += BUTTON_SIZE;
     }
 
-    let window_position = (rect.size().to_logical() - size) / 2.;
+    let window_position = (rect.size() - size) / 2.;
 
-    let window = Rectangle::new(window_position.into(), (window_position + size).into());
+    let window = Rect::new(window_position, window_position + size);
     
     //Background
-    piet.draw_rectangle(rect.clone(), MODAL_OVERLAY_COLOR);
-    piet.draw_rectangle(window.clone(), MODAL_BACKGROUND);
+    piet.draw_rectangle(rect.into(), MODAL_OVERLAY_COLOR);
+    piet.draw_rectangle(window.into(), MODAL_BACKGROUND);
 
     //Titlebar
     let titlebar_color = get_accent_color(settings);
     let titlebar_color = change_brightness(&titlebar_color, settings.get_f32(SettingNames::LightShadeFactor));
     let titlebar_pos = window_position + LogicalSize::new(2., 2.);
-    let titlebar = Rectangle::new(titlebar_pos.into(), (titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE)).into());
-    piet.draw_rectangle(titlebar,  titlebar_color);
+    let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE));
+    piet.draw_rectangle(titlebar.into(), titlebar_color);
 
     let title_text = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &modal.title);
     piet.draw_text(LogicalPosition::new(titlebar_pos.x + crate::ui::MARGIN, titlebar_pos.y), get_font_color(settings), &title_text);
@@ -209,14 +209,14 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, rec
     let mut icon_position = LogicalPosition::new(window_position.x + MARGIN, window_position.y + MARGIN + TITLEBAR_SIZE); //Window + margin for window + margin for icon
     if let Some(image) = modal.icon {
         let icon = request_preloaded_image(piet, image);
-        let icon_rect = Rectangle::new(icon_position.into(), (icon_position + LogicalSize::new(ICON_SIZE, ICON_SIZE)).into());
-        icon.render(piet, icon_rect);
+        let icon_rect = Rect::new(icon_position, icon_position + LogicalSize::new(ICON_SIZE, ICON_SIZE));
+        icon.render(piet, icon_rect.into());
         icon_position.x += ICON_SIZE;
     }
 
     //Content
     let content_pos = icon_position + LogicalSize::new(2., 2.);
-    let content_rect = Rectangle::new(content_pos.into(), (content_pos + content_size).into());
+    let content_rect = Rect::new(content_pos, content_pos + content_size);
     modal.content.render(settings, content_rect, piet);
 
     //Action buttons

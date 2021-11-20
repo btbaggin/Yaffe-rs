@@ -120,21 +120,21 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+    fn got_focus(&mut self, original: Rect, handle: &mut DeferredAction) {
         let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
         handle.animate_f32(self, offset, original.bottom(), 0.2);
 
         self.highlight_offset = 0.;
     }
 
-    fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+    fn lost_focus(&mut self, original: Rect, handle: &mut DeferredAction) {
         if !self.active {
             let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
             handle.animate_f32(self, offset, original.top(), 0.2);
         }
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
+    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) {
 
         let search = &state.search_info;
         let filter_start = rect.left() + NAME_WIDTH;
@@ -150,11 +150,11 @@ impl super::Widget for SearchBar {
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
 
 
-        piet.draw_rectangle(rect.clone(), MENU_BACKGROUND);
+        piet.draw_rectangle(rect.into(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
-        let filter_rect = Rectangle::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());
+        let filter_rect = Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());
 
         //Highlight
         let mut highlight_position = rect.left() + self.highlight_offset;

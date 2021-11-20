@@ -1,5 +1,4 @@
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
 use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::logger::{PanicLogEntry, UserMessage};
@@ -61,11 +60,11 @@ impl ModalContent for PlatformDetailModal {
         default_modal_action(action)
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
         let mut y = rect.top();
 
         for (k, v) in &self.controls {
-            let rect = Rectangle::from_tuples((rect.left(), y), (rect.right(), y + FONT_SIZE));
+            let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + FONT_SIZE));
             v.render(piet, settings, &rect, &k, self.controls.is_focused(&v));
             y += FONT_SIZE + MARGIN;
         }

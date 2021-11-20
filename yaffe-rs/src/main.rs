@@ -89,7 +89,7 @@ mod input;
 mod plugins;
 mod controls;
 mod utils;
-use utils::{Rect, Transparent};
+use utils::{Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
@@ -97,7 +97,7 @@ use modals::{display_modal};
 use job_system::{JobQueue, JobType, RawDataPointer};
 use input::Actions;
 pub use crate::settings::SettingNames;
-pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
+pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect};
 
 pub struct Platform {
     id: Option<i64>,
@@ -186,7 +186,7 @@ impl windowing::WindowHandler for WidgetTree {
         assets::load_texture_atlas(graphics);
 
         if !self.data.overlay.borrow().is_active() {
-            let window_rect = Rectangle::from_tuples((0., 0.), (size.x as f32, size.y as f32));
+            let window_rect = Rect::new(LogicalPosition::new(0., 0.), LogicalSize::new(size.x as f32, size.y as f32));
 
             //Update the platform and emulator list from database
             if self.data.refresh_list {

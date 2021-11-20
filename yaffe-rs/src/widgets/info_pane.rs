@@ -1,6 +1,5 @@
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
-use crate::{YaffeState, widget, Actions, DeferredAction, LogicalSize, LogicalPosition, Rect, utils::Logical};
+use crate::{YaffeState, widget, Actions, DeferredAction, LogicalSize, LogicalPosition, Rect};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
@@ -13,20 +12,20 @@ widget!(pub struct InfoPane {
 impl super::Widget for InfoPane {
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(1., 0.) }
 
-    fn got_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+    fn got_focus(&mut self, original: Rect, handle: &mut DeferredAction) {
         let offset = crate::offset_of!(InfoPane => position: LogicalPosition => x);
         handle.animate_f32(self, offset, original.left() - self.layout().width(), 0.2);
         self.scroll_timer = 3.;
         self.y_offset = 0.;
     }
 
-    fn lost_focus(&mut self, original: Rectangle, handle: &mut DeferredAction) {
+    fn lost_focus(&mut self, original: Rect, handle: &mut DeferredAction) {
         let offset = crate::offset_of!(InfoPane => position: LogicalPosition => x);
         handle.animate_f32(self, offset, original.top_left().x, 0.2);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, delta_time: f32, piet: &mut Graphics2D) { 
-        piet.draw_rectangle(rect.clone(), MODAL_BACKGROUND);
+    fn render(&mut self, state: &YaffeState, rect: Rect, delta_time: f32, piet: &mut Graphics2D) { 
+        piet.draw_rectangle(rect.into(), MODAL_BACKGROUND);
         const IMAGE_SIZE: LogicalSize = LogicalSize::new(64., 96.);
 
         if let Some(app) = state.get_executable() {
@@ -41,7 +40,7 @@ impl super::Widget for InfoPane {
             if let None = image { image = request_image(piet, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 height = (rect.width() / i.size().x as f32) * i.size().y;
-                i.render(piet, Rect::point_and_size(rect.top_left().to_logical(), LogicalSize::new(rect.width() ,rect.top() + height)));
+                i.render(piet, Rect::point_and_size(*rect.top_left(), LogicalSize::new(rect.width() ,rect.top() + height)).into());
             }
 
             //Rating image
@@ -66,7 +65,7 @@ impl super::Widget for InfoPane {
                     } else {
                         IMAGE_SIZE
                     };
-                    i.render(piet, Rect::point_and_size(LogicalPosition::new(rect.right() - rating_size.x - crate::ui::MARGIN, rect.top() + height - rating_size.y), rating_size));
+                    i.render(piet, Rect::point_and_size(LogicalPosition::new(rect.right() - rating_size.x - crate::ui::MARGIN, rect.top() + height - rating_size.y), rating_size).into());
                 }
             }
 

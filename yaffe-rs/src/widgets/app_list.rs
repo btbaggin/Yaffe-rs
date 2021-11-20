@@ -1,5 +1,4 @@
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
 use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, PhysicalSize};
 use crate::widgets::AppTile;
 use crate::Rect;
@@ -64,13 +63,13 @@ impl super::Widget for AppList {
         }
     }
 
-    fn got_focus(&mut self, _: Rectangle, handler: &mut DeferredAction) {
+    fn got_focus(&mut self, _: Rect, handler: &mut DeferredAction) {
         self.tile_animation = 0.;
         let offset = crate::offset_of!(AppList => tile_animation);
         handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) {
+    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) {
         self.update(state, &rect);
 
         let plat = state.get_platform();
@@ -93,7 +92,7 @@ impl super::Widget for AppList {
     }
 }
 impl AppList {
-    fn update(&mut self, state: &YaffeState, rect: &Rectangle) {
+    fn update(&mut self, state: &YaffeState, rect: &Rect) {
         //Check the length of our cache vs actual in case a game was added
         //to this platform while we were on it
         if self.cached_platform != state.selected_platform ||
@@ -111,13 +110,13 @@ impl AppList {
         self.update_tiles(state, rect);
     }
 
-    fn update_tiles(&mut self, state: &YaffeState,  rect: &Rectangle) {
+    fn update_tiles(&mut self, state: &YaffeState,  rect: &Rect) {
         let platform = state.get_platform();
 
         //Calculate total size for inner list
         let margin_x = rect.width() * MARGIN;
         let margin_y = rect.height() * MARGIN;
-        let list_rect = Rectangle::from_tuples((rect.left() + margin_x, rect.top() + margin_y), (rect.right() - margin_x, rect.bottom() - margin_y));
+        let list_rect = Rect::from_tuples((rect.left() + margin_x, rect.top() + margin_y), (rect.right() - margin_x, rect.bottom() - margin_y));
 
         //Get size each tile should try to stretch to
         let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state, platform.kind != crate::platform::PlatformType::Emulator, &list_rect);
@@ -144,7 +143,7 @@ impl AppList {
         }
     }
 
-    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &Rectangle) -> (isize, isize, LogicalSize) {
+    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &Rect) -> (isize, isize, LogicalSize) {
         let mut width = 0.;
         let mut height = 0.;
         let mut tiles_x = 1;

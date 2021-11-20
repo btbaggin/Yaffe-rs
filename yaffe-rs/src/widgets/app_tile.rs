@@ -29,7 +29,7 @@ impl AppTile {
         }
     }
 
-    pub fn intersects(&self, rect: &speedy2d::shape::Rectangle) -> bool {
+    pub fn intersects(&self, rect: &crate::Rect) -> bool {
         let x1_y1 = self.position;
         let x2_y2 = self.position + self.size;
         let b_x1_y1 = rect.top_left();
@@ -83,7 +83,7 @@ impl AppTile {
             //Outline background
             let rect_start = position - LogicalSize::new(ROM_OUTLINE_SIZE, ROM_OUTLINE_SIZE);
             let rect_size = LogicalSize::new(target_size.x + ROM_OUTLINE_SIZE * 2., target_size.y + height + ROM_OUTLINE_SIZE * 2.);
-            piet.draw_rectangle(Rect::point_and_size(rect_start, rect_size), MODAL_BACKGROUND.with_alpha(alpha * 0.94));
+            piet.draw_rectangle(Rect::point_and_size(rect_start, rect_size).into(), MODAL_BACKGROUND.with_alpha(alpha * 0.94));
 
             piet.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
 
@@ -102,9 +102,9 @@ impl AppTile {
 
         let mut queue = self.queue.borrow_mut();
         if let Some(i) = request_asset_image(piet, &mut queue, slot) {
-            i.render(piet, Rect::point_and_size(position, target_size));
+            i.render(piet, Rect::point_and_size(position, target_size).into());
         } else if let Some(i) = request_image(piet, &mut queue, Images::Placeholder) {
-            i.render(piet, Rect::point_and_size(position, target_size));
+            i.render(piet, Rect::point_and_size(position, target_size).into());
         }
     }
 

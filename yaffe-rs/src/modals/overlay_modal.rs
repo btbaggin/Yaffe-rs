@@ -42,7 +42,7 @@ impl ModalContent for OverlayModal {
         }
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
         let label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "Volume:");
         piet.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
 

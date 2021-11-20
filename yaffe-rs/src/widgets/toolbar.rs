@@ -1,5 +1,4 @@
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
 use crate::{YaffeState, widget, LogicalPosition};
 use crate::colors::*;
 use crate::Rect;
@@ -8,7 +7,7 @@ use crate::widgets::Shifter;
 
 widget!(pub struct Toolbar {});
 impl super::Widget for Toolbar {
-    fn render(&mut self, state: &YaffeState, rect: Rectangle, _: f32, piet: &mut Graphics2D) { 
+    fn render(&mut self, state: &YaffeState, rect: Rect, _: f32, piet: &mut Graphics2D) { 
         let time = chrono::Local::now();
 
         //Draw time

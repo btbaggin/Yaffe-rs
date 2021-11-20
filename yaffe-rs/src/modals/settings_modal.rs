@@ -1,6 +1,5 @@
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
-use crate::{font::*, ui::*, YaffeState, Actions};
+use crate::{font::*, ui::*, YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::controls::*;
 use crate::logger::{UserMessage, LogEntry};
@@ -46,10 +45,10 @@ impl ModalContent for SettingsModal {
         (FONT_SIZE + MARGIN) * self.settings.len() as f32
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rectangle, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
         let mut y = rect.top();
         for (k, v) in &self.settings {
-            let rect = Rectangle::from_tuples((rect.left(), y), (rect.right(), y + FONT_SIZE));
+            let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + FONT_SIZE));
             v.render(piet, settings, &rect, &k, self.settings.is_focused(&v));
             y += FONT_SIZE + MARGIN;
         }
