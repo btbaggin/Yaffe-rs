@@ -65,15 +65,6 @@ impl std::ops::Mul<f32> for LogicalPosition {
     }
 }
 
-pub trait Logical {
-    fn to_logical(self) -> LogicalPosition;
-}
-impl Logical for Vector2<f32> {
-    fn to_logical(self) -> LogicalPosition {
-        LogicalPosition::new(self.x, self.y)
-    }
-}
-
 #[derive(Clone, Copy)]
 pub struct PhysicalPosition {
     pub x: f32,
