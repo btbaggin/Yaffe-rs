@@ -48,7 +48,7 @@ pub(crate) trait WindowHandler {
 struct YaffeWindow {
     context_id: usize,
     renderer: GLRenderer,
-    size: Vector2<u32>,
+    size: PhysicalSize,
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
 }
 
@@ -56,7 +56,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  event_loop: &EventLoop<()>, 
                  tracker: &mut context_tracker::ContextTracker, 
                  builder: WindowBuilder,
-                 handler: Rc<RefCell<impl WindowHandler + 'static>>) -> Vector2<u32> {
+                 handler: Rc<RefCell<impl WindowHandler + 'static>>) -> PhysicalSize {
 
     use crate::logger::PanicLogEntry;
     //TODO WSL seems to require vsync
@@ -74,7 +74,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
         context_tracker::ContextWrapper::Windowed(windowed_context),
     ));
 
-    let size = Vector2::new(size.width, size.height);
+    let size = PhysicalSize::new(size.width as f32, size.height as f32);
     let window = YaffeWindow { context_id, renderer, size, handler};
     windows.insert(id, window);
     size
@@ -102,7 +102,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
      //Doing full size seems to make it fullscreen and it loses transparency
     let builder = WindowBuilder::new()
         .with_title("Overlay")
-        .with_inner_size(glutin::dpi::PhysicalSize::new(size.x - 1, size.y - 1)) 
+        .with_inner_size(glutin::dpi::PhysicalSize::new(size.x - 1., size.y - 1.)) 
         .with_position(glutin::dpi::PhysicalPosition::new(1, 1))
         .with_visible(false)
         .with_always_on_top(true)
@@ -129,18 +129,29 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     let window = windows.get_mut(&window_id).unwrap();
                     *control_flow = ControlFlow::Exit;
                     window.handler.borrow_mut().on_stop();
-                }
+                },
+
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    let window = windows.get_mut(&window_id).unwrap();
+                    let context = ct.get_current(window.context_id).unwrap();
+
+                    window.size = PhysicalSize::new(new_inner_size.width as f32, new_inner_size.height as f32);
+
+                    window.handler.borrow_mut().on_resize(new_inner_size.width, new_inner_size.height);
+                    context.windowed().window().request_redraw();
+                },
 
                 WindowEvent::Resized(physical_size) => {
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();
 
-                    let size = Vector2::new(physical_size.width, physical_size.height);
-                    window.size = size;
+                    window.size = PhysicalSize::new(physical_size.width as f32, physical_size.height as f32);
 
                     context.windowed().resize(physical_size);
-                    window.renderer.set_viewport_size_pixels(size);
+                    window.renderer.set_viewport_size_pixels(Vector2::new(physical_size.width, physical_size.height));
                     window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
+
+                    context.windowed().window().request_redraw();
                 },
 
                 WindowEvent::ModifiersChanged(state) => mods = state,

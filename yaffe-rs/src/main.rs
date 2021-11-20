@@ -59,6 +59,7 @@ pub mod colors {
 pub mod font {
     pub const FONT_SIZE: f32 = 24.;
     pub fn get_info_font_size(state: &crate::YaffeState) -> f32 {
+        //TODO scale factor
         state.settings.get_f32(crate::SettingNames::InfoFontSize)
     }
     pub fn get_title_font_size(state: &crate::YaffeState) -> f32 {
@@ -99,18 +100,12 @@ pub use crate::settings::SettingNames;
 pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect};
 
 pub struct Graphics<'a> {
-    pub graphics: &'a mut speedy2d::Graphics2D,
-    pub scale_factor: f32,
-    pub bounds: Rect,
+    graphics: &'a mut speedy2d::Graphics2D,
+    scale_factor: f32,
+    bounds: Rect,
     delta_time: f32,
 }
 impl<'a> Graphics<'a> {
-    pub fn physical_bounds(&self) -> speedy2d::shape::Rectangle<f32> {
-        self.bounds.to_physical(self.scale_factor)
-    }
-    pub fn delta_time(&self) -> f32 {
-        self.delta_time
-    }
     pub fn draw_rectangle(&mut self, rect: Rect, color: Color) {
         self.graphics.draw_rectangle(rect.to_physical(self.scale_factor), color);
     }
