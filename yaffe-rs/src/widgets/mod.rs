@@ -1,7 +1,6 @@
-use speedy2d::Graphics2D;
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
-use crate::{YaffeState, Actions, LogicalPosition, LogicalSize, Rect};
+use crate::{YaffeState, Graphics, Actions, LogicalPosition, LogicalSize, Rect};
 use std::ops::Deref;
 use crate::widgets::animations::*;
 use std::time::Instant;
@@ -22,12 +21,6 @@ pub use background::Background;
 pub use app_tile::AppTile;
 pub use info_pane::InfoPane;
 
-pub struct RenderState {
-    bounds: Rect,
-    delta_time: f32,
-    scale_factor: f32,
-}
-
 pub trait UiElement {
     fn position(&self) -> LogicalPosition;
     fn size(&self) -> LogicalSize;
@@ -40,7 +33,7 @@ pub trait FocusableWidget: UiElement {
 }
 pub trait Widget: FocusableWidget {
     /// Update and draw
-    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState);
+    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState);
 
     /// Offset from initial placement to move. Percentage based on widget size
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
@@ -133,9 +126,9 @@ impl WidgetTree {
         }
     }
 
-    pub fn render_all(&mut self, graphics: &mut Graphics2D, bounds: Rect, delta_time: f32, scale_factor: f32) {
-        if !self.layout_valid { self.root.widget.set_layout(bounds); }
-        self.root.render(&self.data, graphics, delta_time, scale_factor, !self.layout_valid);
+    pub fn render_all(&mut self, graphics: &mut crate::Graphics) {
+        if !self.layout_valid { self.root.widget.set_layout(graphics.bounds); }
+        self.root.render(&self.data, graphics, !self.layout_valid);
         self.layout_valid = true;
     }
 
@@ -278,7 +271,7 @@ impl WidgetContainer {
         false
     }
 
-    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics2D, delta_time: f32, scale_factor: f32, invalidate: bool) {
+    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics, invalidate: bool) {
         //These measure the offset from the edges to begin or end rendering
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
@@ -286,8 +279,8 @@ impl WidgetContainer {
         let mut right_stack = 0.;
 
         let rect = self.widget.layout();
-        let render_state = RenderState { bounds: rect.clone(), delta_time, scale_factor };
-        self.widget.render(graphics, state, render_state);
+        graphics.bounds = rect;
+        self.widget.render(graphics, state);
 
         for i in self.children.iter_mut() {
             if invalidate {
@@ -319,7 +312,7 @@ impl WidgetContainer {
                 i.original_layout = r.clone();
                 i.widget.set_layout(r);
             }
-            i.render(state, graphics, delta_time, scale_factor, invalidate);
+            i.render(state, graphics, invalidate);
         }
     }
 
@@ -420,15 +413,15 @@ impl DeferredAction {
 /// Draws text that is right aligned to parameter `right`
 /// If an image is passed it will be drawn to the left of the text
 /// Returns the new right-most position
-pub fn right_aligned_text(piet: &mut Graphics2D, right: LogicalPosition, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> LogicalPosition {
+pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> LogicalPosition {
     let size = LogicalSize::new(text.width(), text.height());
     let mut right = LogicalPosition::new(right.x - size.x, right.y);
 
-    piet.draw_text(right, color, &text);
+    graphics.draw_text(right, color, &text);
     if let Some(i) = image {
         right.x -= size.y;
-        let i = crate::assets::request_preloaded_image(piet, i);
-        i.render(piet, Rect::new(right, right + LogicalSize::new(size.y, size.y)).into());
+        let i = crate::assets::request_preloaded_image(graphics, i);
+        i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
     }
 
     right

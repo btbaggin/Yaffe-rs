@@ -1,5 +1,4 @@
-use speedy2d::{Graphics2D, color::Color};
-use speedy2d::shape::Rectangle;
+use speedy2d::color::Color;
 use crate::Rect;
 use crate::{Actions, LogicalSize};
 use crate::modals::{ModalResult, ModalContent};
@@ -42,18 +41,18 @@ impl ModalContent for OverlayModal {
         }
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "Volume:");
-        piet.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
+        graphics.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
 
         //Background rectangle
-        let rect = Rectangle::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
-        crate::modals::outline_rectangle(piet, &rect, 2., Color::GRAY);
+        let rect = Rect::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
+        crate::modals::outline_rectangle(graphics, &rect, 2., Color::GRAY);
 
         //Progress rectangle
         let accent = crate::colors::get_accent_color(settings);
-        let rect = Rectangle::new(*rect.top_left(), rect.top_left() + LogicalSize::new(rect.width() * self.volume, rect.height()).into());
+        let rect = Rect::new(*rect.top_left(), *rect.top_left() + LogicalSize::new(rect.width() * self.volume, rect.height()).into());
 
-        piet.draw_rectangle(rect, accent);
+        graphics.draw_rectangle(rect, accent);
     }
 }

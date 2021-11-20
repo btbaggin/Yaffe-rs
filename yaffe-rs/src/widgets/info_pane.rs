@@ -1,9 +1,8 @@
-use speedy2d::Graphics2D;
-use crate::{YaffeState, widget, Actions, DeferredAction, LogicalSize, LogicalPosition, Rect};
+use crate::{YaffeState, Graphics, widget, Actions, DeferredAction, LogicalSize, LogicalPosition, Rect};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
-use crate::widgets::{UiElement, RenderState};
+use crate::widgets::UiElement;
 
 widget!(pub struct InfoPane { 
     scroll_timer: f32 = 0., 
@@ -24,9 +23,9 @@ impl super::Widget for InfoPane {
         handle.animate_f32(self, offset, original.top_left().x, 0.2);
     }
 
-    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) { 
-        let bounds = render_state.bounds;
-        graphics.draw_rectangle(bounds.into(), MODAL_BACKGROUND);
+    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState) { 
+        let bounds = graphics.bounds;
+        graphics.draw_rectangle(bounds.clone(), MODAL_BACKGROUND);
         const IMAGE_SIZE: LogicalSize = LogicalSize::new(64., 96.);
 
         if let Some(app) = state.get_executable() {
@@ -41,7 +40,7 @@ impl super::Widget for InfoPane {
             if let None = image { image = request_image(graphics, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 height = (bounds.width() / i.size().x as f32) * i.size().y;
-                i.render(graphics, Rect::point_and_size(*bounds.top_left(), LogicalSize::new(bounds.width(), bounds.top() + height)).into());
+                i.render(graphics, Rect::point_and_size(*bounds.top_left(), LogicalSize::new(bounds.width(), bounds.top() + height)));
             }
 
             //Rating image
@@ -66,7 +65,8 @@ impl super::Widget for InfoPane {
                     } else {
                         IMAGE_SIZE
                     };
-                    i.render(graphics, Rect::point_and_size(LogicalPosition::new(bounds.right() - rating_size.x - crate::ui::MARGIN, bounds.top() + height - rating_size.y), rating_size).into());
+                    let position = LogicalPosition::new(bounds.right() - rating_size.x - crate::ui::MARGIN, bounds.top() + height - rating_size.y);
+                    i.render(graphics, Rect::point_and_size(position, rating_size));
                 }
             }
 
@@ -76,9 +76,9 @@ impl super::Widget for InfoPane {
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height() + height > bounds.height() {
-                    self.scroll_timer -= render_state.delta_time;
+                    self.scroll_timer -= graphics.delta_time;
                     if self.scroll_timer < 0. { 
-                        self.y_offset -= render_state.delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
+                        self.y_offset -= graphics.delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
                         self.y_offset = f32::max(self.y_offset, bounds.height() - height - name_label.height()); 
                     }
                 }

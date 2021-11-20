@@ -1,9 +1,6 @@
-use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, Rect};
 use crate::{colors::*, ui::*, font::*};
 use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, on_settings_close, ModalSize, display_modal};
-use crate::widgets::RenderState;
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -49,10 +46,10 @@ impl super::Widget for PlatformList {
         }
     }
 
-    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) {
+    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
         //Background
-        let rect = render_state.bounds;
-        graphics.draw_rectangle(rect.into(), MENU_BACKGROUND);
+        let rect = graphics.bounds;
+        graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
 
         //Title
         let title = crate::widgets::get_drawable_text(get_title_font_size(state), "Yaffe");
@@ -67,7 +64,7 @@ impl super::Widget for PlatformList {
         for (i, p) in state.platforms.iter().enumerate() {
             //Header for the specific platform type
             if p.kind as i32 != plat_kind {
-                y = draw_header(graphics, state, y, rect.width(), p.kind, 28.);
+                y = draw_header(graphics, state, y, rect.width(), p.kind);
                 plat_kind = p.kind as i32;
             }
 
@@ -76,7 +73,7 @@ impl super::Widget for PlatformList {
             //Highlight bar
             let height = name_label.height();
             if i == selected_index {
-                let rect = Rectangle::from_tuples((rect.left(), y), (right, y + height));
+                let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
                 if state.is_widget_focused(self) { graphics.draw_rectangle(rect, get_accent_color(&state.settings)); }
                 else { graphics.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
@@ -95,7 +92,8 @@ impl super::Widget for PlatformList {
     }
 }
 
-fn draw_header(piet: &mut Graphics2D, state: &YaffeState, y: f32, width: f32, kind: PlatformType, icon_size: f32) -> f32 {
+fn draw_header(graphics: &mut crate::Graphics, state: &YaffeState, y: f32, width: f32, kind: PlatformType) -> f32 {
+    const ICON_SIZE: f32 = 28.;
     let image = match kind {
         PlatformType::Emulator => crate::assets::Images::Emulator,
         PlatformType::Plugin => crate::assets::Images::App,
@@ -103,11 +101,11 @@ fn draw_header(piet: &mut Graphics2D, state: &YaffeState, y: f32, width: f32, ki
     };
 
     let y = y + MARGIN * 2.;
-    let i = crate::assets::request_preloaded_image(piet, image);
-    i.render(piet, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(icon_size, icon_size)).into());
+    let i = crate::assets::request_preloaded_image(graphics, image);
+    i.render(graphics, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)));
     
-    let y = y + icon_size;
-    piet.draw_line(LogicalPosition::new(icon_size + MARGIN * 2., y), LogicalPosition::new(width - MARGIN, y), 2., get_font_color(&state.settings));
+    let y = y + ICON_SIZE;
+    graphics.draw_line(LogicalPosition::new(ICON_SIZE + MARGIN * 2., y), LogicalPosition::new(width - MARGIN, y), 2., get_font_color(&state.settings));
     
     y + MARGIN
 }

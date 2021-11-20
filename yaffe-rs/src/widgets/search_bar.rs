@@ -1,8 +1,6 @@
-use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
 use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize};
 use crate::colors::*;
-use crate::widgets::RenderState;
+
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
 const SEARCH_OPTION_PLAYERS: i32 = 2;
@@ -134,8 +132,8 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) {
-        let rect = render_state.bounds;
+    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
+        let rect = graphics.bounds;
         let search = &state.search_info;
         let filter_start = rect.left() + NAME_WIDTH;
         let start = search.start;
@@ -150,7 +148,7 @@ impl super::Widget for SearchBar {
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
 
 
-        graphics.draw_rectangle(rect.into(), MENU_BACKGROUND);
+        graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
@@ -164,7 +162,7 @@ impl super::Widget for SearchBar {
             highlight_width = item_size;
         }
 
-        let r = Rectangle::from_tuples((highlight_position, rect.top()), (highlight_position + highlight_width, rect.bottom()));
+        let r = Rect::from_tuples((highlight_position, rect.top()), (highlight_position + highlight_width, rect.bottom()));
         graphics.draw_rectangle(r, get_accent_color(&state.settings));
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;

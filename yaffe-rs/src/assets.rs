@@ -122,11 +122,12 @@ pub struct YaffeTexture {
     bounds: Option<Rectangle>,
 }
 impl YaffeTexture {
-    pub fn render(&self, piet: &mut Graphics2D, rect: Rectangle) {
+    pub fn render(&self, graphics: &mut crate::Graphics, rect: crate::Rect) {
+        let rect = rect.to_physical(graphics.scale_factor);
         if let Some(b) = &self.bounds {
-            piet.draw_rectangle_image_subset_tinted(rect, speedy2d::color::Color::WHITE, b.clone(), &self.image);
+            graphics.graphics.draw_rectangle_image_subset_tinted(rect, speedy2d::color::Color::WHITE, b.clone(), &self.image);
         } else {
-            piet.draw_rectangle_image(rect, &self.image);
+            graphics.graphics.draw_rectangle_image(rect, &self.image);
         }
     }
 
@@ -200,7 +201,7 @@ fn asset_path_is_valid(path: &AssetPathType) -> bool {
     }
 }
 
-pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot: &'a mut AssetSlot) -> Option<&'a YaffeTexture> {
+pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, queue: &mut JobQueue, slot: &'a mut AssetSlot) -> Option<&'a YaffeTexture> {
     if slot.state.load(Ordering::Acquire) == ASSET_STATE_UNLOADED && 
        asset_path_is_valid(&slot.path) {
         if let Ok(ASSET_STATE_UNLOADED) = slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed) {
@@ -212,7 +213,7 @@ pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot
 
     if let None = slot.image {
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
+            let image = graphics.graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
             slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
             slot.data = Vec::with_capacity(0);
         }
@@ -226,13 +227,13 @@ pub fn request_asset_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, slot
     }
 }
 
-pub fn request_image<'a>(piet: &mut Graphics2D, queue: &mut JobQueue, image: Images) -> Option<&'a YaffeTexture> {
+pub fn request_image<'a>(piet: &mut crate::Graphics, queue: &mut JobQueue, image: Images) -> Option<&'a YaffeTexture> {
     let slot = get_slot_mut(AssetTypes::Image(image));
 
     request_asset_image(piet, queue, slot)
 }
 
-pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a YaffeTexture {
+pub fn request_preloaded_image<'a>(graphics: &mut crate::Graphics, image: Images) -> &'a YaffeTexture {
     let slot = get_slot_mut(AssetTypes::Image(image));
 
     //TODO 
@@ -240,7 +241,7 @@ pub fn request_preloaded_image<'a>(piet: &mut Graphics2D, image: Images) -> &'a 
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
-        let image = piet.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
+        let image = graphics.graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
         slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
     }
 

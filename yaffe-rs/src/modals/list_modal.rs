@@ -1,5 +1,4 @@
 use crate::{Rect, LogicalSize, Actions};
-use speedy2d::Graphics2D;
 use crate::colors::*;
 use crate::modals::{ModalResult, ModalContent, default_modal_action};
 
@@ -62,16 +61,13 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
         }
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let mut pos = *rect.top_left();
 
-        //TODO why do i need text_pos
-        
         //Title
         if let Some(t) = &self.title {
             let title_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &t);
-            let text_pos = speedy2d::dimen::Vector2::new(pos.x, pos.y);
-            piet.draw_text(text_pos, get_font_color(settings), &title_label);
+            graphics.draw_text(pos, get_font_color(settings), &title_label);
             pos.y += 30.;
         }
 
@@ -81,12 +77,11 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
 
             if self.index == i {
                 let rect = Rect::point_and_size(pos, LogicalSize::new(rect.width(), 30.));
-                piet.draw_rectangle(rect.into(), get_accent_color(settings));
+                graphics.draw_rectangle(rect, get_accent_color(settings));
             }
 
             let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &display);
-            let text_pos = speedy2d::dimen::Vector2::new(pos.x, pos.y);
-            piet.draw_text(text_pos, get_font_color(settings), &item_label);
+            graphics.draw_text(pos, get_font_color(settings), &item_label);
             pos.y += 30.;
         }
     }

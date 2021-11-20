@@ -71,7 +71,9 @@ impl OverlayWindow {
 impl crate::windowing::WindowHandler for OverlayWindow {
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, _: f32, size: PhysicalSize, scale_factor: f32) -> bool {
         let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
-        modals::render_modal(&self.settings, &self.modal, &window_rect, graphics);
+
+            let mut graphics = crate::Graphics { graphics, scale_factor, bounds: window_rect.clone(), delta_time: 0. };
+            modals::render_modal(&self.settings, &self.modal, &mut graphics);
 
         true
     }

@@ -1,7 +1,6 @@
-use crate::{colors::*, Actions, LogicalPosition, Rectangle, font::FONT_SIZE, ui::*};
+use crate::{colors::*, Actions, LogicalPosition, font::FONT_SIZE, ui::*};
 use crate::widgets::get_drawable_text;
 use crate::settings::SettingsFile;
-use speedy2d::Graphics2D;
 use crate::modals::outline_rectangle;
 use crate::input::InputType;
 use crate::utils::{Rect};
@@ -121,7 +120,7 @@ impl<'a, T: ?Sized> Iterator for FocusGroupIterator<'a, T> {
 }
 
 pub trait UiControl {
-    fn render(&self, graphics: &mut Graphics2D, settings: &SettingsFile, container: &Rect, label: &str, focused: bool);
+    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool);
     fn value(&self) -> &str;
     fn action(&mut self, action: &Actions);
 }
@@ -141,7 +140,7 @@ impl TextBox {
 }
 
 impl UiControl for TextBox {
-    fn render(&self, graphics: &mut Graphics2D, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
+    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
         let size = container.width() - LABEL_SIZE;
         let control = draw_label_and_box(graphics, settings, &container.top_left(), size, label, focused);
 
@@ -205,13 +204,13 @@ impl CheckBox {
 }
 
 impl UiControl for CheckBox {
-    fn render(&self, graphics: &mut Graphics2D, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
+    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
         let control = draw_label_and_box(graphics, settings, &container.top_left(), FONT_SIZE, label, focused);
 
         if self.checked {
             let base = crate::colors::get_accent_color(settings);
 
-            graphics.draw_rectangle(Rectangle::from_tuples((control.left() + 4., control.top() + 4.), (control.right() - 4., control.bottom() - 4.)), base)
+            graphics.draw_rectangle(Rect::from_tuples((control.left() + 4., control.top() + 4.), (control.right() - 4., control.bottom() - 4.)), base)
         }
     }
 
@@ -226,7 +225,7 @@ impl UiControl for CheckBox {
     }
 }
 
-fn draw_label_and_box(graphics: &mut Graphics2D, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str, focused: bool) -> Rect {
+fn draw_label_and_box(graphics: &mut crate::Graphics, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str, focused: bool) -> Rect {
     let label = get_drawable_text(FONT_SIZE, label);
     graphics.draw_text(*pos, get_font_color(settings), &label); 
 
@@ -236,11 +235,11 @@ fn draw_label_and_box(graphics: &mut Graphics2D, settings: &SettingsFile, pos: &
     let control = Rect::new(min, max);
     let base = crate::colors::get_accent_color(settings);
     let factor = settings.get_f32(crate::SettingNames::DarkShadeFactor);
-    graphics.draw_rectangle(control.into(), change_brightness(&base, factor));
+    graphics.draw_rectangle(control, change_brightness(&base, factor));
     
     if focused {
         let light_factor = settings.get_f32(crate::SettingNames::LightShadeFactor);
-        outline_rectangle(graphics, &control.into(), 1., change_brightness(&base, light_factor));
+        outline_rectangle(graphics, &control, 1., change_brightness(&base, light_factor));
     }
     control
 }

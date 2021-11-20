@@ -1,4 +1,3 @@
-use speedy2d::Graphics2D;
 use crate::Transparent;
 use crate::{YaffeState, LogicalPosition, LogicalSize, PhysicalSize};
 use crate::colors::*;
@@ -54,7 +53,12 @@ impl AppTile {
     }
 
 
-    pub fn render(&mut self, settings: &crate::settings::SettingsFile, focused: bool, animation: f32, exe: &crate::Executable, piet: &mut Graphics2D) {
+    pub fn render(&mut self, 
+                  settings: &crate::settings::SettingsFile, 
+                  focused: bool, 
+                  animation: f32, 
+                  exe: &crate::Executable, 
+                  graphics: &mut crate::Graphics) {
         if !self.is_visible() { return; }
 
         let mut target_size = self.size;
@@ -83,16 +87,16 @@ impl AppTile {
             //Outline background
             let rect_start = position - LogicalSize::new(ROM_OUTLINE_SIZE, ROM_OUTLINE_SIZE);
             let rect_size = LogicalSize::new(target_size.x + ROM_OUTLINE_SIZE * 2., target_size.y + height + ROM_OUTLINE_SIZE * 2.);
-            piet.draw_rectangle(Rect::point_and_size(rect_start, rect_size).into(), MODAL_BACKGROUND.with_alpha(alpha * 0.94));
+            graphics.draw_rectangle(Rect::point_and_size(rect_start, rect_size), MODAL_BACKGROUND.with_alpha(alpha * 0.94));
 
-            piet.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
+            graphics.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
 
             //Help
             let text = super::get_drawable_text(crate::font::FONT_SIZE, "Info");
-            menu_position = super::right_aligned_text(piet, menu_position, Some(Images::ButtonX), get_font_color(settings).with_alpha(alpha), text).shift_x(-5.);
+            menu_position = super::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), get_font_color(settings).with_alpha(alpha), text).shift_x(-5.);
 
             let text = super::get_drawable_text(crate::font::FONT_SIZE, "Run");
-            super::right_aligned_text(piet, menu_position, Some(Images::ButtonA), get_font_color(settings).with_alpha(alpha), text);
+            super::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), get_font_color(settings).with_alpha(alpha), text);
         }
 
         use crate::assets::{request_asset_image, request_image, Images};
@@ -101,10 +105,10 @@ impl AppTile {
         let slot = &mut slot.borrow_mut();
 
         let mut queue = self.queue.borrow_mut();
-        if let Some(i) = request_asset_image(piet, &mut queue, slot) {
-            i.render(piet, Rect::point_and_size(position, target_size).into());
-        } else if let Some(i) = request_image(piet, &mut queue, Images::Placeholder) {
-            i.render(piet, Rect::point_and_size(position, target_size).into());
+        if let Some(i) = request_asset_image(graphics, &mut queue, slot) {
+            i.render(graphics, Rect::point_and_size(position, target_size));
+        } else if let Some(i) = request_image(graphics, &mut queue, Images::Placeholder) {
+            i.render(graphics, Rect::point_and_size(position, target_size));
         }
     }
 

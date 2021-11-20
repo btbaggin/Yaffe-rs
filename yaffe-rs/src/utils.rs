@@ -23,11 +23,6 @@ impl LogicalPosition {
         PhysicalPosition::new(x, y)
     }
 }
-impl From<LogicalPosition> for Vector2<f32> {
-    fn from(other: LogicalPosition) -> Self {
-        Vector2::new(other.x, other.y)
-    }
-}
 impl std::ops::Add for LogicalPosition {
     type Output = LogicalPosition;
 
@@ -82,6 +77,11 @@ impl PhysicalPosition {
         LogicalPosition::new(x, y)
     }
 }
+impl From<PhysicalPosition> for Vector2<f32> {
+    fn from(other: PhysicalPosition) -> Self {
+        Vector2::new(other.x, other.y)
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct Rect {
@@ -110,18 +110,17 @@ impl Rect {
         }
     }
     pub fn point_and_size(pos: LogicalPosition, size: LogicalSize) -> Self { Rect::new(pos, pos + size) }
-}
-impl From<Rect> for speedy2d::shape::Rectangle<f32> {
-    fn from(other: Rect) -> Self {
-        speedy2d::shape::Rectangle::from_tuples((other.top_left.x, other.top_left.y), (other.bottom_right.x, other.bottom_right.y))
-    }
-}
-impl From<&Rect> for speedy2d::shape::Rectangle<f32> {
-    fn from(other: &Rect) -> Self {
-        speedy2d::shape::Rectangle::from_tuples((other.top_left.x, other.top_left.y), (other.bottom_right.x, other.bottom_right.y))
-    }
-}
 
+    pub fn to_physical(self, scale_factor: f32) -> speedy2d::shape::Rectangle<f32> {
+        let top_left = self.top_left.to_physical(scale_factor);
+        let bottom_right = self.bottom_right.to_physical(scale_factor);
+
+        //TODO change to into
+        let top_left = speedy2d::dimen::Vector2::new(top_left.x, top_left.y);
+        let bottom_right = speedy2d::dimen::Vector2::new(bottom_right.x, bottom_right.y);
+        speedy2d::shape::Rectangle::new(top_left, bottom_right)
+    }
+}
 
 pub trait Transparent {
     fn with_alpha(&self, alpha: f32) -> Self;

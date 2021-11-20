@@ -1,14 +1,13 @@
-use speedy2d::Graphics2D;
 use crate::{YaffeState, widget, LogicalPosition};
 use crate::colors::*;
 use crate::assets::{Images};
-use crate::widgets::{Shifter, RenderState};
+use crate::widgets::Shifter;
 
 widget!(pub struct Toolbar {});
 impl super::Widget for Toolbar {
-    fn render(&mut self, graphics: &mut Graphics2D, state: &YaffeState, render_state: RenderState) { 
+    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) { 
         let time = chrono::Local::now();
-        let rect = render_state.bounds;
+        let rect = graphics.bounds;
 
         //Draw time
         let time_string = time.format("%I:%M%p");

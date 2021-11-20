@@ -3,7 +3,7 @@ use std::time::Instant;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
-use speedy2d::shape::Rectangle;
+use speedy2d::color::Color;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 
 #[macro_use]
@@ -97,6 +97,30 @@ use job_system::{JobQueue, JobType, RawDataPointer};
 use input::Actions;
 pub use crate::settings::SettingNames;
 pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect};
+
+pub struct Graphics<'a> {
+    pub graphics: &'a mut speedy2d::Graphics2D,
+    pub scale_factor: f32,
+    pub bounds: Rect,
+    delta_time: f32,
+}
+impl<'a> Graphics<'a> {
+    pub fn physical_bounds(&self) -> speedy2d::shape::Rectangle<f32> {
+        self.bounds.to_physical(self.scale_factor)
+    }
+    pub fn delta_time(&self) -> f32 {
+        self.delta_time
+    }
+    pub fn draw_rectangle(&mut self, rect: Rect, color: Color) {
+        self.graphics.draw_rectangle(rect.to_physical(self.scale_factor), color);
+    }
+    pub fn draw_text(&mut self, position: LogicalPosition, color: Color, text: &Rc<speedy2d::font::FormattedTextBlock>) {
+        self.graphics.draw_text(position.to_physical(self.scale_factor), color, text);
+    }
+    pub fn draw_line(&mut self, pos1: LogicalPosition, pos2: LogicalPosition, width: f32, color: Color) {
+        self.graphics.draw_line(pos1.to_physical(self.scale_factor), pos2.to_physical(self.scale_factor), width, color);
+    }
+}
 
 pub struct Platform {
     id: Option<i64>,
@@ -193,15 +217,17 @@ impl windowing::WindowHandler for WidgetTree {
                 self.data.refresh_list = false;
             }
 
+            let mut graphics = Graphics { graphics, scale_factor, bounds: window_rect.clone(), delta_time };
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(graphics, window_rect.clone(), delta_time, scale_factor);
+            self.render_all(&mut graphics);
 
             crate::widgets::animations::run_animations(self, delta_time);
 
             //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
-                modals::render_modal(&self.data.settings, m, &window_rect, graphics);
+                graphics.bounds = window_rect;
+                modals::render_modal(&self.data.settings, m, &mut graphics);
             }
         }
 

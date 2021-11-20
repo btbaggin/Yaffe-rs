@@ -1,4 +1,3 @@
-use speedy2d::Graphics2D;
 use crate::{Actions, LogicalPosition, Rect, colors::*, font::*, ui::*};
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::{RestrictedPasscode, PasscodeEquality, passcodes_equal};
@@ -32,10 +31,10 @@ impl ModalContent for SetRestrictedModal {
         ModalResult::None
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let item_label = crate::widgets::get_drawable_text(FONT_SIZE, "*");
         for i in 0..self.pass.len() {
-            piet.draw_text(LogicalPosition::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
+            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }
@@ -87,10 +86,10 @@ impl ModalContent for VerifyRestrictedModal {
         ModalResult::None
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, piet: &mut Graphics2D) {
+    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let item_label = crate::widgets::get_drawable_text(FONT_SIZE, "*");
         for i in 0..self.pass.len() {
-            piet.draw_text(LogicalPosition::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
+            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }
