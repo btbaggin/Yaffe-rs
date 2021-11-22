@@ -6,6 +6,11 @@ use std::cell::RefCell;
 use speedy2d::color::Color;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 
+/* 
+ * TODO
+ * some sort of setting caching at the beginning of each frame
+*/
+
 #[macro_use]
 extern crate dlopen_derive;
 

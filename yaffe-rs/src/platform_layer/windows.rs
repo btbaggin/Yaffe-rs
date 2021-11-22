@@ -140,11 +140,7 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 										std::ptr::null_mut()))?;
 
 	let working_path = std::fs::canonicalize(".").unwrap();
-	let path = if cfg!(debug_assertions) {
-		std::fs::canonicalize("./target/debug/Yaffe-rs.exe").unwrap()
-	} else {
-		std::fs::canonicalize(".Yaffe-rs.exe").unwrap()
-	};
+	let path = std::fs::canonicalize(".Yaffe-rs.exe").unwrap();
 
     let mut p_service: ComPtr<ITaskService> = ComPtr::default();
 	safe_com_call!(CoCreateInstance(&TaskScheduler::uuidof(), 

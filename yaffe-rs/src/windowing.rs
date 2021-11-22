@@ -59,7 +59,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> PhysicalSize {
 
     use crate::logger::PanicLogEntry;
-    //TODO WSL seems to require vsync
+    //WSL seems to require vsync
     let windowed_context = glutin::ContextBuilder::new().with_vsync(true).build_windowed(builder, event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
