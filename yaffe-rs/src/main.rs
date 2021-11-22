@@ -57,13 +57,8 @@ pub mod colors {
 }
 
 pub mod font {
-    pub const FONT_SIZE: f32 = 24.;
-    pub fn get_font_size(state: &crate::YaffeState, graphics: &crate::Graphics) -> f32 {
-        //TODO scale factor
-        state.settings.get_f32(crate::SettingNames::InfoFontSize) * graphics.scale_factor
-    }
-    pub fn get_title_font_size(state: &crate::YaffeState, graphics: &crate::Graphics) -> f32 {
-        state.settings.get_f32(crate::SettingNames::TitleFontSize) * graphics.scale_factor
+    pub fn get_font_size(settings: &crate::settings::SettingsFile, graphics: &crate::Graphics) -> f32 {
+        settings.get_f32(crate::SettingNames::InfoFontSize) * graphics.scale_factor
     }
 }
 
@@ -97,7 +92,7 @@ use modals::{display_modal};
 use job_system::{JobQueue, JobType, RawDataPointer};
 use input::Actions;
 pub use crate::settings::SettingNames;
-pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect};
+pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect, LogicalFont};
 
 pub struct Graphics<'a> {
     graphics: &'a mut speedy2d::Graphics2D,

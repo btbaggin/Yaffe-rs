@@ -39,12 +39,12 @@ impl ListItem for String {
 
 impl<T: 'static + ListItem> ModalContent for ListModal<T> {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, _: f32) -> f32 {
+    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 { 
         let mut count = self.items.len();
         if let Some(_) = self.title {
             count += 1;
         }
-        count as f32 * 30.
+        count as f32 * crate::font::get_font_size(settings, graphics)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -63,12 +63,13 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let mut pos = *rect.top_left();
+        let font_size = crate::font::get_font_size(settings, graphics);
 
         //Title
         if let Some(t) = &self.title {
-            let title_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &t);
+            let title_label = crate::widgets::get_drawable_text(font_size, &t);
             graphics.draw_text(pos, get_font_color(settings), &title_label);
-            pos.y += 30.;
+            pos.y += font_size;
         }
 
         //Item list
@@ -76,13 +77,13 @@ impl<T: 'static + ListItem> ModalContent for ListModal<T> {
             let display = item.to_display();
 
             if self.index == i {
-                let rect = Rect::point_and_size(pos, LogicalSize::new(rect.width(), 30.));
+                let rect = Rect::point_and_size(pos, LogicalSize::new(rect.width(), font_size));
                 graphics.draw_rectangle(rect, get_accent_color(settings));
             }
 
-            let item_label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &display);
+            let item_label = crate::widgets::get_drawable_text(font_size, &display);
             graphics.draw_text(pos, get_font_color(settings), &item_label);
-            pos.y += 30.;
+            pos.y += font_size;
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::{font::*, ui::*, YaffeState, Actions, Rect};
+use crate::{ui::*, YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::controls::*;
 use crate::logger::{UserMessage, LogEntry};
@@ -40,16 +40,17 @@ impl SettingsModal {
 
 impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, _: f32) -> f32 {
-        (FONT_SIZE + MARGIN) * self.settings.len() as f32
+    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 {
+        (crate::font::get_font_size(settings, graphics) + MARGIN) * self.settings.len() as f32
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let mut y = rect.top();
+        let font_size = crate::font::get_font_size(settings, graphics);
         for (k, v) in &self.settings {
-            let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + FONT_SIZE));
+            let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + font_size));
             v.render(graphics, settings, &rect, &k, self.settings.is_focused(&v));
-            y += FONT_SIZE + MARGIN;
+            y += font_size + MARGIN;
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize};
+use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, LogicalFont};
 use crate::colors::*;
 
 const SEARCH_OPTION_NONE: i32 = 0;
@@ -146,7 +146,7 @@ impl super::Widget for SearchBar {
         };
         
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
-
+        let font_size = crate::font::get_font_size(&state.settings, graphics);
 
         graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
@@ -167,9 +167,9 @@ impl super::Widget for SearchBar {
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
 
-        let name_label = super::get_drawable_text(crate::font::FONT_SIZE, &name);
-        let half = name_label.width() / 2.;
-        graphics.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - crate::font::FONT_SIZE / 2.), focused_color, &name_label);
+        let name_label = super::get_drawable_text(font_size, &name);
+        let half = name_label.logical_width(graphics) / 2.;
+        graphics.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - name_label.logical_height(graphics) / 2.), focused_color, &name_label);
 
         const ARROW_SIZE: f32 = 10.;
         const ARROW_HEIGHT: f32 = 5.;
@@ -192,9 +192,9 @@ impl super::Widget for SearchBar {
             //If there are no items that match a certain filter we will draw it unfocused
             let bit = i - start;
             let color = if mask & 1 << bit != 0 { focused_color.clone() } else { get_font_unfocused_color(&state.settings) };
-            let item_label = super::get_drawable_text(crate::font::FONT_SIZE, &String::from(i as char));
+            let item_label = super::get_drawable_text(font_size, &String::from(i as char));
             
-            let label_half = LogicalSize::new(item_label.width() / 2., item_label.height() / 2.);
+            let label_half = LogicalSize::new(item_label.logical_width(graphics) / 2., item_label.logical_height(graphics) / 2.);
             graphics.draw_text(LogicalPosition::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);
          }
     }

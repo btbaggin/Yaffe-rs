@@ -1,4 +1,4 @@
-use crate::{colors::*, Actions, LogicalPosition, font::FONT_SIZE, ui::*};
+use crate::{colors::*, Actions, LogicalPosition, ui::*};
 use crate::widgets::get_drawable_text;
 use crate::settings::SettingsFile;
 use crate::modals::outline_rectangle;
@@ -141,14 +141,15 @@ impl TextBox {
 
 impl UiControl for TextBox {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
+        let font_size = crate::font::get_font_size(settings, graphics);
         let size = container.width() - LABEL_SIZE;
         let control = draw_label_and_box(graphics, settings, &container.top_left(), size, label, focused);
 
-        let text = get_drawable_text(FONT_SIZE, &self.text);
+        let text = get_drawable_text(font_size, &self.text);
         graphics.draw_text(*control.top_left(), get_font_color(settings), &text);
 
         if focused {
-            let text = get_drawable_text(FONT_SIZE, &self.text[0..self.caret]);
+            let text = get_drawable_text(font_size, &self.text[0..self.caret]);
             let x = control.left() + text.width();
             
             graphics.draw_line(LogicalPosition::new(x, control.top() + 2.), LogicalPosition::new(x, control.bottom() - 2.), 2., get_font_color(settings));
@@ -205,7 +206,7 @@ impl CheckBox {
 
 impl UiControl for CheckBox {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
-        let control = draw_label_and_box(graphics, settings, &container.top_left(), FONT_SIZE, label, focused);
+        let control = draw_label_and_box(graphics, settings, &container.top_left(), crate::font::get_font_size(settings, graphics), label, focused);
 
         if self.checked {
             let base = crate::colors::get_accent_color(settings);
@@ -226,11 +227,12 @@ impl UiControl for CheckBox {
 }
 
 fn draw_label_and_box(graphics: &mut crate::Graphics, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str, focused: bool) -> Rect {
-    let label = get_drawable_text(FONT_SIZE, label);
+    let font_size = crate::font::get_font_size(settings, graphics);
+    let label = get_drawable_text(font_size, label);
     graphics.draw_text(*pos, get_font_color(settings), &label); 
 
     let min = LogicalPosition::new(pos.x + LABEL_SIZE, pos.y);
-    let max = LogicalPosition::new(pos.x + LABEL_SIZE + size, pos.y + FONT_SIZE);
+    let max = LogicalPosition::new(pos.x + LABEL_SIZE + size, pos.y + font_size);
 
     let control = Rect::new(min, max);
     let base = crate::colors::get_accent_color(settings);

@@ -54,7 +54,7 @@ impl Modal {
 
 pub trait ModalContent {
     fn as_any(&self) -> &dyn std::any::Any;
-    fn get_height(&self, width: f32) -> f32;
+    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, width: f32) -> f32;
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics);
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult { 
         default_modal_action(action)
@@ -74,13 +74,13 @@ impl MessageModalContent {
 }
 impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, width: f32) -> f32 { 
-        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &self.message, width);
+    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, width: f32) -> f32 { 
+        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::get_font_size(settings, graphics), &self.message, width);
         name_label.height()
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &self.message, rect.width());
+        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::get_font_size(settings, graphics), &self.message, rect.width() * graphics.scale_factor);
         graphics.draw_text(*rect.top_left(), get_font_color(settings), &name_label);
     }
 }
@@ -164,15 +164,15 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, gra
     let content_size = match modal.size {
         ModalSize::Third => {
             let width = rect.width() * 0.33;
-            LogicalSize::new(width, modal.content.get_height(width))
+            LogicalSize::new(width, modal.content.get_height(settings, graphics, width))
         }
         ModalSize::Half => {
             let width = rect.width() * 0.5;
-            LogicalSize::new(width, modal.content.get_height(width))
+            LogicalSize::new(width, modal.content.get_height(settings, graphics, width))
         }
         ModalSize::Full => {
             let width = rect.width();
-            LogicalSize::new(width, modal.content.get_height(width))
+            LogicalSize::new(width, modal.content.get_height(settings, graphics, width))
         }
     };
 
@@ -200,7 +200,7 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, gra
     let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE));
     graphics.draw_rectangle(titlebar, titlebar_color);
 
-    let title_text = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, &modal.title);
+    let title_text = crate::widgets::get_drawable_text(crate::font::get_font_size(settings, graphics), &modal.title);
     graphics.draw_text(LogicalPosition::new(titlebar_pos.x + crate::ui::MARGIN, titlebar_pos.y), get_font_color(settings), &title_text);
 
     //Icon

@@ -1,5 +1,5 @@
-use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, Rect};
-use crate::{colors::*, ui::*, font::*};
+use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, LogicalFont, Rect};
+use crate::{colors::*, ui::*};
 use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, on_settings_close, ModalSize, display_modal};
 
 widget!(pub struct PlatformList {});
@@ -52,10 +52,12 @@ impl super::Widget for PlatformList {
         graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
 
         //Title
-        let title = crate::widgets::get_drawable_text(get_title_font_size(state, graphics), "Yaffe");
-        graphics.draw_text(LogicalPosition::new(rect.width() - title.width() - 30., MARGIN), get_font_color(&state.settings), &title);
+        let title = crate::widgets::get_drawable_text(32. * graphics.scale_factor, "Yaffe");
+        graphics.draw_text(LogicalPosition::new(rect.width() - title.logical_width(graphics) - MARGIN, MARGIN), get_font_color(&state.settings), &title);
 
         let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
+
+        let font_size = crate::font::get_font_size(&state.settings, graphics);
 
         let selected_index = state.selected_platform;
         let right = rect.right();
@@ -68,10 +70,10 @@ impl super::Widget for PlatformList {
                 plat_kind = p.kind as i32;
             }
 
-            let name_label = super::get_drawable_text(FONT_SIZE, &p.name);
+            let name_label = super::get_drawable_text(font_size, &p.name);
             
             //Highlight bar
-            let height = name_label.height();
+            let height = name_label.logical_height(graphics);
             if i == selected_index {
                 let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
@@ -84,7 +86,7 @@ impl super::Widget for PlatformList {
     
             if let PlatformType::Emulator = p.kind {
                 //Count
-                let num_label = super::get_drawable_text(FONT_SIZE, &p.apps.len().to_string());
+                let num_label = super::get_drawable_text(font_size, &p.apps.len().to_string());
                 graphics.draw_text(LogicalPosition::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
             }
             y += height;

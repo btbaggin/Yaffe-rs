@@ -1,5 +1,5 @@
 use crate::Transparent;
-use crate::{YaffeState, LogicalPosition, LogicalSize, PhysicalSize};
+use crate::{YaffeState, LogicalPosition, LogicalSize, LogicalFont, PhysicalSize};
 use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
@@ -68,6 +68,7 @@ impl AppTile {
             // let animation_remainder = (ANIMATION_TIME - self.time) / ANIMATION_TIME;
             //Have alpha fade in as the time grows to full size
             let alpha = f32::powf(animation, 2.);
+            let font_size = crate::font::get_font_size(settings, graphics);
 
             target_size = target_size * (1. + animation * SELECTED_SCALAR);
             position = position - (target_size - self.size) / 2.;
@@ -75,13 +76,13 @@ impl AppTile {
             //Position of the text and buttons for the focused game
             let mut menu_position = LogicalPosition::new(position.x + target_size.x, position.y + target_size.y + 2.);
 
-            let name = super::get_drawable_text_with_wrap(crate::font::FONT_SIZE, &exe.name, target_size.x);
-            let mut height = name.height();
+            let name = super::get_drawable_text_with_wrap(font_size, &exe.name, target_size.x);
+            let mut height = name.logical_height(graphics);
 
 			//Check if we need to push the buttons below the text due to overlap
-			if name.width() > target_size.x * 0.5 {
+			if name.logical_width(graphics) > target_size.x * 0.5 {
                 menu_position.y += height;
-                height += name.height();
+                height += name.logical_height(graphics);
             }
 
             //Outline background
@@ -92,10 +93,10 @@ impl AppTile {
             graphics.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
 
             //Help
-            let text = super::get_drawable_text(crate::font::FONT_SIZE, "Info");
+            let text = super::get_drawable_text(font_size, "Info");
             menu_position = super::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), get_font_color(settings).with_alpha(alpha), text).shift_x(-5.);
 
-            let text = super::get_drawable_text(crate::font::FONT_SIZE, "Run");
+            let text = super::get_drawable_text(font_size, "Run");
             super::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), get_font_color(settings).with_alpha(alpha), text);
         }
 

@@ -1,4 +1,4 @@
-use crate::{Actions, LogicalPosition, Rect, colors::*, font::*, ui::*};
+use crate::{Actions, LogicalPosition, Rect, colors::*, ui::*};
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::{RestrictedPasscode, PasscodeEquality, passcodes_equal};
 use std::hash::{Hash, Hasher};
@@ -18,7 +18,9 @@ impl SetRestrictedModal {
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, _: f32) -> f32 { FONT_SIZE + MARGIN }
+    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 { 
+        crate::font::get_font_size(settings, graphics) + MARGIN
+    }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         let code = match action {
@@ -32,9 +34,11 @@ impl ModalContent for SetRestrictedModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let item_label = crate::widgets::get_drawable_text(FONT_SIZE, "*");
+        let font_size = crate::font::get_font_size(settings, graphics);
+
+        let item_label = crate::widgets::get_drawable_text(font_size, "*");
         for i in 0..self.pass.len() {
-            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
+            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * font_size, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }
@@ -62,7 +66,9 @@ impl VerifyRestrictedModal {
 
 impl ModalContent for VerifyRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, _: f32) -> f32 { FONT_SIZE + MARGIN }
+    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 { 
+        crate::font::get_font_size(settings, graphics) + MARGIN 
+    }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         //Get the key (or action which can be translated to a key)
@@ -87,9 +93,10 @@ impl ModalContent for VerifyRestrictedModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let item_label = crate::widgets::get_drawable_text(FONT_SIZE, "*");
+        let font_size = crate::font::get_font_size(settings, graphics);
+        let item_label = crate::widgets::get_drawable_text(font_size, "*");
         for i in 0..self.pass.len() {
-            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * FONT_SIZE, rect.top()), get_font_color(settings), &item_label);
+            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * font_size, rect.top()), get_font_color(settings), &item_label);
         }
     }
 }

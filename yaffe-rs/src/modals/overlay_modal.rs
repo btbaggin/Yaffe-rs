@@ -22,8 +22,8 @@ impl OverlayModal {
 
 impl ModalContent for OverlayModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, _: f32) -> f32 {
-        32.
+    fn get_height(&self, _: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 {
+        32. * graphics.scale_factor
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -42,7 +42,7 @@ impl ModalContent for OverlayModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let label = crate::widgets::get_drawable_text(crate::font::FONT_SIZE, "Volume:");
+        let label = crate::widgets::get_drawable_text(crate::font::get_font_size(settings, graphics), "Volume:");
         graphics.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
 
         //Background rectangle
