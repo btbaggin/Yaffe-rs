@@ -11,8 +11,9 @@ mod os;
 
 #[derive(Debug)]
 pub enum StartupError {
-    Com((&'static str, i32)),
+    AccessDenied,
     File(std::io::Error),
+    Other(String),
 }
 
 impl From<std::io::Error> for StartupError {
@@ -21,9 +22,9 @@ impl From<std::io::Error> for StartupError {
     }
 }
 
-impl From<(&'static str, i32)> for StartupError {
-   fn from(v: (&'static str, i32)) -> Self {
-        StartupError::Com(v)
+impl From<String> for StartupError {
+   fn from(v: String) -> Self {
+        StartupError::Other(v)
     }
 }
 

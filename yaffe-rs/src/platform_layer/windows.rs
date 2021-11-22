@@ -1,6 +1,5 @@
 use winapi::um::taskschd::*;
 use winapi::um::combaseapi::*;
-use winapi::shared::rpcdce::{RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IMPERSONATE};
 use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
 use winapi::shared::minwindef::{WORD, BYTE, DWORD, FALSE};
 use winapi::shared::winerror::{ERROR_SUCCESS, ERROR_DEVICE_NOT_CONNECTED};
@@ -85,29 +84,21 @@ macro_rules! safe_com_call {
 		let hr = unsafe { $method($($parm)*) };
 		match hr {
 			0 => Ok(()),
-			_ => Err((stringify!($method), hr)),
+			winapi::shared::winerror::E_ACCESSDENIED => Err(crate::platform_layer::StartupError::AccessDenied),
+			_ => Err(crate::platform_layer::StartupError::Other(format!("{}: {}", stringify!($method), hr))),
 		}
 	}};
 	($object:ident.$method:ident($($parm:tt)*)) => {{
 		let hr = unsafe { $object.$method($($parm)*) };
 		match hr {
 			0 => Ok(()),
-			_ => Err((stringify!($method), hr)),
+			winapi::shared::winerror::E_ACCESSDENIED => Err(crate::platform_layer::StartupError::AccessDenied),
+			_ => Err(crate::platform_layer::StartupError::Other(format!("{}: {}", stringify!($method), hr))),
 		}
 	}};
 }
 
 pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
-	safe_com_call!(CoInitializeSecurity(std::ptr::null_mut(), 
-										-1, 
-										std::ptr::null_mut(), 
-										std::ptr::null_mut(), 
-										RPC_C_AUTHN_LEVEL_PKT_PRIVACY, 
-										RPC_C_IMP_LEVEL_IMPERSONATE, 
-										std::ptr::null_mut(), 
-										0, 
-										std::ptr::null_mut()))?;
-
     let mut p_service: ComPtr<ITaskService> = ComPtr::default();
 	safe_com_call!(CoCreateInstance(&TaskScheduler::uuidof(), 
 									std::ptr::null_mut(), 
@@ -129,18 +120,13 @@ pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
 
 pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 	unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
-	safe_com_call!(CoInitializeSecurity(std::ptr::null_mut(), 
-										-1, 
-										std::ptr::null_mut(), 
-										std::ptr::null_mut(), 
-										RPC_C_AUTHN_LEVEL_PKT_PRIVACY, 
-										RPC_C_IMP_LEVEL_IMPERSONATE, 
-										std::ptr::null_mut(), 
-										0, 
-										std::ptr::null_mut()))?;
 
 	let working_path = std::fs::canonicalize(".").unwrap();
-	let path = std::fs::canonicalize(".Yaffe-rs.exe").unwrap();
+	let path = if cfg!(debug_assertions) {
+		std::fs::canonicalize("./target/debug/Yaffe-rs.exe").unwrap()
+	} else {
+		std::fs::canonicalize(".Yaffe-rs.exe").unwrap()
+	};
 
     let mut p_service: ComPtr<ITaskService> = ComPtr::default();
 	safe_com_call!(CoCreateInstance(&TaskScheduler::uuidof(), 
@@ -205,17 +191,16 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 				let mut var: winapi::um::oaidl::VARIANT = std::mem::zeroed();
 				let mut n2 = var.n1.n2_mut();
 				n2.vt = winapi::shared::wtypes::VT_BSTR.try_into().unwrap();
-				let mut n3 = n2.n3.bstrVal_mut();
+				let n3 = n2.n3.bstrVal_mut();
 				
 				use std::iter::once;
 				let wide: Vec<u16> = std::ffi::OsStr::new(string).encode_wide().chain(once(0)).collect();
-				let mut root = winapi::um::oleauto::SysAllocString(wide.as_ptr());
-				n3 = &mut root;
+				let root = winapi::um::oleauto::SysAllocString(wide.as_ptr());
+				*n3 = root;
 				var
 			}
 		}
 
-		//TODO this method call doesnt work
 		//There is also a memory leak when this call fails
 		let mut group = bstr_variant("Builtin\\Administrators");
 		let mut s = bstr_variant("");

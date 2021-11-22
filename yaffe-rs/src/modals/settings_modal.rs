@@ -70,11 +70,9 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
 
         //Update settings values
         for (name, control) in &content.settings {
-            if name == "run_at_startup_REMOVE_ME" { //TODO fix set_run_at_startup and remove
+            if name == "run_at_startup" {
                 let value = bool::from_str(control.value()).unwrap();
                 crate::platform_layer::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state);
-            } else if name == "run_at_startup" {
-
             } else {
                 state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state);
             }
