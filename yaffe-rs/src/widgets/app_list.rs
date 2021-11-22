@@ -143,7 +143,7 @@ impl AppList {
         }
     }
 
-    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &speedy2d::shape::Rectangle) -> (isize, isize, PhysicalSize) {
+    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &crate::PhysicalRect) -> (isize, isize, PhysicalSize) {
         let mut width = 0.;
         let mut height = 0.;
         let mut tiles_x = 1;

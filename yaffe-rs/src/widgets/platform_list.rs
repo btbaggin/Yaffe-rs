@@ -52,7 +52,7 @@ impl super::Widget for PlatformList {
         graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
 
         //Title
-        let title = crate::widgets::get_drawable_text(get_title_font_size(state), "Yaffe");
+        let title = crate::widgets::get_drawable_text(get_title_font_size(state, graphics), "Yaffe");
         graphics.draw_text(LogicalPosition::new(rect.width() - title.width() - 30., MARGIN), get_font_color(&state.settings), &title);
 
         let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };

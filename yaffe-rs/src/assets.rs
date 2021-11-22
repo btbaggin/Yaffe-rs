@@ -3,8 +3,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::rc::Rc;
 use std::cell::RefCell;
 use speedy2d::Graphics2D;
-use speedy2d::shape::Rectangle;
-use crate::PhysicalSize;
+use crate::{PhysicalSize, PhysicalRect};
 use crate::job_system::JobQueue;
 use crate::logger::PanicLogEntry;
 use speedy2d::font::*;
@@ -119,7 +118,7 @@ impl AssetSlot {
 }
 pub struct YaffeTexture {
     image: Rc<ImageHandle>,
-    bounds: Option<Rectangle>,
+    bounds: Option<PhysicalRect>,
 }
 impl YaffeTexture {
     pub fn render(&self, graphics: &mut crate::Graphics, rect: crate::Rect) {
@@ -358,7 +357,7 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
     }
 }
 
-fn read_texture_atlas(path: &str) -> Vec<(String, Rectangle)> {
+fn read_texture_atlas(path: &str) -> Vec<(String, PhysicalRect)> {
     use std::convert::TryInto;
 
     macro_rules! read_type {
@@ -395,7 +394,7 @@ fn read_texture_atlas(path: &str) -> Vec<(String, Rectangle)> {
         let height = (y + image_height) as f32 / total_height;
         let x = x as f32 / total_width;
         let y = y as f32 / total_height;
-        result.push((name, Rectangle::from_tuples((x, y), (width, height))));
+        result.push((name, PhysicalRect::from_tuples((x, y), (width, height))));
     }
 
     result

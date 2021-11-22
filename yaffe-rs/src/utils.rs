@@ -89,6 +89,8 @@ pub struct Rect {
     bottom_right: LogicalPosition,
 }
 
+pub type PhysicalRect = speedy2d::shape::Rectangle<f32>;
+
 impl Rect {
     pub fn left(&self) -> f32 { self.top_left.x }
     pub fn right(&self) -> f32 { self.bottom_right.x }
@@ -111,14 +113,11 @@ impl Rect {
     }
     pub fn point_and_size(pos: LogicalPosition, size: LogicalSize) -> Self { Rect::new(pos, pos + size) }
 
-    pub fn to_physical(self, scale_factor: f32) -> speedy2d::shape::Rectangle<f32> {
+    pub fn to_physical(self, scale_factor: f32) -> PhysicalRect {
         let top_left = self.top_left.to_physical(scale_factor);
         let bottom_right = self.bottom_right.to_physical(scale_factor);
 
-        //TODO change to into
-        let top_left = speedy2d::dimen::Vector2::new(top_left.x, top_left.y);
-        let bottom_right = speedy2d::dimen::Vector2::new(bottom_right.x, bottom_right.y);
-        speedy2d::shape::Rectangle::new(top_left, bottom_right)
+        PhysicalRect::new(top_left.into(), bottom_right.into())
     }
 }
 

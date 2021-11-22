@@ -117,7 +117,7 @@ macro_rules! stringy_enum {
 
 stringy_enum! {
     pub enum SettingNames {
-        InfoFontSize("info_font_size") = SettingValue::F32(18.),
+        InfoFontSize("info_font_size") = SettingValue::F32(24.),
         TitleFontSize("title_font_size") = SettingValue::F32(32.),
         LightShadeFactor("light_shade_factor") = SettingValue::F32(0.3),
         DarkShadeFactor("dark_shade_factor") = SettingValue::F32(-0.6),
