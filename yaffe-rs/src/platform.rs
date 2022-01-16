@@ -180,7 +180,9 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                     
                     let id = platform.id.unwrap();
                     let state_ptr = crate::RawDataPointer::new(state);
-                    let mut queue = state.queue.borrow_mut();
+
+                    let lock = state.queue.lock().log_and_panic();
+                    let mut queue = lock.borrow_mut();
                     if let Ok((name, overview, players, rating)) = get_game_info(id, &file) {
 
                         let (boxart, banner) = crate::assets::get_asset_path(&platform.name, &name);
@@ -259,7 +261,8 @@ pub fn insert_game(state: &mut YaffeState, data: &crate::database::GameData) {
     let plat_name = crate::database::get_platform_name(data.platform).unwrap();
 
     let (boxart, banner) = crate::assets::get_asset_path(&plat_name, &data.name);
-    let mut queue = state.queue.borrow_mut();
+    let lock = state.queue.lock().log_and_panic();
+    let mut queue = lock.borrow_mut();
     queue.send(crate::JobType::DownloadUrl((data.boxart.clone(), boxart)));
     queue.send(crate::JobType::DownloadUrl((data.banner.clone(), banner)));
 

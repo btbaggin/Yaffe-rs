@@ -76,7 +76,8 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
 
         let state_ptr = crate::RawDataPointer::new(state);
-        let mut queue = state.queue.borrow_mut();
+        let lock = state.queue.lock().log_and_panic();
+        let mut queue = lock.borrow_mut();
 
         let name = content.controls.by_tag("Name").unwrap();
         let exe = content.controls.by_tag("Executable").unwrap();

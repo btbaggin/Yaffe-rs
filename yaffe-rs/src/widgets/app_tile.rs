@@ -3,6 +3,7 @@ use crate::{YaffeState, LogicalPosition, LogicalSize, LogicalFont, PhysicalSize}
 use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
+use crate::logger::PanicLogEntry;
 
 pub const ANIMATION_TIME: f32 = 0.25;
 const SELECTED_SCALAR: f32 = 0.2;
@@ -11,14 +12,14 @@ const ROM_OUTLINE_SIZE: f32 = 7.5;
 const VISIBLE_FLAG: u8 = 0x01;
 
 pub struct AppTile { 
-    queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>,
+    queue: crate::ThreadSafeJobQueue,
     index: usize,
     flags: u8,
     pub position: LogicalPosition,
     pub size: LogicalSize,
 }
 impl AppTile {
-    pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, index: usize) -> AppTile {
+    pub fn new(q: crate::ThreadSafeJobQueue, index: usize) -> AppTile {
         AppTile { 
             queue: q,
             index: index,
@@ -105,7 +106,8 @@ impl AppTile {
         let slot = crate::assets::get_cached_file(&exe.boxart);
         let slot = &mut slot.borrow_mut();
 
-        let mut queue = self.queue.borrow_mut();
+        let lock = self.queue.lock().log_and_panic();
+        let mut queue = lock.borrow_mut();
         if let Some(i) = request_asset_image(graphics, &mut queue, slot) {
             i.render(graphics, Rect::point_and_size(position, target_size));
         } else if let Some(i) = request_image(graphics, &mut queue, Images::Placeholder) {

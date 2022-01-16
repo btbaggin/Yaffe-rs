@@ -212,7 +212,7 @@ macro_rules! intern_atom {
 pub(super) fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
     let mut result = None;
     unsafe {
-        let w = window.xlib_window().unwrap(); //TODO this shoudl be better than unwrap
+        let w = window.xlib_window().unwrap(); //TODO this should be better than unwrap
         let d = window.xlib_display().unwrap();
         let d = &mut *(d as *mut x11::xlib::_XDisplay);
 

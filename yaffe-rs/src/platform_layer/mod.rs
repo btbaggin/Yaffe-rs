@@ -56,3 +56,7 @@ pub fn initialize_gamepad() -> Result<impl PlatformGamepad, i32> {
 pub fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
     os::get_clipboard(window)
 }
+
+pub fn sanitize_file(file: &str) -> String {
+    os::sanitize_file(file)
+}

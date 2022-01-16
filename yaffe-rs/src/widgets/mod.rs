@@ -65,7 +65,7 @@ macro_rules! widget {
     }) => {
         #[allow(unused_variables)]
         pub struct $name { 
-            #[allow(dead_code)]queue: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>, 
+            #[allow(dead_code)]queue: crate::ThreadSafeJobQueue, 
             pub position: crate::LogicalPosition,
             pub size: crate::LogicalSize,
             $($element: $ty),* 
@@ -83,7 +83,7 @@ macro_rules! widget {
             fn get_id(&self) -> crate::widgets::WidgetId { std::any::TypeId::of::<$name>() }
         }
         impl $name {
-            pub fn new(q: std::sync::Arc<std::cell::RefCell<crate::JobQueue>>) -> $name {
+            pub fn new(q: crate::ThreadSafeJobQueue) -> $name {
                 $name { 
                     queue: q, 
                     position: crate::LogicalPosition::new(0., 0.),

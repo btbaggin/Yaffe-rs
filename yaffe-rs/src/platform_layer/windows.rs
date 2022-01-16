@@ -429,3 +429,7 @@ pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
 
 	Ok(volume)
 }
+
+pub fn sanitize_file(file: &str) -> String {
+	file.replace("\"", "").replace("*", "").replace("<", "").replace(">", "").replace("?", "").replace("\\", "").replace("/", "").replace(":", "")
+}

@@ -94,7 +94,7 @@ use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
 use modals::{display_modal};
-use job_system::{JobQueue, JobType, RawDataPointer};
+use job_system::{JobType, RawDataPointer};
 use input::Actions;
 pub use crate::settings::SettingNames;
 pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect, LogicalFont};
@@ -137,6 +137,7 @@ pub struct Executable {
     banner: crate::assets::AssetPathType,
 }
 
+type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<job_system::JobQueue>>>;
 pub struct YaffeState {
     overlay: Rc<RefCell<OverlayWindow>>,
     selected_platform: usize,
@@ -145,7 +146,7 @@ pub struct YaffeState {
     plugins: Vec<RefCell<plugins::Plugin>>,
     focused_widget: widgets::WidgetId,
     modals: std::sync::Mutex<Vec<modals::Modal>>,
-    queue: Arc<RefCell<job_system::JobQueue>>,
+    queue: ThreadSafeJobQueue,
     search_info: widgets::SearchInfo,
     restricted_mode: RestrictedMode,
     restricted_last_approve: Option<Instant>,
@@ -156,7 +157,7 @@ pub struct YaffeState {
 impl YaffeState {
     fn new(overlay: Rc<RefCell<OverlayWindow>>, 
            settings: settings::SettingsFile, 
-           queue: Arc<RefCell<job_system::JobQueue>>) -> YaffeState {
+           queue: ThreadSafeJobQueue) -> YaffeState {
         YaffeState {
             overlay: overlay,
             selected_platform: 0,
@@ -291,7 +292,7 @@ fn main() {
         },
     };
 
-    let q = Arc::new(RefCell::new(queue));
+    let q = Arc::new(std::sync::Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree(q.clone());
     let overlay = overlay::OverlayWindow::new(settings.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
@@ -308,7 +309,7 @@ fn main() {
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
-fn build_ui_tree(queue: Arc<RefCell<job_system::JobQueue>>) -> WidgetContainer {
+fn build_ui_tree(queue: Arc<std::sync::Mutex<RefCell<job_system::JobQueue>>>) -> WidgetContainer {
     let mut root = WidgetContainer::root(widgets::Background::new(queue.clone()));
     root.add_child(widgets::PlatformList::new(queue.clone()), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
         .with_child(widgets::AppList::new(queue.clone()), LogicalSize::new(0.75, 1.))

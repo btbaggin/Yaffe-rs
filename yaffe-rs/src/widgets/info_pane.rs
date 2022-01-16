@@ -3,6 +3,7 @@ use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
 use crate::widgets::UiElement;
+use crate::logger::PanicLogEntry;
 
 widget!(pub struct InfoPane { 
     scroll_timer: f32 = 0., 
@@ -31,7 +32,8 @@ impl super::Widget for InfoPane {
         if let Some(app) = state.get_executable() {
             //Banner image
             let mut height = 0.;
-            let mut queue = self.queue.borrow_mut();
+            let lock = self.queue.lock().log_and_panic();
+            let mut queue = lock.borrow_mut();
 
             let slot = crate::assets::get_cached_file(&app.banner);
             let slot = &mut slot.borrow_mut();
