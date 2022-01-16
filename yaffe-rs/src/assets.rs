@@ -283,19 +283,22 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
     let mut reader = image::io::Reader::new(std::io::Cursor::new(data.clone()));
     reader = reader.with_guessed_format().log_and_panic();
 
-    let image = reader.decode().log_and_panic();
-    let buffer = image.into_rgba8();
-
-    asset_slot.dimensions = buffer.dimensions();
-    asset_slot.data = buffer.into_vec();
+    match reader.decode() {
+        Ok(image) => {
+            let buffer = image.into_rgba8();
+            asset_slot.dimensions = buffer.dimensions();
+            asset_slot.data = buffer.into_vec();
+        },
+        Err(e) => crate::logger::log_entry(crate::logger::LogTypes::Warning, e),
+    }
     asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
 }
 
 pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
     use std::path::Path;
 
-    let platform = Path::new("./Assets").join(platform);
-    let name = Path::new(&platform).join(name);
+    let platform = Path::new("./Assets").join(crate::platform_layer::sanitize_file(platform));
+    let name = Path::new(&platform).join(crate::platform_layer::sanitize_file(name));
     if !platform.exists() { std::fs::create_dir(platform).unwrap(); }
 
     let banner = Path::new(&name).join("banner.jpg");
