@@ -14,10 +14,13 @@ pub enum PluginLoadType {
 }
 
 pub struct Plugin {
+	//Because _container is a library that loaded data, data must be dropped before _container
+	//This is done by placing data before _container in this struct
+	//This must not change
+	data: Box<dyn YaffePlugin>,
 	_container: Container<PluginWrapper>, //There for keeping reference to the library
 	pub file: String,
 	pub page: yaffe_plugin::LoadStatus,
-	data: Box<dyn YaffePlugin>,
 }
 impl Plugin {
 	pub fn load(&mut self, kind: PluginLoadType, size: u32, settings: &HashMap<String, PluginSetting>) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
@@ -145,6 +148,5 @@ pub fn load_plugin_items(kind: PluginLoadType, state: &mut crate::YaffeState) {
 }
 
 pub fn unload(plugins: &mut Vec<std::cell::RefCell<Plugin>>) {
-	//TODO this crashes things
 	plugins.clear();
 }
