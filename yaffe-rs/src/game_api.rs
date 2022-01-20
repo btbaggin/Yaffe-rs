@@ -4,17 +4,25 @@ type ServiceResult<T> = Result<T, ServiceError>;
 //https://api.thegamesdb.net/
 
 pub struct ServiceResponse<T> {
-    pub count: i64,
-    pub exact: bool,
+    pub count: usize,
+    pub exact_index: isize,
     pub results: Vec<T>,
 }
 
 impl<T> ServiceResponse<T> {
-    fn new(count: i64, exact: bool) -> ServiceResponse<T> {
+    fn new(count: usize, exact_index: isize) -> ServiceResponse<T> {
         ServiceResponse {
             count,
-            exact,
+            exact_index,
             results: vec!(),
+        }
+    }
+
+    pub fn get_exact(&self) -> Option<&T> {
+        if self.exact_index != -1 {
+            Some(&self.results[self.exact_index as usize])
+        } else { 
+            None
         }
     }
 }
@@ -159,15 +167,17 @@ pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo
     Ok(result)
 }
 
-fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str) -> (i64, bool) {
-    let mut count = 0;
-    let mut exact = false;
+fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str) -> (usize, isize) {
+    let mut count: usize = 0;
+    let mut exact_index: isize = -1;
 
     for i in value {
         assert!(i[element].is_string());
 
+        if i[element].as_str().unwrap() == name { 
+            exact_index = count as isize;
+        }
         count += 1;
-        if i[element].as_str().unwrap() == name { exact = true; }
     }
-    (count, exact)
+    (count, exact_index)
 }

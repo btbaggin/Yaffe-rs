@@ -87,8 +87,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
                 let state = state.get_inner::<crate::YaffeState>();
                 if let Some(result) = search_platform(&name).display_failure("Unable to send message for platform search", state) {
 
-                    if result.exact {
-                        let plat = &result.results[0];
+                    if let Some(plat) = result.get_exact() {
                         let plat = crate::database::PlatformData::new(plat, path.clone(), args.clone(), rom.clone());
                         crate::platform::insert_platform(state, &plat);
 
@@ -107,8 +106,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
                 let state = state.get_inner::<crate::YaffeState>();
                 if let Some(result) = search_game(&name, plat_id).display_failure("Unable to send message for game search", state) {
 
-                    if result.exact {
-                        let game = &result.results[0];
+                    if let Some(game) = result.get_exact() {
                         let data = crate::database::GameData::new(game, exe.clone(), plat_id);
                         crate::platform::insert_game(state, &data);
 
