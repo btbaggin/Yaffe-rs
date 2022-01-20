@@ -154,6 +154,12 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     context.windowed().window().request_redraw();
                 },
 
+                WindowEvent::Focused(_focused) => {
+                    let window = windows.get_mut(&window_id).unwrap();
+                    let context = ct.get_current(window.context_id).unwrap();
+                    context.windowed().window().request_redraw();
+                },
+
                 WindowEvent::ModifiersChanged(state) => mods = state,
 
                 WindowEvent::KeyboardInput { input, .. } => {
