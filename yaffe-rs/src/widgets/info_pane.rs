@@ -41,9 +41,12 @@ impl super::Widget for InfoPane {
             let mut image = request_asset_image(graphics, &mut queue, slot);
             if let None = image { image = request_image(graphics, &mut queue, Images::PlaceholderBanner); }
             if let Some(i) = image {
+                //Invalid image files can cause size to be zero
                 let size = i.size().to_logical(graphics.scale_factor);
-                height = (bounds.width() / size.x as f32) * size.y;
-                i.render(graphics, Rect::point_and_size(*bounds.top_left(), LogicalSize::new(bounds.width(), bounds.top() + height)));
+                if size.x > 0. {
+                    height = (bounds.width() / size.x as f32) * size.y;
+                    i.render(graphics, Rect::point_and_size(*bounds.top_left(), LogicalSize::new(bounds.width(), bounds.top() + height)));
+                }
             }
 
             //Rating image
