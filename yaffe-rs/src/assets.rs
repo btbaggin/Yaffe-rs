@@ -82,7 +82,7 @@ impl AssetSlot {
         }
     }
 
-    pub fn packed_texture(path: &str, image: YaffeTexture) -> AssetSlot {
+    pub fn preloaded(path: &str, image: YaffeTexture) -> AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
             path: AssetPathType::File(String::from(path)),
@@ -105,15 +105,6 @@ impl AssetSlot {
             image: Some(AssetData::Font(font)),
             last_request: Instant::now(),
         }
-    }
-
-    pub fn get_image_size(&self) -> Option<PhysicalSize> {
-        if let Some(texture) = &self.image {
-            if let AssetData::Image(i) = texture {
-                return Some(i.size());
-            }
-        }
-        None
     }
 }
 pub struct YaffeTexture {
@@ -143,7 +134,6 @@ static mut FILE_ASSET_MAP: Option<HashMap<String, RefCell<AssetSlot>>> = None;
 
 pub fn initialize_asset_cache() {
     let mut map = HashMap::new();
-    map.insert(AssetTypes::Image(Images::Placeholder), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/placeholder.jpg"))));
     map.insert(AssetTypes::Image(Images::PlaceholderBanner), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/banner.png"))));
     map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/background.jpg"))));
 
@@ -154,7 +144,7 @@ pub fn initialize_asset_cache() {
     unsafe { FILE_ASSET_MAP = Some(HashMap::with_capacity(64)); }
 }
 
-pub fn load_texture_atlas(graphics: &mut Graphics2D) {
+pub fn preload_assets(graphics: &mut Graphics2D) {
     let map = unsafe { STATIC_ASSET_MAP.as_mut().unwrap() };
     if let None = map.get(&AssetTypes::Image(Images::Error)) {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
@@ -184,8 +174,19 @@ pub fn load_texture_atlas(graphics: &mut Graphics2D) {
             };
 
             let texture = YaffeTexture { image: image.clone(), bounds: Some(tex.1) };
-            map.insert(AssetTypes::Image(image_type), AssetSlot::packed_texture("./Assets/packed.png", texture));
+            map.insert(AssetTypes::Image(image_type), AssetSlot::preloaded("./Assets/packed.png", texture));
         }
+    }
+
+    fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut std::collections::HashMap<AssetTypes, AssetSlot>) {
+        let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear, path).log_and_panic();
+        let image = Rc::new(data);
+        let texture = YaffeTexture { image: image.clone(), bounds: None };
+        map.insert(AssetTypes::Image(image_name), AssetSlot::preloaded(path, texture));
+    }
+
+    if let None = map.get(&AssetTypes::Image(Images::Placeholder)) {
+        preload_image(graphics, "./Assets/placeholder.jpg", Images::Placeholder, map);
     }
 }
 

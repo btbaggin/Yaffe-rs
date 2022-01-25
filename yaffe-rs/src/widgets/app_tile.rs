@@ -4,6 +4,7 @@ use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
 use crate::logger::PanicLogEntry;
+use crate::assets::{request_asset_image, request_image, request_preloaded_image, Images};
 
 pub const ANIMATION_TIME: f32 = 0.25;
 const SELECTED_SCALAR: f32 = 0.2;
@@ -101,7 +102,6 @@ impl AppTile {
             super::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), get_font_color(settings).with_alpha(alpha), text);
         }
 
-        use crate::assets::{request_asset_image, request_image, Images};
 
         let slot = crate::assets::get_cached_file(&exe.boxart);
         let slot = &mut slot.borrow_mut();
@@ -115,19 +115,25 @@ impl AppTile {
         }
     }
 
-    pub fn get_image_size(&self, state: &YaffeState) -> PhysicalSize {
+    pub fn get_image_size(&self, state: &YaffeState, graphics: &mut crate::Graphics,) -> PhysicalSize {
+        //TODO
+        //This can return an incorrect result because it doesnt "load" the image
+        //The image could be ready to be loaded, but this doesnt see it so returns the hardcoded value
+        //When the image is later rendered it will be properly loaded and render with incorrect aspect
+        //Fix is to pass Graphics2D and load/request the image proper
         let p = state.get_platform();
         let exe = &p.apps[self.index];
         let slot = crate::assets::get_cached_file(&exe.boxart);
 
-        if let Ok(slot) = slot.try_borrow() {
-            if let Some(size) = slot.get_image_size() {
-                return size;
+        let lock = self.queue.lock().log_and_panic();
+        let mut queue = lock.borrow_mut();
+
+        if let Ok(mut slot) = slot.try_borrow_mut() {
+            if let Some(i) = request_asset_image(graphics, &mut queue, &mut slot) {
+                return i.size()
             }
         } 
 
-        //I dont want to deal with passing Piet everywhere so we will just hardcode the placeholder size
-        //Shouldn't really change
-        PhysicalSize::new(400., 290.)
+        request_preloaded_image(graphics, Images::Placeholder).size()
     }
 }

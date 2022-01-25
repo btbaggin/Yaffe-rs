@@ -202,7 +202,7 @@ impl windowing::WindowHandler for WidgetTree {
         settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool {
-        assets::load_texture_atlas(graphics);
+        assets::preload_assets(graphics);
 
         if !self.data.overlay.borrow().is_active() {
             let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));

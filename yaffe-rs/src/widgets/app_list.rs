@@ -69,7 +69,7 @@ impl super::Widget for AppList {
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
-        self.update(state, &graphics.bounds, graphics.scale_factor);
+        self.update(state, graphics);
 
         let plat = state.get_platform();
 
@@ -91,7 +91,9 @@ impl super::Widget for AppList {
     }
 }
 impl AppList {
-    fn update(&mut self, state: &YaffeState, rect: &Rect, scale_factor: f32) {
+    fn update(&mut self, state: &YaffeState, graphics: &mut crate::Graphics) {
+        let scale_factor = graphics.scale_factor;
+        let rect = graphics.bounds;
         //Check the length of our cache vs actual in case a game was added
         //to this platform while we were on it
         if self.cached_platform != state.selected_platform ||
@@ -106,10 +108,10 @@ impl AppList {
             self.cached_platform = state.selected_platform;
         }
 
-        self.update_tiles(state, rect, scale_factor);
+        self.update_tiles(state, graphics, &rect, scale_factor);
     }
 
-    fn update_tiles(&mut self, state: &YaffeState,  rect: &Rect, scale_factor: f32) {
+    fn update_tiles(&mut self, state: &YaffeState, graphics: &mut crate::Graphics, rect: &Rect, scale_factor: f32) {
         let platform = state.get_platform();
 
         //Calculate total size for inner list
@@ -118,7 +120,11 @@ impl AppList {
         let list_rect = Rect::from_tuples((rect.left() + margin_x, rect.top() + margin_y), (rect.right() - margin_x, rect.bottom() - margin_y));
 
         //Get size each tile should try to stretch to
-        let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state, platform.kind != crate::platform::PlatformType::Emulator, &list_rect.to_physical(scale_factor));
+        let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state,
+            graphics, 
+            platform.kind != crate::platform::PlatformType::Emulator, 
+            &list_rect.to_physical(scale_factor));
+
         self.tiles_x = tiles_x;
         self.tiles_y = tiles_y;
         let ideal_tile_size = ideal_tile_size.to_logical(scale_factor);
@@ -128,7 +134,7 @@ impl AppList {
             tile.apply_filter(&state.search_info, &platform.apps);
 
             //Size each tile according to its aspect ratio and the ideal size
-            AppList::size_individual_tile(state, tile, &ideal_tile_size, scale_factor);
+            AppList::size_individual_tile(state, graphics, tile, &ideal_tile_size, scale_factor);
 
             let x = (effective_i % self.tiles_x) as f32;
             let y = ((effective_i / self.tiles_x) - (self.first_visible / self.tiles_x)) as f32;
@@ -143,7 +149,7 @@ impl AppList {
         }
     }
 
-    fn get_ideal_tile_size(&self, state: &YaffeState, max: bool, rect: &crate::PhysicalRect) -> (isize, isize, PhysicalSize) {
+    fn get_ideal_tile_size(&self, state: &YaffeState, graphics: &mut crate::Graphics, max: bool, rect: &crate::PhysicalRect) -> (isize, isize, PhysicalSize) {
         let mut width = 0.;
         let mut height = 0.;
         let mut tiles_x = 1;
@@ -153,7 +159,7 @@ impl AppList {
             //Get widest boxart image
             let mut max_width = 0.;
             for exe in self.tiles.iter() {
-                let size = exe.get_image_size(state);
+                let size = exe.get_image_size(state, graphics);
                 if size.x > max_width {
                     bitmap_size = size;
                     max_width = size.x;
@@ -182,13 +188,13 @@ impl AppList {
         (tiles_x, tiles_y, PhysicalSize::new(width, height))
     }
 
-    fn size_individual_tile(state: &YaffeState, tile: &mut AppTile, size: &LogicalSize, scale_factor: f32) {
+    fn size_individual_tile(state: &YaffeState, graphics: &mut crate::Graphics, tile: &mut AppTile, size: &LogicalSize, scale_factor: f32) {
         let mut tile_size = *size;
 
         //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
 		//We wouldn't want vertical boxart to stretch to the horizontal dimensions
 		//This will scale boxart that is different aspect to fit within the tile_size.Height
-        let bitmap_size = tile.get_image_size(state).to_logical(scale_factor);
+        let bitmap_size = tile.get_image_size(state, graphics).to_logical(scale_factor);
         let real_aspect = bitmap_size.x / bitmap_size.y;
         let tile_aspect = tile_size.x / tile_size.y;
 
