@@ -16,7 +16,7 @@ static mut LOG_FILE: Option<Mutex<File>> = None;
 
 pub fn initialize_log() {
     unsafe {
-        LOG_FILE = Some(Mutex::new(OpenOptions::new().create(true).append(true).open("./log.txt").unwrap()));
+        LOG_FILE = Some(Mutex::new(OpenOptions::new().create(true).write(true).open("./log.txt").unwrap()));
     }
 }
 
