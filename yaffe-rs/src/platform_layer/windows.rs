@@ -123,9 +123,9 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 
 	let working_path = std::fs::canonicalize(".").unwrap();
 	let path = if cfg!(debug_assertions) {
-		std::fs::canonicalize("./target/debug/Yaffe-rs.exe").unwrap()
+		std::fs::canonicalize("../target/debug/Yaffe-rs.exe").unwrap()
 	} else {
-		std::fs::canonicalize(".Yaffe-rs.exe").unwrap()
+		std::fs::canonicalize("./Yaffe-rs.exe").unwrap()
 	};
 
     let mut p_service: ComPtr<ITaskService> = ComPtr::default();

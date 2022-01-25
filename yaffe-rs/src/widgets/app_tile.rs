@@ -1,5 +1,5 @@
 use crate::Transparent;
-use crate::{YaffeState, LogicalPosition, LogicalSize, LogicalFont, PhysicalSize};
+use crate::{YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize};
 use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
@@ -67,7 +67,6 @@ impl AppTile {
         let mut position = self.position;
 
         if focused {
-            // let animation_remainder = (ANIMATION_TIME - self.time) / ANIMATION_TIME;
             //Have alpha fade in as the time grows to full size
             let alpha = f32::powf(animation, 2.);
             let font_size = crate::font::get_font_size(settings, graphics);
@@ -79,12 +78,23 @@ impl AppTile {
             let mut menu_position = LogicalPosition::new(position.x + target_size.x, position.y + target_size.y + 2.);
 
             let name = super::get_drawable_text_with_wrap(font_size, &exe.name, target_size.x);
-            let mut height = name.logical_height(graphics);
+            let mut height = 0.;
 
-			//Check if we need to push the buttons below the text due to overlap
-			if name.logical_width(graphics) > target_size.x * 0.5 {
-                menu_position.y += height;
-                height += name.logical_height(graphics);
+            let lines: Vec<&std::rc::Rc<speedy2d::font::FormattedTextLine>> = name.iter_lines().collect();
+            let mut line_number = 0;
+            let line_count = lines.len();
+            for line in lines {
+                let line_height = line.height().to_logical(graphics);
+                //We need to move the menu down while it isnt the last line
+                //or the line is big enough where the menu won't fit
+                if line_number < line_count - 1 {
+                    menu_position.y += line_height;
+                } else if  line.width().to_logical(graphics) > target_size.x * 0.5 {
+                    menu_position.y += line_height;
+                    height += line_height;
+                }
+                height += line_height;
+                line_number += 1
             }
 
             //Outline background

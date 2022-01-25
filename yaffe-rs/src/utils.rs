@@ -130,15 +130,15 @@ impl Transparent for speedy2d::color::Color {
     }
 }
 
-pub trait LogicalFont {
-    fn logical_width(&self, graphics: &crate::Graphics) -> f32;
-    fn logical_height(&self, graphics: &crate::Graphics) -> f32;
+pub trait ScaleFactor {
+    fn to_logical(&self, graphics: &crate::Graphics) -> f32;
+    fn to_physical(&self, graphics: &crate::Graphics) -> f32;
 }
-impl LogicalFont for speedy2d::font::FormattedTextBlock {
-    fn logical_width(&self, graphics: &crate::Graphics) -> f32 {
-        self.width() / graphics.scale_factor
+impl ScaleFactor for f32 {
+    fn to_logical(&self, graphics: &crate::Graphics) -> f32 {
+        self / graphics.scale_factor
     }
-    fn logical_height(&self, graphics: &crate::Graphics) -> f32 {
-        self.height() / graphics.scale_factor
+    fn to_physical(&self, graphics: &crate::Graphics) -> f32 {
+        self * graphics.scale_factor
     }
 }

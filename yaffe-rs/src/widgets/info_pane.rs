@@ -1,4 +1,4 @@
-use crate::{YaffeState, Graphics, widget, ui::MARGIN, Actions, DeferredAction, LogicalSize, LogicalPosition, LogicalFont, Rect};
+use crate::{YaffeState, Graphics, widget, ui::MARGIN, Actions, DeferredAction, LogicalSize, LogicalPosition, ScaleFactor, Rect};
 use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
@@ -81,7 +81,7 @@ impl super::Widget for InfoPane {
                 let name_label = super::get_drawable_text_with_wrap(crate::font::get_font_size(&state.settings, graphics), &app.description, (bounds.width() - MARGIN) * graphics.scale_factor);
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
-                if name_label.logical_height(graphics) + height > bounds.height() {
+                if name_label.height().to_logical(graphics) + height > bounds.height() {
                     self.scroll_timer -= graphics.delta_time;
                     if self.scroll_timer < 0. { 
                         self.y_offset -= graphics.delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);

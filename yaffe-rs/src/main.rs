@@ -97,7 +97,7 @@ use modals::{display_modal};
 use job_system::{JobType, RawDataPointer};
 use input::Actions;
 pub use crate::settings::SettingNames;
-pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect, LogicalFont};
+pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect, ScaleFactor};
 
 pub struct Graphics<'a> {
     graphics: &'a mut speedy2d::Graphics2D,

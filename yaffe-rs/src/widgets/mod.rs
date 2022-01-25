@@ -1,6 +1,6 @@
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
-use crate::{YaffeState, Graphics, Actions, LogicalPosition, LogicalSize, LogicalFont, Rect};
+use crate::{YaffeState, Graphics, Actions, LogicalPosition, LogicalSize, ScaleFactor, Rect};
 use std::ops::Deref;
 use crate::widgets::animations::*;
 use std::time::Instant;
@@ -414,7 +414,7 @@ impl DeferredAction {
 /// If an image is passed it will be drawn to the left of the text
 /// Returns the new right-most position
 pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> LogicalPosition {
-    let size = LogicalSize::new(text.logical_width(graphics), text.logical_height(graphics));
+    let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));
     let mut right = LogicalPosition::new(right.x - size.x, right.y);
 
     graphics.draw_text(right, color, &text);
