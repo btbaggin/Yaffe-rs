@@ -34,7 +34,6 @@ impl WindowHelper {
 }
 
 pub(crate) trait WindowHandler {
-    fn on_start(&mut self) { }
     fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool { false }
     fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
@@ -109,10 +108,6 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
         .with_transparent(true)
         .with_decorations(false);
     create_window(&mut windows, &el, &mut ct, builder, overlay);
-
-    for (_, val) in windows.iter_mut() {
-        val.handler.borrow_mut().on_start();
-    }
 
     let mut delta_time = 0f32;
     let mut last_time = Instant::now();

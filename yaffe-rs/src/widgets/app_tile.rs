@@ -116,11 +116,6 @@ impl AppTile {
     }
 
     pub fn get_image_size(&self, state: &YaffeState, graphics: &mut crate::Graphics,) -> PhysicalSize {
-        //TODO
-        //This can return an incorrect result because it doesnt "load" the image
-        //The image could be ready to be loaded, but this doesnt see it so returns the hardcoded value
-        //When the image is later rendered it will be properly loaded and render with incorrect aspect
-        //Fix is to pass Graphics2D and load/request the image proper
         let p = state.get_platform();
         let exe = &p.apps[self.index];
         let slot = crate::assets::get_cached_file(&exe.boxart);
