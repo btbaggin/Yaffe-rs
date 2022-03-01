@@ -91,8 +91,9 @@ impl super::Widget for InfoPane {
                 
                 //Clip text so when it scrolls it wont render above the banner
                 //piet.save().unwrap();
-                //TODO piet.clip(Rectangle::from_tuples((rect.top_left().x, rect.top_left().y + height), (rect.bottom_right().x, rect.bottom_right().y)));
+                graphics.set_clip(Some(Rect::point_and_size(LogicalPosition::new(bounds.left(), bounds.top() + height), bounds.size())));
                 graphics.draw_text(LogicalPosition::new(bounds.top_left().x + crate::ui::MARGIN, bounds.top_left().y + self.y_offset + height), get_font_color(&state.settings), &name_label);
+                graphics.set_clip(None);
                 //piet.restore().unwrap();
             }
         }

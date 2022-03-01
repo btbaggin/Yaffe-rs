@@ -1,5 +1,11 @@
 use serde_json::Value;
+use std::collections::HashMap;
 type ServiceResult<T> = Result<T, ServiceError>;
+
+enum RequestType {
+    GamesDb,
+    Google,
+}
 
 //https://api.thegamesdb.net/
 
@@ -68,8 +74,10 @@ impl PlatformInfo {
 #[derive(Debug)]
 pub enum ServiceError {
     NetworkError(reqwest::Error),
+    BadStatus(reqwest::StatusCode),
     ProcessingError,
-    InvalidFormat
+    InvalidFormat,
+    Other(&'static str),
 }
 
 impl From<reqwest::Error> for ServiceError {
@@ -79,9 +87,12 @@ impl From<serde_json::Error> for ServiceError {
     fn from(_: serde_json::Error) -> Self { ServiceError::InvalidFormat }
 }
 
-fn get_api_key() -> &'static str {
-    let data = include_bytes!("../../api_key.txt");
-    match std::str::from_utf8(data) {
+fn get_api_key(t: &RequestType) -> &str {
+    let data = match t {
+        RequestType::GamesDb => std::str::from_utf8(include_bytes!("../../api_key.txt")),
+        RequestType::Google => std::str::from_utf8(include_bytes!("../../google_api_key.txt")),
+    } ;
+    match data {
         Ok(v) => v,
         Err(_) => panic!("Invalid api_key.txt"),
     }
@@ -91,27 +102,42 @@ fn get_null_string<'a>(value: &'a Value, element: &'a str) -> &'a str {
     if value[element].is_null() { "" } else { value[element].as_str().unwrap() }
 }
 
-fn send_request<T: serde::ser::Serialize + ?Sized>(url: &str, parms: &T) -> Result<serde_json::Value, ServiceError> {
-    let key = get_api_key();
+macro_rules! json_request {
+    ($t:expr, $url:expr, $parms:expr) => {
+        serde_json::from_str::<serde_json::Value>(&send_request($t, $url, $parms)?.text()?)?
+    };
+}
+macro_rules! data_request {
+    ($t:expr, $url:expr, $parms:expr) => {
+        send_request($t, $url, $parms)?.bytes()?
+    };
+}
+
+fn send_request<T: serde::ser::Serialize + ?Sized>(t: RequestType, url: &str, parms: &T) -> Result<reqwest::blocking::Response, ServiceError> {
+    let api_key = get_api_key(&t);
+    let key = match t {
+        RequestType::GamesDb => [("apikey", api_key)],
+        RequestType::Google => [("key", api_key)],
+    };
+
     let client = reqwest::blocking::Client::new();
-    match client.get(url).query(&[("apikey", key)]).query(parms).send() {
+    match client.get(url).query(parms).query(&key).send() {
         Ok(resp) => {
             if resp.status().is_success() { 
-                let text = resp.text()?;
-                return Ok(serde_json::from_str(&text)?); 
+                return Ok(resp);
             }
+            return Err(ServiceError::BadStatus(resp.status()))
         }
         Err(e) => { return Err(ServiceError::NetworkError(e)); }
     }
-
-    Err(ServiceError::ProcessingError)
 }
 
 pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<GameInfo>> {
-    let resp = send_request("https://api.thegamesdb.net/v1.1/Games/ByGameName", 
-        &[("name", name), 
-          ("fields", "players,overview,rating"), 
-          ("filter[platform]", &platform.to_string())])?;
+    let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1.1/Games/ByGameName", 
+                     &[("name", name), 
+                     ("fields", "players,overview,rating"), 
+                     ("filter[platform]", &platform.to_string())]);
+
 
     assert!(resp["data"]["games"].is_array());
     let array = resp["data"]["games"].as_array().unwrap();
@@ -124,8 +150,8 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
         let ids = ids.join(",");
 
         //Get the image data for the games
-        let resp = send_request("https://api.thegamesdb.net/v1/Games/Images", 
-                    &[("games_id", &ids[..]), ("filter[type]", "banner,boxart")])?;
+        let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1/Games/Images", 
+                        &[("games_id", &ids[..]), ("filter[type]", "banner,boxart")]);
 
         let images = &resp["data"]["images"];
         for game in array {
@@ -153,7 +179,7 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
 }
 
 pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo>> {
-    let resp = send_request("https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)])?;
+    let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)]);
 
     assert!(resp["data"]["platforms"].is_array());
     let array = resp["data"]["platforms"].as_array().unwrap();
@@ -180,4 +206,45 @@ fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str
         count += 1;
     }
     (count, exact_index)
+}
+
+pub fn check_for_updates() -> ServiceResult<bool> {
+    //For some reason this doesnt work when putting q as a query parameter
+    let resp = json_request!(RequestType::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents", &[("", "")]);
+
+    let mut files = HashMap::new();
+    assert!(resp["files"].is_array());
+    for f in resp["files"].as_array().unwrap() {
+        assert!(f["id"].is_string() && f["name"].is_string());
+
+        files.insert(f["name"].as_str().unwrap(), f["id"].as_str().unwrap());
+    }
+
+    //Check for remote version file
+    let version_file = files.get("version.txt");
+    if version_file.is_none() {
+        return Err(ServiceError::Other("version.txt not found in remote repository"));
+    }
+    let url = format!("https://www.googleapis.com/drive/v3/files/{}", *version_file.unwrap());
+    let data = data_request!(RequestType::Google, &url, &[("alt", "media")]);
+
+    let version = std::str::from_utf8(&data).unwrap();
+    if version != crate::CARGO_PKG_VERSION {
+        //Get updated exe file and write to temp location
+        let exe_file = files.get("yaffe-rs.exe");
+        if exe_file.is_none() {
+            return Err(ServiceError::Other("yaffe-rs.exe not found in remote repository"));
+        }
+
+        let url = format!("https://www.googleapis.com/drive/v3/files/{}", *exe_file.unwrap());
+        let data = data_request!(RequestType::Google, &url, &[("alt", "media")]);
+
+        if let Err(_) = std::fs::write(crate::UPDATE_FILE_PATH, data) {
+            return Err(ServiceError::Other("Unable to write updated file"));
+        }
+
+        return Ok(true)
+    }
+
+    return Ok(false)
 }

@@ -6,13 +6,26 @@
             "type": "shell",
             "windows": {
                 "command": "cargo rustc --release --package yaffe-rs -- -C link-args=\"Yaffe.res\" ",
-                "problemMatcher": ["$rustc"],
+                "problemMatcher": [
+                    "$rustc"
+                ]
             },
             "linux": {
                 "command": "cargo rustc --release --package yaffe-rs",
-                "problemMatcher": ["$rustc"],
+                "problemMatcher": [
+                    "$rustc"
+                ]
             },
+            "group": "build"
+        },
+        {
+            "type": "cargo",
+            "subcommand": "build",
+            "problemMatcher": [
+                "$rustc"
+            ],
             "group": "build",
+            "label": "Rust: cargo build - yaffe-rs"
         }
     ]
 }

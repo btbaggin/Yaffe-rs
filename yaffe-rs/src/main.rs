@@ -11,6 +11,9 @@ use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
  * some sort of setting caching at the beginning of each frame
 */
 
+const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const UPDATE_FILE_PATH: &'static str = "./yaffe-rs.exe.update";
+
 #[macro_use]
 extern crate dlopen_derive;
 
@@ -80,7 +83,7 @@ mod platform;
 mod platform_layer;
 mod overlay;
 mod restrictions;
-mod game_api;
+mod net_api;
 mod job_system;
 mod logger;
 mod settings;
@@ -115,6 +118,18 @@ impl<'a> Graphics<'a> {
     pub fn draw_line(&mut self, pos1: LogicalPosition, pos2: LogicalPosition, width: f32, color: Color) {
         self.graphics.draw_line(pos1.to_physical(self.scale_factor), pos2.to_physical(self.scale_factor), width, color);
     }
+    pub fn set_clip(&mut self, rect: Option<Rect>) {
+        use speedy2d::shape::Rectangle;
+        if rect.is_some() {
+            let rect = rect.unwrap().to_physical(self.scale_factor);
+            let clip = Rectangle::from_tuples((rect.top_left().x as i32, rect.top_left().y as i32), (rect.bottom_right().x as i32, rect.bottom_right().y as i32));
+            self.graphics.set_clip(Some(clip));
+        } else {
+            self.graphics.set_clip(None);
+        }
+        
+
+    }
 }
 
 pub struct Platform {
@@ -137,6 +152,11 @@ pub struct Executable {
     banner: crate::assets::AssetPathType,
 }
 
+struct UpdateInfo {
+    applied: bool,
+    timer: f32,
+}
+
 type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<job_system::JobQueue>>>;
 pub struct YaffeState {
     overlay: Rc<RefCell<OverlayWindow>>,
@@ -153,6 +173,7 @@ pub struct YaffeState {
     refresh_list: bool,
     settings: settings::SettingsFile,
     running: bool,
+    update: UpdateInfo,
 }
 impl YaffeState {
     fn new(overlay: Rc<RefCell<OverlayWindow>>, 
@@ -173,6 +194,7 @@ impl YaffeState {
             refresh_list: true,
             settings: settings,
             running: true,
+            update: UpdateInfo { applied: false, timer: 0. },
         }
     }
 
@@ -194,12 +216,20 @@ impl YaffeState {
 }
 
 impl windowing::WindowHandler for WidgetTree {
-    fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper) -> bool {
+    fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper, delta_time: f32) -> bool {
         //Clear any assets that haven't been requested in a long time
         crate::assets::clear_old_cache(&self.data);
 
+        //Check for updates once every hour if it hasnt been applied already
+        self.data.update.timer -= delta_time;
+        if !self.data.update.applied && self.data.update.timer < 0. {
+            self.data.update.applied = net_api::check_for_updates().log("Error checking for updates");
+            self.data.update.timer = 60. * 60.;
+        }
+
         //Check for any updates to the settings file
         settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
+
     }
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool {
         assets::preload_assets(graphics);
@@ -269,6 +299,9 @@ impl windowing::WindowHandler for WidgetTree {
 
     fn on_stop(&mut self) {
         plugins::unload(&mut self.data.plugins);
+        if self.data.update.applied {
+            //TODO run updater program to rename updated file to base file
+        }
     }
 
     fn on_resize(&mut self, _: u32, _: u32) { 

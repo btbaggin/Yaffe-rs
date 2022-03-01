@@ -10,4 +10,6 @@ Assets/atlas.tex
 Cargo.lock
 RCa21132
 api_key.txt
+google_api_key.txt
 yaffe-rs/yaffe-rs
+yaffe-rs/version.txt

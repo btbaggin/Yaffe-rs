@@ -1,8 +1,16 @@
 //Linux builds require open-ssl, mesa-dev, x11-dev
 
-fn main() {                                                                     
+fn main() {   
+    //Link x11 libs                                                                  
     #[cfg(target_os="linux")] 
     for lib in &["X11", "Xau", "xcb", "Xdmcp"] {                                
         println!("cargo:rustc-link-lib=static={}", lib);                        
-    }                                                                            
+    }          
+    
+    use std::io::Write;
+    
+    //Write version.txt for updating
+    const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+    let mut file = std::fs::OpenOptions::new().create(true).write(true).open("./version.txt").unwrap();
+    file.write_all(CARGO_PKG_VERSION.as_bytes()).unwrap();
 }

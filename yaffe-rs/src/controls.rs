@@ -145,12 +145,23 @@ impl UiControl for TextBox {
         let size = container.width() - LABEL_SIZE;
         let control = draw_label_and_box(graphics, settings, &container.top_left(), size, label, focused);
 
+        //TODO magic text stuff
         let text = get_drawable_text(font_size, &self.text);
-        graphics.draw_text(*control.top_left(), get_font_color(settings), &text);
+        let origin_x = if text.width() > size {
+            control.left() + (size - text.width())
+        } else {
+            control.left()
+        };
+
+        let clip = Rect::new(LogicalPosition::new(container.left() + LABEL_SIZE, container.top()), LogicalPosition::new(container.right(), container.bottom()));
+        graphics.set_clip(Some(clip));
+
+        graphics.draw_text(LogicalPosition::new(origin_x, control.top()), get_font_color(settings), &text);
+        graphics.set_clip(None);
 
         if focused {
             let text = get_drawable_text(font_size, &self.text[0..self.caret]);
-            let x = control.left() + text.width();
+            let x = f32::min(origin_x + text.width(), control.right());
             
             graphics.draw_line(LogicalPosition::new(x, control.top() + 2.), LogicalPosition::new(x, control.bottom() - 2.), 2., get_font_color(settings));
         }

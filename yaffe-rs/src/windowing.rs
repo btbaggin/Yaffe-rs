@@ -34,7 +34,7 @@ impl WindowHelper {
 }
 
 pub(crate) trait WindowHandler {
-    fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool { false }
+    fn on_fixed_update(&mut self, _: &mut WindowHelper, _: f32) -> bool { false }
     fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_resize(&mut self, _: u32, _: u32) { }
@@ -237,7 +237,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     let context = ct.get_current(window.context_id).unwrap();
                     
                     let mut helper = WindowHelper { visible: None, };
-                    let fixed_update = handle.on_fixed_update(&mut helper);
+                    let fixed_update = handle.on_fixed_update(&mut helper, delta_time);
                     helper.resolve(&context.windowed().window());
 
                     if fixed_update || asset_loaded || handle.is_window_dirty() {
