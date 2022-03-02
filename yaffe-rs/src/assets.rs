@@ -236,8 +236,7 @@ pub fn request_image<'a>(piet: &mut crate::Graphics, queue: &mut JobQueue, image
 pub fn request_preloaded_image<'a>(graphics: &mut crate::Graphics, image: Images) -> &'a YaffeTexture {
     let slot = get_slot_mut(AssetTypes::Image(image));
 
-    //TODO 
-    //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
+    //TODO std::assert_matches::assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
@@ -273,6 +272,8 @@ pub fn request_font(font: Fonts) -> &'static Font {
 
 pub fn load_image_async(slot: crate::RawDataPointer) {
     let asset_slot = slot.get_inner::<AssetSlot>();
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Loading image asynchronously {:?}", asset_slot.path));
+
     let data = match &asset_slot.path {
         AssetPathType::File(path) => std::fs::read(&path).log_and_panic(),
         AssetPathType::Url(path) =>  {

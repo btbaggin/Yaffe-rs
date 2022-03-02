@@ -1,69 +1,83 @@
-use std::fs::OpenOptions;
-use std::fs::File;
+use std::fs::{OpenOptions, File};
 use std::io::Write;
 use std::sync::Mutex;
 use std::fmt::Debug;
+use std::convert::TryFrom;
 
 #[repr(u8)]
 #[allow(dead_code)]
+#[derive(PartialOrd, PartialEq, Clone, Copy)]
 pub enum LogTypes {
-    Error,
-    Warning,
+    Fine,
     Information,
+    Warning,
+    Error,
+}
+impl TryFrom<i32> for LogTypes {
+    type Error = ();
+    fn try_from(level: i32) -> Result<Self, ()> {
+        match level {
+            0 => Ok(LogTypes::Fine),
+            1 => Ok(LogTypes::Information),
+            2 => Ok(LogTypes::Warning),
+            _ => Ok(LogTypes::Error),
+        }
+    }
 }
 
-static mut LOG_FILE: Option<Mutex<File>> = None;
-
-pub fn initialize_log() {
-    unsafe {
-        LOG_FILE = Some(Mutex::new(OpenOptions::new().create(true).write(true).open("./log.txt").unwrap()));
+pub struct Logger {
+    file: Mutex<File>,
+    level: Mutex<LogTypes>,
+}
+impl Logger {
+    fn new(path: &'static str) -> Logger {
+        Logger {
+            file: Mutex::new(OpenOptions::new().create(true).write(true).open(path).unwrap()),
+            level: Mutex::new(LogTypes::Fine),
+        }
     }
+    fn set_level(&self, level: LogTypes) {
+        let mut self_level = self.level.lock().unwrap();
+        *self_level = level;
+    }
+    fn level(&self) -> LogTypes {
+        *self.level.lock().unwrap()
+    }
+}
+
+pub fn set_log_level(level: i32) {
+    use std::convert::TryInto;
+    let level = level.try_into().unwrap();
+    LOGGER.set_level(level)
+}
+
+lazy_static::lazy_static! {
+    static ref LOGGER: Logger = Logger::new("./log.txt");
 }
 
 macro_rules! log_entry_internal {
     ($type:ident, $string:expr, $($element:tt)*) => {
-        let file = unsafe { &LOG_FILE.as_ref().unwrap() };
-        let mut file = file.lock().unwrap();
-    
-        let time = chrono::Local::now();
-        let time_string = time.format("%x %X");
-        let message = match $type {
-            #[cfg(debug_assertions)]
-            LogTypes::Error => {
-                let trace = backtrace::Backtrace::new();
-                format!("Error {{{}}}: {} {:?}\n", time_string, format_args!($string, $($element)*), trace)
-            },
-            #[cfg(not(debug_assertions))]
-            LogTypes::Error => format!("Error {{{}}}: {}\n", time_string, format_args!($string, $($element)*)),
-            LogTypes::Warning => format!("Warning {{{}}}: {}\n", time_string, format_args!($string, $($element)*)),
-            LogTypes::Information => format!("Info {{{}}}: {}\n", time_string, format_args!($string, $($element)*)),
-        };
-        file.write_all(message.as_bytes()).unwrap();
+        let file = &LOGGER.file;
+        if $type > LOGGER.level() {
+            let mut file = file.lock().unwrap();
+        
+            let time = chrono::Local::now();
+            let time_string = time.format("%x %X");
+            let message = match $type {
+                #[cfg(debug_assertions)]
+                LogTypes::Error => {
+                    let trace = backtrace::Backtrace::new();
+                    format!("Error [{}]: {} {:?}\n", time_string, format_args!($string, $($element)*), trace)
+                },
+                #[cfg(not(debug_assertions))]
+                LogTypes::Error => format!("Error [{}]: {}\n", time_string, format_args!($string, $($element)*)),
+                LogTypes::Warning => format!("Warning [{}]: {}\n", time_string, format_args!($string, $($element)*)),
+                LogTypes::Information | LogTypes::Fine => format!("[{}]: {}\n", time_string, format_args!($string, $($element)*)),
+            };
+            file.write_all(message.as_bytes()).unwrap();
+        } 
     }
 } 
-
-#[macro_export]
-macro_rules! log_function {
-    ($($parm:ident),*) => {{
-        fn f() {}
-        fn type_name_of<T>(_: T) -> &'static str {
-            std::any::type_name::<T>()
-        }
-
-        // Find and cut the rest of the path
-        let name = type_name_of(f);
-        let mut name = String::from(&name[..name.len() - 3]);
-        
-        name.push_str("(");
-        $(
-            name.push_str(&format!("{:?},", $parm));
-        )*
-        let mut name = String::from(name.trim_matches(','));
-        name.push_str(")");
-
-        crate::logger::log_entry(crate::logger::LogTypes::Information, &name);
-    }};
-}
 
 /// Logs a piece of data
 pub fn log_entry(t: LogTypes, err: impl Debug) {

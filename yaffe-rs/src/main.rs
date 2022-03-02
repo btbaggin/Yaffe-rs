@@ -314,7 +314,6 @@ impl windowing::WindowHandler for WidgetTree {
 }
 
 fn main() {
-    logger::initialize_log();
     let (queue, notify) = job_system::start_job_system();
 
     let settings = match settings::load_settings("./settings.txt") {
@@ -324,6 +323,7 @@ fn main() {
             settings::SettingsFile::default()
         },
     };
+    logger::set_log_level(settings.get_i32(SettingNames::LoggingLevel));
 
     let q = Arc::new(std::sync::Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree(q.clone());

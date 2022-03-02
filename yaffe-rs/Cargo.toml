@@ -21,6 +21,7 @@ takeable-option = "0.4"
 memoffset = "0.6.0"
 dlopen = "0.1.8"
 dlopen_derive = "0.1.3"
+lazy_static = "1.4.0"
 yaffe-plugin = { path = "../yaffe-plugin" }
 
 [target.'cfg(target_os="windows")'.dependencies.winapi]

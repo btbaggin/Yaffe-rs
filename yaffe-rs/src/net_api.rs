@@ -133,6 +133,8 @@ fn send_request<T: serde::ser::Serialize + ?Sized>(t: RequestType, url: &str, pa
 }
 
 pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<GameInfo>> {
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Searching for game {}", name));
+
     let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1.1/Games/ByGameName", 
                      &[("name", name), 
                      ("fields", "players,overview,rating"), 
@@ -149,7 +151,9 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
         let ids = array.iter().map(|v| v["id"].as_i64().unwrap().to_string()).collect::<Vec<String>>();
         let ids = ids.join(",");
 
-        //Get the image data for the games
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Getting all images for game {}", name));
+
+    //Get the image data for the games
         let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1/Games/Images", 
                         &[("games_id", &ids[..]), ("filter[type]", "banner,boxart")]);
 
@@ -179,6 +183,8 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
 }
 
 pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo>> {
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Searching for platform {}", name));
+    
     let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)]);
 
     assert!(resp["data"]["platforms"].is_array());
@@ -209,6 +215,8 @@ fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str
 }
 
 pub fn check_for_updates() -> ServiceResult<bool> {
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Checking for updates");
+
     //For some reason this doesnt work when putting q as a query parameter
     let resp = json_request!(RequestType::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents", &[("", "")]);
 

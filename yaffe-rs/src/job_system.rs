@@ -71,6 +71,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             JobType::LoadImage(slot) => crate::assets::load_image_async(slot),
     
             JobType::DownloadUrl((url, path)) => {
+                crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Downloading image from {}", url));
                 let url = std::path::Path::new("https://cdn.thegamesdb.net/images/medium/").join(url);
 
                 //Download and write file to disk

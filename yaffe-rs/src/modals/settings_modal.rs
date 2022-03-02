@@ -70,12 +70,17 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
 
         //Update settings values
         for (name, control) in &content.settings {
-            if name == "run_at_startup" {
-                let value = bool::from_str(control.value()).unwrap();
-                crate::platform_layer::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state);
-            } else {
-                state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state);
-            }
+            match &name[..] {
+                "run_at_startup" => {
+                    let value = bool::from_str(control.value()).unwrap();
+                    crate::platform_layer::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state)
+                },
+                "logging_level" => {
+                    crate::logger::set_log_level(control.value().parse::<i32>().unwrap());
+                    state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state)
+                },
+                _ => state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state),
+            };
         }
 
         //Save settings

@@ -2,9 +2,9 @@ use crate::database::*;
 use crate::assets::AssetPathType;
 use crate::{YaffeState};
 use crate::plugins::Plugin;
+use crate::logger::PanicLogEntry;
 use super::{Platform, Executable};
 use std::convert::{TryFrom, TryInto};
-use crate::logger::PanicLogEntry;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -147,7 +147,7 @@ impl Executable {
 }
 
 pub fn get_database_info(state: &mut YaffeState) {
-    crate::logger::log_entry(crate::logger::LogTypes::Information, "Refreshing information");
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Refreshing information from database");
 
     create_database().log_message_and_panic("Unable to create database");
     let mut platforms = get_all_platforms();
@@ -177,6 +177,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                     let file = path.file_name().unwrap().to_string_lossy();
                     let name = path.file_stem().unwrap().to_string_lossy();
                     let name = clean_file_name(&name);
+                    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Found local game {}", name));
                     
                     let id = platform.id.unwrap();
                     let state_ptr = crate::RawDataPointer::new(state);
@@ -184,7 +185,6 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                     let lock = state.queue.lock().log_and_panic();
                     let mut queue = lock.borrow_mut();
                     if let Ok((name, overview, players, rating)) = get_game_info(id, &file) {
-
                         let (boxart, banner) = crate::assets::get_asset_path(&platform.name, &name);
     
                         platform.apps.push(Executable::new_game(String::from(file), 
@@ -197,6 +197,8 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                                                                 banner));
 
                     } else if !queue.already_sent(file.to_string()) {
+                        crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("{} not found in database, performing search", name));
+
                         //We need to check if the file was already sent for a search
                         //If we dont something like this could happen:
                         //Finds files A and B it needs to look up
@@ -214,6 +216,8 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
             assert!(false);
         }
         PlatformType::Recents => {
+            crate::logger::log_entry(crate::logger::LogTypes::Fine, "Getting recent games");
+
             let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
                       state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
                       state.settings.get_f32(crate::SettingNames::RecentPageCount);
@@ -244,12 +248,16 @@ fn clean_file_name(file: &str) -> &str {
 }
 
 pub fn insert_platform(state: &mut YaffeState, data: &crate::database::PlatformData) {
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Inserting new platform into database {}", data.name));
+
     crate::database::insert_platform(data.id, &data.name, &data.path, &data.args, &data.folder).log_and_panic();
 
     state.refresh_list = true;
 }
 
 pub fn insert_game(state: &mut YaffeState, data: &crate::database::GameData) {
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Inserting new game into database {}", data.name));
+
     crate::database::insert_game(data.id, 
                                  data.platform, 
                                  &data.name, 

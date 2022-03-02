@@ -26,14 +26,20 @@ impl Plugin {
 	pub fn load(&mut self, kind: PluginLoadType, size: u32, settings: &HashMap<String, PluginSetting>) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
 		match kind {
 			PluginLoadType::Initial => {
+				crate::logger::log_entry(crate::logger::LogTypes::Fine, "Plugin requested initial load");
+
 				self.data.initial_load();
 				self.page = yaffe_plugin::LoadStatus::Initial;
 			},
 			PluginLoadType::Refresh => {
+				crate::logger::log_entry(crate::logger::LogTypes::Fine, "Plugin requested refresh");
 				self.page = yaffe_plugin::LoadStatus::Initial;
 			},
-			PluginLoadType::Append => {},
+			PluginLoadType::Append => {
+				crate::logger::log_entry(crate::logger::LogTypes::Fine, "Plugin requested append");
+			},
 			PluginLoadType::Back => {
+				crate::logger::log_entry(crate::logger::LogTypes::Fine, "Plugin requested back action");
 				if self.data.on_back() {
 					self.page = yaffe_plugin::LoadStatus::Initial;
 				}
@@ -41,6 +47,7 @@ impl Plugin {
 		}
 
 		if Plugin::needs_load(self.page) {
+			crate::logger::log_entry(crate::logger::LogTypes::Fine, "Calling load_items on plugin");
 			let result = self.data.load_items(size, settings);
 			match result {
 				Ok((items, page)) => {
@@ -99,8 +106,11 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 			let ok = ext == "so";
 
 			if ok && path.is_file() {
+				
 				let file = path.file_stem().unwrap().to_string_lossy();
 				let message = format!("Failed to load plugin {:?}", file);
+				
+				crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Found plugin {}", file));
 
 				let container: Option<Container<PluginWrapper>> = unsafe { Container::load(path.clone()) }.display_failure(&message, state);
 				if let Some(cont) = container {
