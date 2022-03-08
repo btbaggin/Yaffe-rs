@@ -33,6 +33,13 @@ pub(super) fn set_run_at_startup(task: &str, run: bool) -> StartupResult<()> {
     Ok(())
 }
 
+pub(super) fn update() -> std::io::Result<std::process::Child> {
+    if std::path::Path::new("./yaffe-updater").exists() {
+        return std::process::Command::new("./yaffe-updater").arg("./yaffe-rs").spawn();
+    }
+	return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
+}
+
 pub(super) fn shutdown() -> ShutdownResult {
     let mut cmd = Command::new("shutdown");
     cmd.args(&["-h", "now"]);

@@ -121,12 +121,16 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
             Event::WindowEvent { event, window_id } => match event {
                 WindowEvent::CloseRequested => {
+                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Closing window");
+
                     let window = windows.get_mut(&window_id).unwrap();
                     *control_flow = ControlFlow::Exit;
                     window.handler.borrow_mut().on_stop();
                 },
 
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Scale factor changed, redrawing");
+
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();
 
@@ -137,6 +141,8 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 },
 
                 WindowEvent::Resized(physical_size) => {
+                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Window resized, redrawing");
+
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();
 
@@ -150,6 +156,8 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 },
 
                 WindowEvent::Focused(_focused) => {
+                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Focus changed, redrawing");
+
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();
                     context.windowed().window().request_redraw();

@@ -119,6 +119,7 @@ impl<'a, T: ?Sized> Iterator for FocusGroupIterator<'a, T> {
     }
 }
 
+/// Provides functionality for a basic UI control (textbox, checkbox, etc...)
 pub trait UiControl {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool);
     fn value(&self) -> &str;
@@ -133,7 +134,6 @@ impl TextBox {
     pub fn new(text: String) -> TextBox {
         TextBox { text, caret: 0 }
     }
-
     pub fn from_str(text: &str) -> TextBox {
         TextBox { text: text.to_string(), caret: 0 }
     }
@@ -226,7 +226,6 @@ impl UiControl for CheckBox {
 
         if self.checked {
             let base = crate::colors::get_accent_color(settings);
-
             graphics.draw_rectangle(Rect::from_tuples((control.left() + 4., control.top() + 4.), (control.right() - 4., control.bottom() - 4.)), base)
         }
     }

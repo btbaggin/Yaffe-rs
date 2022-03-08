@@ -33,6 +33,10 @@ type StartupResult<T> = Result<T, StartupError>;
 type ShutdownResult = std::io::Result<()>;
 type VolumeResult<T> = Result<T, StartupError>;
 
+pub fn update() -> std::io::Result<std::process::Child> {
+    os::update()
+}
+
 pub fn shutdown() -> ShutdownResult {
     os::shutdown()
 }

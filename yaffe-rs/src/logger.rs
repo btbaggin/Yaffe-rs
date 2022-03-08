@@ -58,12 +58,13 @@ lazy_static::lazy_static! {
 macro_rules! log_entry_internal {
     ($type:ident, $string:expr, $($element:tt)*) => {
         let file = &LOGGER.file;
-        if $type > LOGGER.level() {
+        if $type >= LOGGER.level() {
             let mut file = file.lock().unwrap();
         
             let time = chrono::Local::now();
             let time_string = time.format("%x %X");
             let message = match $type {
+                //Include stack trace in debug builds
                 #[cfg(debug_assertions)]
                 LogTypes::Error => {
                     let trace = backtrace::Backtrace::new();
@@ -152,6 +153,8 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
         }
     }
 
+    /// Displays a message to the user, but can be called with a DeferredAction when access there is no access to YaffeState
+    /// Returns `Some(T)` when there was no error, otherwise `None`
     fn display_failure_deferred(self, message: &str, handle: &mut crate::DeferredAction) -> Option<T> {
         match self {
             Err(e) => {

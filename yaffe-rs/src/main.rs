@@ -12,7 +12,7 @@ use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 */
 
 const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const UPDATE_FILE_PATH: &'static str = "./yaffe-rs.exe.update";
+const UPDATE_FILE_PATH: &'static str = "./yaffe-rs.update";
 
 #[macro_use]
 extern crate dlopen_derive;
@@ -152,11 +152,6 @@ pub struct Executable {
     banner: crate::assets::AssetPathType,
 }
 
-struct UpdateInfo {
-    applied: bool,
-    timer: f32,
-}
-
 type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<job_system::JobQueue>>>;
 pub struct YaffeState {
     overlay: Rc<RefCell<OverlayWindow>>,
@@ -173,7 +168,7 @@ pub struct YaffeState {
     refresh_list: bool,
     settings: settings::SettingsFile,
     running: bool,
-    update: UpdateInfo,
+    update_timer: f32,
 }
 impl YaffeState {
     fn new(overlay: Rc<RefCell<OverlayWindow>>, 
@@ -194,7 +189,7 @@ impl YaffeState {
             refresh_list: true,
             settings: settings,
             running: true,
-            update: UpdateInfo { applied: false, timer: 0. },
+            update_timer: 0.,
         }
     }
 
@@ -221,10 +216,13 @@ impl windowing::WindowHandler for WidgetTree {
         crate::assets::clear_old_cache(&self.data);
 
         //Check for updates once every hour if it hasnt been applied already
-        self.data.update.timer -= delta_time;
-        if !self.data.update.applied && self.data.update.timer < 0. {
-            self.data.update.applied = net_api::check_for_updates().log("Error checking for updates");
-            self.data.update.timer = 60. * 60.;
+        if self.data.update_timer != f32::NAN {
+            self.data.update_timer -= delta_time;
+            if self.data.update_timer < 0. {
+                let applied = net_api::check_for_updates().log("Error checking for updates");
+                if applied { self.data.update_timer = f32::NAN; }
+                else { self.data.update_timer = 60. * 60.; }
+            }
         }
 
         //Check for any updates to the settings file
@@ -299,9 +297,6 @@ impl windowing::WindowHandler for WidgetTree {
 
     fn on_stop(&mut self) {
         plugins::unload(&mut self.data.plugins);
-        if self.data.update.applied {
-            //TODO run updater program to rename updated file to base file
-        }
     }
 
     fn on_resize(&mut self, _: u32, _: u32) { 
@@ -314,6 +309,14 @@ impl windowing::WindowHandler for WidgetTree {
 }
 
 fn main() {
+    //Check for and apply updates on startup
+    if std::path::Path::new(UPDATE_FILE_PATH).exists() {
+        match platform_layer::update() { 
+            Ok(_) => return,
+            Err(e) => crate::logger::log_entry(crate::logger::LogTypes::Error, format!("Updated file found, but unable to run updater {:?}", e)),
+        }
+    }
+
     let (queue, notify) = job_system::start_job_system();
 
     let settings = match settings::load_settings("./settings.txt") {

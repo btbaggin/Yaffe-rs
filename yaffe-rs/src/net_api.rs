@@ -237,6 +237,8 @@ pub fn check_for_updates() -> ServiceResult<bool> {
     let data = data_request!(RequestType::Google, &url, &[("alt", "media")]);
 
     let version = std::str::from_utf8(&data).unwrap();
+    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Found remote version {}", version));
+
     if version != crate::CARGO_PKG_VERSION {
         //Get updated exe file and write to temp location
         let exe_file = files.get("yaffe-rs.exe");
