@@ -154,7 +154,7 @@ pub fn create_database() -> QueryResult<()> {
 
 /// Gets all saved platforms
 pub(super) fn get_all_platforms() -> Vec<Platform> {
-	crate::logger::log_entry(crate::logger::LogTypes::Fine, "Loading all platforms from database");
+	crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Loading all platforms from database");
 
     let con = YaffeConnection::new();
     let stmt = create_statement!(con, QS_GET_ALL_PLATFORMS, );
@@ -174,7 +174,7 @@ pub(super) fn get_all_platforms() -> Vec<Platform> {
 
 /// Adds a new platform
 pub fn insert_platform(id: i64, name: &str, path: &str, args: &str, folder: &str) -> QueryResult<()> {
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Inserting new platform into database {}", name));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Inserting new platform into database {}", name);
 
     let con = YaffeConnection::new();
     let stmt = create_statement!(con, QS_ADD_PLATFORM, id, name, path, args, folder);
@@ -201,7 +201,7 @@ pub fn get_platform_name(platform: i64) -> QueryResult<String> {
 
 /// Gets Name, Path, and Args of a Platform
 pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)> {
-	crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Getting information for platform {}", platform));
+	crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Getting information for platform {}", platform);
 
     let con = YaffeConnection::new();
     let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);
@@ -234,8 +234,8 @@ pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable>
                 index,
                 players as u8, 
                 rating.try_into().log_message_and_panic("Unknown rating value"), 
-                boxart, 
-                banner));
+                boxart.to_string_lossy().to_string(), 
+                banner.to_string_lossy().to_string()));
         }
     });
 
@@ -244,7 +244,7 @@ pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable>
 
 /// Gets Name, Overview, Players, and Rating of a game
 pub(super) fn get_game_info(id: i64, file: &str) -> QueryResult<(String, String, i64, i64)> {
-    crate::logger::log_entry_with_message(crate::logger::LogTypes::Fine, "getting all applications", file);
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Getting all applications for {}", file);
 
     let con = YaffeConnection::new();
     let mut stmt = create_statement!(con, QS_GET_GAME, id, file);
@@ -258,7 +258,7 @@ pub(super) fn get_game_info(id: i64, file: &str) -> QueryResult<(String, String,
 
 /// Adds a new game
 pub(super) fn insert_game(id: i64, platform: i64, name: &str, overview: &str, players: i64, rating: crate::platform::Rating, file: &str) -> QueryResult<()> {
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Inserting new game into database {}", name));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Inserting new game into database {}", name);
 
     let con = YaffeConnection::new();
     let stmt = create_statement!(con, QS_ADD_GAME, id, platform, name, overview, players, rating as i64, file);
@@ -268,7 +268,7 @@ pub(super) fn insert_game(id: i64, platform: i64, name: &str, overview: &str, pl
 
 /// Updates the last run value for a game
 pub fn update_game_last_run(exe: &Executable, id: i64) -> QueryResult<()> {
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Updating last run for game {}", id));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Updating last run for game {}", id);
 
     let con = YaffeConnection::new();
     let stmt = create_statement!(con, QS_UPDATE_GAME_LAST_RUN, id, &exe.file[..]);

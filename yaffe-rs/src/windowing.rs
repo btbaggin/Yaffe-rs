@@ -102,7 +102,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
     let builder = WindowBuilder::new()
         .with_title("Overlay")
         .with_inner_size(glutin::dpi::PhysicalSize::new(size.x - 1., size.y - 1.)) 
-        .with_position(glutin::dpi::PhysicalPosition::new(1, 1))
+        .with_position(glutin::dpi::PhysicalPosition::new(1i32, 1i32))
         .with_visible(false)
         .with_always_on_top(true)
         .with_transparent(true)
@@ -121,7 +121,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
             Event::WindowEvent { event, window_id } => match event {
                 WindowEvent::CloseRequested => {
-                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Closing window");
+                    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Closing window");
 
                     let window = windows.get_mut(&window_id).unwrap();
                     *control_flow = ControlFlow::Exit;
@@ -129,7 +129,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 },
 
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Scale factor changed, redrawing");
+                    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Scale factor changed, redrawing");
 
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();
@@ -141,7 +141,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 },
 
                 WindowEvent::Resized(physical_size) => {
-                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Window resized, redrawing");
+                    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Window resized, redrawing");
 
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();
@@ -156,7 +156,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 },
 
                 WindowEvent::Focused(_focused) => {
-                    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Focus changed, redrawing");
+                    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Focus changed, redrawing");
 
                     let window = windows.get_mut(&window_id).unwrap();
                     let context = ct.get_current(window.context_id).unwrap();

@@ -70,18 +70,21 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
         match msg {
             JobType::LoadImage(slot) => crate::assets::load_image_async(slot),
     
-            JobType::DownloadUrl((url, path)) => {
-                crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Downloading image from {}", url));
-                let url = std::path::Path::new("https://cdn.thegamesdb.net/images/medium/").join(url);
+            JobType::DownloadUrl((t, url, path)) => {
+                crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Downloading file from {}", url.to_str().unwrap());
 
-                //Download and write file to disk
-                match reqwest::blocking::get(url.to_str().unwrap()) {
-                    Err(e) => crate::logger::log_entry(LogTypes::Error, e),
+                match crate::net_api::send_request_no_parms(t, url.to_str().unwrap()) {
+                    Err(e) => crate::logger::log_entry!(LogTypes::Error, "{:?}", e),
                     Ok(bytes) => {
-                        let image = bytes.bytes().unwrap();
-                        std::fs::write(path, image).log_and_panic();
+                        //Download and write file to disk
+                        let file = bytes.bytes().unwrap();
+                        std::fs::write(path, file).log_and_panic();
                     }
-                } 
+                }
+
+                // match reqwest::blocking::get(url.to_str().unwrap()) {
+                    
+                // } 
             }
 
             JobType::SearchPlatform((state, name, path, args, rom)) => {
@@ -128,8 +131,16 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
 }
 
 pub enum JobType {
+    /// Loads an image synchronously
+    /// Should only be called through the asset system
     LoadImage(RawDataPointer),
-    DownloadUrl((String, String)),
+
+    /// Downloads the file at a given url and writes it to the file system
+    DownloadUrl((crate::net_api::Authentication, std::path::PathBuf, std::path::PathBuf)),
+
+    /// Searches TheGamesDb for a given platform
     SearchPlatform((RawDataPointer, String, String, String, String)),
+
+    /// Searches TheGamesDb for a given game
     SearchGame((RawDataPointer, String, String, i64)),
 }

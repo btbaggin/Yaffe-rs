@@ -2,9 +2,10 @@ use serde_json::Value;
 use std::collections::HashMap;
 type ServiceResult<T> = Result<T, ServiceError>;
 
-enum RequestType {
+pub enum Authentication {
     GamesDb,
     Google,
+    None,
 }
 
 //https://api.thegamesdb.net/
@@ -87,15 +88,13 @@ impl From<serde_json::Error> for ServiceError {
     fn from(_: serde_json::Error) -> Self { ServiceError::InvalidFormat }
 }
 
-fn get_api_key(t: &RequestType) -> &str {
+fn get_api_key(t: &Authentication) -> Option<(&str, &str)> {
     let data = match t {
-        RequestType::GamesDb => std::str::from_utf8(include_bytes!("../../api_key.txt")),
-        RequestType::Google => std::str::from_utf8(include_bytes!("../../google_api_key.txt")),
-    } ;
-    match data {
-        Ok(v) => v,
-        Err(_) => panic!("Invalid api_key.txt"),
-    }
+        Authentication::GamesDb => ("apikey", std::str::from_utf8(include_bytes!("../../api_key.txt")).expect("Invalid api_key.txt")),
+        Authentication::Google => ("key", std::str::from_utf8(include_bytes!("../../google_api_key.txt")).expect("Invalid google_api_key.txt")),
+        Authentication::None => return None,
+    };
+    Some(data)
 }
 
 fn get_null_string<'a>(value: &'a Value, element: &'a str) -> &'a str {
@@ -104,24 +103,40 @@ fn get_null_string<'a>(value: &'a Value, element: &'a str) -> &'a str {
 
 macro_rules! json_request {
     ($t:expr, $url:expr, $parms:expr) => {
-        serde_json::from_str::<serde_json::Value>(&send_request($t, $url, $parms)?.text()?)?
+        serde_json::from_str::<serde_json::Value>(&crate::net_api::send_request($t, $url, $parms)?.text()?)?
     };
 }
 macro_rules! data_request {
     ($t:expr, $url:expr, $parms:expr) => {
-        send_request($t, $url, $parms)?.bytes()?
+        crate::net_api::send_request($t, $url, $parms)?.bytes()?
     };
 }
-
-fn send_request<T: serde::ser::Serialize + ?Sized>(t: RequestType, url: &str, parms: &T) -> Result<reqwest::blocking::Response, ServiceError> {
+/// Sends a request that has no query parameters
+pub fn send_request_no_parms(t: Authentication, url: &str) -> Result<reqwest::blocking::Response, ServiceError> {
     let api_key = get_api_key(&t);
-    let key = match t {
-        RequestType::GamesDb => [("apikey", api_key)],
-        RequestType::Google => [("key", api_key)],
-    };
 
     let client = reqwest::blocking::Client::new();
-    match client.get(url).query(parms).query(&key).send() {
+    let mut builder = client.get(url);
+    if let Some(key) = api_key {
+        builder = builder.query(&[key]);
+    }
+    send_and_return(builder)
+}
+
+/// Sends a request using one or more query parameters
+pub fn send_request<T: serde::ser::Serialize + ?Sized>(t: Authentication, url: &str, parms: &T) -> Result<reqwest::blocking::Response, ServiceError> {
+    let api_key = get_api_key(&t);
+
+    let client = reqwest::blocking::Client::new();
+    let mut builder = client.get(url).query(parms);
+    if let Some(key) = api_key {
+        builder = builder.query(&[key]);
+    }
+    send_and_return(builder)
+}
+
+fn send_and_return(builder: reqwest::blocking::RequestBuilder) -> Result<reqwest::blocking::Response, ServiceError> {
+    match builder.send() {
         Ok(resp) => {
             if resp.status().is_success() { 
                 return Ok(resp);
@@ -133,9 +148,9 @@ fn send_request<T: serde::ser::Serialize + ?Sized>(t: RequestType, url: &str, pa
 }
 
 pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<GameInfo>> {
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Searching for game {}", name));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Searching for game {}", name);
 
-    let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1.1/Games/ByGameName", 
+    let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1.1/Games/ByGameName", 
                      &[("name", name), 
                      ("fields", "players,overview,rating"), 
                      ("filter[platform]", &platform.to_string())]);
@@ -151,10 +166,10 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
         let ids = array.iter().map(|v| v["id"].as_i64().unwrap().to_string()).collect::<Vec<String>>();
         let ids = ids.join(",");
 
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Getting all images for game {}", name));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Getting all images for game {}", name);
 
     //Get the image data for the games
-        let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1/Games/Images", 
+        let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1/Games/Images", 
                         &[("games_id", &ids[..]), ("filter[type]", "banner,boxart")]);
 
         let images = &resp["data"]["images"];
@@ -183,9 +198,9 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
 }
 
 pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo>> {
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Searching for platform {}", name));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Searching for platform {}", name);
     
-    let resp = json_request!(RequestType::GamesDb, "https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)]);
+    let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)]);
 
     assert!(resp["data"]["platforms"].is_array());
     let array = resp["data"]["platforms"].as_array().unwrap();
@@ -214,11 +229,12 @@ fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str
     (count, exact_index)
 }
 
-pub fn check_for_updates() -> ServiceResult<bool> {
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, "Checking for updates");
+pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResult<bool> {
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Checking for updates");
 
     //For some reason this doesnt work when putting q as a query parameter
-    let resp = json_request!(RequestType::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents", &[("", "")]);
+    let resp = serde_json::from_str::<serde_json::Value>(&send_request_no_parms(Authentication::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents")?.text()?)?;
+    // let resp = json_request!(Authentication::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents", &[("", "")]);
 
     let mut files = HashMap::new();
     assert!(resp["files"].is_array());
@@ -234,27 +250,41 @@ pub fn check_for_updates() -> ServiceResult<bool> {
         return Err(ServiceError::Other("version.txt not found in remote repository"));
     }
     let url = format!("https://www.googleapis.com/drive/v3/files/{}", *version_file.unwrap());
-    let data = data_request!(RequestType::Google, &url, &[("alt", "media")]);
+    let data = data_request!(Authentication::Google, &url, &[("alt", "media")]);
 
     let version = std::str::from_utf8(&data).unwrap();
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Found remote version {}", version));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Found remote version {}", version);
 
-    if version != crate::CARGO_PKG_VERSION {
+    if needs_updating(crate::CARGO_PKG_VERSION, version) {
+        crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Remote version greater than current version. Updating...");
+
         //Get updated exe file and write to temp location
         let exe_file = files.get("yaffe-rs.exe");
         if exe_file.is_none() {
             return Err(ServiceError::Other("yaffe-rs.exe not found in remote repository"));
         }
 
-        let url = format!("https://www.googleapis.com/drive/v3/files/{}", *exe_file.unwrap());
-        let data = data_request!(RequestType::Google, &url, &[("alt", "media")]);
-
-        if let Err(_) = std::fs::write(crate::UPDATE_FILE_PATH, data) {
-            return Err(ServiceError::Other("Unable to write updated file"));
-        }
+        let url = std::path::Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join("?alt=media");
+        let file = std::path::Path::new(crate::UPDATE_FILE_PATH);
+        queue.send(crate::job_system::JobType::DownloadUrl((crate::net_api::Authentication::Google, url.to_owned(), file.to_owned())));
 
         return Ok(true)
     }
 
     return Ok(false)
+}
+
+fn needs_updating(current: &str, updated: &str) -> bool {
+    fn parse(version: &str) -> i32 {
+        const VERSION_SIZE: usize = 3;
+
+        let mut v = 0;
+        for (i, n) in version.split('.').enumerate() {
+            let power = VERSION_SIZE - i;
+            v += i32::pow(10, power as u32) * str::parse::<i32>(n).unwrap();
+        }
+        v
+    }
+
+    return parse(current) < parse(updated);
 }

@@ -219,7 +219,10 @@ impl windowing::WindowHandler for WidgetTree {
         if self.data.update_timer != f32::NAN {
             self.data.update_timer -= delta_time;
             if self.data.update_timer < 0. {
-                let applied = net_api::check_for_updates().log("Error checking for updates");
+                let lock = self.data.queue.lock().log_and_panic();
+                let mut queue = lock.borrow_mut();
+
+                let applied = net_api::check_for_updates(&mut queue).log("Error checking for updates");
                 if applied { self.data.update_timer = f32::NAN; }
                 else { self.data.update_timer = 60. * 60.; }
             }
@@ -227,8 +230,8 @@ impl windowing::WindowHandler for WidgetTree {
 
         //Check for any updates to the settings file
         settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
-
     }
+
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool {
         assets::preload_assets(graphics);
 
@@ -313,7 +316,7 @@ fn main() {
     if std::path::Path::new(UPDATE_FILE_PATH).exists() {
         match platform_layer::update() { 
             Ok(_) => return,
-            Err(e) => crate::logger::log_entry(crate::logger::LogTypes::Error, format!("Updated file found, but unable to run updater {:?}", e)),
+            Err(e) => crate::logger::log_entry!(crate::logger::LogTypes::Error, "Updated file found, but unable to run updater {:?}", e),
         }
     }
 
@@ -322,7 +325,7 @@ fn main() {
     let settings = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
         Err(e) => {
-            logger::log_entry(logger::LogTypes::Error, e);
+            logger::log_entry!(logger::LogTypes::Error, "{:?}", e);
             settings::SettingsFile::default()
         },
     };

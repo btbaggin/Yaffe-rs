@@ -272,7 +272,7 @@ pub fn request_font(font: Fonts) -> &'static Font {
 
 pub fn load_image_async(slot: crate::RawDataPointer) {
     let asset_slot = slot.get_inner::<AssetSlot>();
-    crate::logger::log_entry(crate::logger::LogTypes::Fine, format!("Loading image asynchronously {:?}", asset_slot.path));
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Loading image asynchronously {:?}", asset_slot.path);
 
     let data = match &asset_slot.path {
         AssetPathType::File(path) => std::fs::read(&path).log_and_panic(),
@@ -291,12 +291,12 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
             asset_slot.dimensions = buffer.dimensions();
             asset_slot.data = buffer.into_vec();
         },
-        Err(e) => crate::logger::log_entry(crate::logger::LogTypes::Warning, e),
+        Err(e) => crate::logger::log_entry!(crate::logger::LogTypes::Warning, "{:?}", e),
     }
     asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
 }
 
-pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
+pub fn get_asset_path(platform: &str, name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
     use std::path::Path;
 
     let platform = Path::new("./Assets").join(crate::platform_layer::sanitize_file(platform));
@@ -307,7 +307,7 @@ pub fn get_asset_path(platform: &str, name: &str) -> (String, String) {
     let boxart = Path::new(&name).join("boxart.jpg");
     if !name.exists() { std::fs::create_dir(name).log_and_panic(); }
 
-    (boxart.to_string_lossy().to_string(), banner.to_string_lossy().to_string())
+    (boxart.to_owned(), banner.to_owned())
 }
 
 pub fn get_cached_file<'a>(file: &AssetPathType) -> &'a RefCell<AssetSlot> {

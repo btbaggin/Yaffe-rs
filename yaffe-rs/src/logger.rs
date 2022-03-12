@@ -1,5 +1,4 @@
 use std::fs::{OpenOptions, File};
-use std::io::Write;
 use std::sync::Mutex;
 use std::fmt::Debug;
 use std::convert::TryFrom;
@@ -26,8 +25,8 @@ impl TryFrom<i32> for LogTypes {
 }
 
 pub struct Logger {
-    file: Mutex<File>,
-    level: Mutex<LogTypes>,
+    pub file: Mutex<File>,
+    pub level: Mutex<LogTypes>,
 }
 impl Logger {
     fn new(path: &'static str) -> Logger {
@@ -40,7 +39,7 @@ impl Logger {
         let mut self_level = self.level.lock().unwrap();
         *self_level = level;
     }
-    fn level(&self) -> LogTypes {
+    pub fn level(&self) -> LogTypes {
         *self.level.lock().unwrap()
     }
 }
@@ -52,13 +51,38 @@ pub fn set_log_level(level: i32) {
 }
 
 lazy_static::lazy_static! {
-    static ref LOGGER: Logger = Logger::new("./log.txt");
+    pub static ref LOGGER: Logger = Logger::new("./log.txt");
 }
 
-macro_rules! log_entry_internal {
-    ($type:ident, $string:expr, $($element:tt)*) => {
-        let file = &LOGGER.file;
-        if $type >= LOGGER.level() {
+macro_rules! log_entry {
+    // ($type:path, $string:expr, $($element:tt)*) => {
+    //     let file = &crate::logger::LOGGER.file;
+    //     if $type >= crate::logger::LOGGER.level() {
+    //         use std::io::Write;
+    //         let mut file = file.lock().unwrap();
+        
+    //         let time = chrono::Local::now();
+    //         let time_string = time.format("%x %X");
+    //         let message = match $type {
+    //             //Include stack trace in debug builds
+    //             #[cfg(debug_assertions)]
+    //             crate::logger::LogTypes::Error => {
+    //                 let trace = backtrace::Backtrace::new();
+    //                 format!("Error [{}]: {} {:?}\n", time_string, format_args!($string, $($element)*), trace)
+    //             },
+    //             #[cfg(not(debug_assertions))]
+    //             crate::logger::LogTypes::Error => format!("Error [{}]: {}\n", time_string, format_args!($string, $($element)*)),
+    //             crate::logger::LogTypes::Warning => format!("Warning [{}]: {}\n", time_string, format_args!($string, $($element)*)),
+    //             crate::logger::LogTypes::Information | crate::logger::LogTypes::Fine => format!("[{}]: {}\n", time_string, format_args!($string, $($element)*)),
+    //         };
+    //         file.write_all(message.as_bytes()).unwrap();
+    //     } 
+    // }
+    ($type:path, $($element:tt)*) => {{
+        
+        let file = &crate::logger::LOGGER.file;
+        if $type >= crate::logger::LOGGER.level() {
+            use std::io::Write;
             let mut file = file.lock().unwrap();
         
             let time = chrono::Local::now();
@@ -66,29 +90,30 @@ macro_rules! log_entry_internal {
             let message = match $type {
                 //Include stack trace in debug builds
                 #[cfg(debug_assertions)]
-                LogTypes::Error => {
+                crate::logger::LogTypes::Error => {
                     let trace = backtrace::Backtrace::new();
-                    format!("Error [{}]: {} {:?}\n", time_string, format_args!($string, $($element)*), trace)
+                    format!("Error [{}]: {} {:?}\n", time_string, format_args!($($element)*), trace)
                 },
                 #[cfg(not(debug_assertions))]
-                LogTypes::Error => format!("Error [{}]: {}\n", time_string, format_args!($string, $($element)*)),
-                LogTypes::Warning => format!("Warning [{}]: {}\n", time_string, format_args!($string, $($element)*)),
-                LogTypes::Information | LogTypes::Fine => format!("[{}]: {}\n", time_string, format_args!($string, $($element)*)),
+                crate::logger::LogTypes::Error => format!("Error [{}]: {}\n", time_string, format_args!($($element)*)),
+                crate::logger::LogTypes::Warning => format!("Warning [{}]: {}\n", time_string, format_args!($($element)*)),
+                crate::logger::LogTypes::Information | crate::logger::LogTypes::Fine => format!("[{}]: {}\n", time_string, format_args!($($element)*)),
             };
             file.write_all(message.as_bytes()).unwrap();
         } 
-    }
+    }}
 } 
+pub(crate) use log_entry;
 
 /// Logs a piece of data
-pub fn log_entry(t: LogTypes, err: impl Debug) {
-    log_entry_internal!(t, "{:?}", err);
-}
+// pub fn log_entry(t: LogTypes, err: impl Debug) {
+//     log_entry_internal!(t, "{:?}", err);
+// }
 
-/// Logs a piece of data long with an addtional message
-pub fn log_entry_with_message(t: LogTypes, err: impl Debug, message: &str) {
-    log_entry_internal!(t, "{:?} - {}", err, message);
-}
+// /// Logs a piece of data long with an addtional message
+// pub fn log_entry_with_message(t: LogTypes, err: impl Debug, message: &str) {
+//     log_entry_internal!(t, "{:?} - {}", err, message);
+// }
 
 
 pub trait PanicLogEntry<T> {
@@ -107,7 +132,7 @@ impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
     fn log_message_and_panic(self, message: &str) -> T {
         match self {
             Err(e) => {
-                log_entry_with_message(LogTypes::Error, e, message);
+                log_entry!(LogTypes::Error, "{:?} - {}", e, message);
                 panic!("encountered unexpected error");
             }
             Ok(r) => r,
@@ -118,7 +143,7 @@ impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
     fn log_and_panic(self) -> T {
         match self {
             Err(e) => {
-                log_entry(LogTypes::Error, e);
+                log_entry!(LogTypes::Error, "{:?}", e);
                 panic!("encountered unexpected error");
             }
             Ok(r) => r,
@@ -130,7 +155,7 @@ impl <T: Default, E: Debug> LogEntry<T> for std::result::Result<T, E> {
     fn log(self, message: &str) -> T {
         match self {
             Err(e) => {
-                log_entry_with_message(LogTypes::Warning, e, message);
+                log_entry!(LogTypes::Warning, "{:?} - {}", e, message);
                 std::default::Default::default()
             }
             Ok(r) => r,
@@ -173,7 +198,7 @@ impl<T> PanicLogEntry<T> for Option<T> {
         match self {
             Some(t) => t,
             None => {
-                log_entry_with_message(LogTypes::Error, "None", message);
+                log_entry!(LogTypes::Error, "None - {}", message);
                 panic!("encountered unexpected error");
             }
         }
@@ -184,7 +209,7 @@ impl<T> PanicLogEntry<T> for Option<T> {
         match self {
             Some(t) => t,
             None => {
-                log_entry(LogTypes::Error, "None");
+                log_entry!(LogTypes::Error, "None", );
                 panic!("encountered unexpected error");
             }
         }
