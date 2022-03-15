@@ -291,7 +291,10 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
             asset_slot.dimensions = buffer.dimensions();
             asset_slot.data = buffer.into_vec();
         },
-        Err(e) => crate::logger::log_entry!(crate::logger::LogTypes::Warning, "{:?}", e),
+        Err(e) => {
+            crate::logger::log_entry!(crate::logger::LogTypes::Warning, "Error loading {:?}: {:?}", asset_slot.path, e);
+            return;
+        }
     }
     asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
 }
