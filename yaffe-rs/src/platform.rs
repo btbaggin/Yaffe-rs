@@ -196,7 +196,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                                                                 boxart.to_string_lossy().to_string(), 
                                                                 banner.to_string_lossy().to_string()));
 
-                    } else if !queue.already_sent(file.to_string()) {
+                    } else {
                         crate::logger::log_entry!(crate::logger::LogTypes::Fine, "{} not found in database, performing search", name);
 
                         //We need to check if the file was already sent for a search
