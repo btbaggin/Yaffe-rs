@@ -77,10 +77,6 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
                         std::fs::write(path, file).log_and_panic();
                     }
                 }
-
-                // match reqwest::blocking::get(url.to_str().unwrap()) {
-                    
-                // } 
             }
 
             JobType::SearchPlatform((state, name, path, args, rom)) => {

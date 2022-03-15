@@ -234,7 +234,6 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
 
     //For some reason this doesnt work when putting q as a query parameter
     let resp = serde_json::from_str::<serde_json::Value>(&send_request_no_parms(Authentication::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents")?.text()?)?;
-    // let resp = json_request!(Authentication::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents", &[("", "")]);
 
     let mut files = HashMap::new();
     assert!(resp["files"].is_array());

@@ -55,29 +55,6 @@ lazy_static::lazy_static! {
 }
 
 macro_rules! log_entry {
-    // ($type:path, $string:expr, $($element:tt)*) => {
-    //     let file = &crate::logger::LOGGER.file;
-    //     if $type >= crate::logger::LOGGER.level() {
-    //         use std::io::Write;
-    //         let mut file = file.lock().unwrap();
-        
-    //         let time = chrono::Local::now();
-    //         let time_string = time.format("%x %X");
-    //         let message = match $type {
-    //             //Include stack trace in debug builds
-    //             #[cfg(debug_assertions)]
-    //             crate::logger::LogTypes::Error => {
-    //                 let trace = backtrace::Backtrace::new();
-    //                 format!("Error [{}]: {} {:?}\n", time_string, format_args!($string, $($element)*), trace)
-    //             },
-    //             #[cfg(not(debug_assertions))]
-    //             crate::logger::LogTypes::Error => format!("Error [{}]: {}\n", time_string, format_args!($string, $($element)*)),
-    //             crate::logger::LogTypes::Warning => format!("Warning [{}]: {}\n", time_string, format_args!($string, $($element)*)),
-    //             crate::logger::LogTypes::Information | crate::logger::LogTypes::Fine => format!("[{}]: {}\n", time_string, format_args!($string, $($element)*)),
-    //         };
-    //         file.write_all(message.as_bytes()).unwrap();
-    //     } 
-    // }
     ($type:path, $($element:tt)*) => {{
         
         let file = &crate::logger::LOGGER.file;
@@ -104,17 +81,6 @@ macro_rules! log_entry {
     }}
 } 
 pub(crate) use log_entry;
-
-/// Logs a piece of data
-// pub fn log_entry(t: LogTypes, err: impl Debug) {
-//     log_entry_internal!(t, "{:?}", err);
-// }
-
-// /// Logs a piece of data long with an addtional message
-// pub fn log_entry_with_message(t: LogTypes, err: impl Debug, message: &str) {
-//     log_entry_internal!(t, "{:?} - {}", err, message);
-// }
-
 
 pub trait PanicLogEntry<T> {
     fn log_message_and_panic(self, message: &str) -> T;
