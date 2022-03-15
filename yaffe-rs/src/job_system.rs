@@ -28,11 +28,6 @@ pub struct JobQueue {
     set: HashSet<String>,
 } 
 impl JobQueue {
-    /// Returns if `send_with_key` has been called before with this key
-    pub fn already_sent(&self, key: String) -> bool {
-        self.set.get(&key).is_some()
-    }
-
     /// Sends a message to the job system for asynchronous processing
     /// Each new message type needs custom handling
     pub fn send(&mut self, job: JobType) {
@@ -41,8 +36,9 @@ impl JobQueue {
 
     /// Same as `send` but allows `already_sent` to check if its already been used
     pub fn send_with_key(&mut self, key: String, job: JobType) {
-        self.set.insert(key);
-        self.send(job);
+        if self.set.insert(key) {
+            self.send(job);
+        }
     }
 }
 
