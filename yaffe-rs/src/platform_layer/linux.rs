@@ -277,3 +277,7 @@ pub(super) fn get_and_update_volume(_: f32) -> VolumeResult<f32> {
     //TODO
     Ok(1.)
 }
+
+pub(super) fn sanitize_file(file: &str) -> String {
+    file.replace("/", "").replace('\0', "")
+}
