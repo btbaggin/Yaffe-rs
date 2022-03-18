@@ -10,6 +10,7 @@ mod os;
 mod os;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum StartupError {
     AccessDenied,
     File(std::io::Error),

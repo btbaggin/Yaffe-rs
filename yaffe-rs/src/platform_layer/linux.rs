@@ -10,6 +10,12 @@ use std::time::Instant;
 use std::convert::TryInto;
 use glutin::platform::unix::WindowExtUnix;
 
+impl From<alsa::Error> for super::StartupError {
+    fn from(v: alsa::Error) -> Self {
+        super::StartupError::Other(v.to_string())
+    }
+}
+
 pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
     Ok(std::path::Path::new(&format!("~/.config/autostart/{}.desktop", task)).exists())
 }
@@ -273,9 +279,26 @@ unsafe fn x_paste_type(atom: u64, display: &mut x11::xlib::Display, window: u64,
     result
 }
 
-pub(super) fn get_and_update_volume(_: f32) -> VolumeResult<f32> {
-    //TODO
-    Ok(1.)
+pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
+    //https://stackoverflow.com/questions/57918821/how-to-get-and-set-volume-in-linux-using-alsa-using-c
+    let mixer = alsa::Mixer::new("default", true)?;
+    let id = alsa::mixer::SelemId::new("PCM", 0);
+    
+    let selem = mixer.find_selem(&id);
+    if let Some(selem) = selem {
+        let (_, max) = selem.get_playback_volume_range();
+        let volume = selem.get_playback_volume(alsa::mixer::SelemChannelId::mono())?;
+        let mut volume = (volume / max) as f32;
+
+        if delta != 0. {
+            volume = f32::min(1., f32::max(0., volume + delta));
+            selem.set_playback_volume_all((volume * max as f32) as i64)?;
+        }
+
+        return Ok(volume)
+    }
+
+    return Err(super::StartupError::Other(String::from("Unable to find PRM selem")));
 }
 
 pub(super) fn sanitize_file(file: &str) -> String {
