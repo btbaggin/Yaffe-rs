@@ -195,7 +195,7 @@ impl WidgetTree {
 
         if !different {
             //The only scenario this could happen is plugins
-            handle.load_plugin(crate::plugins::PluginLoadType::Back);
+            handle.load_plugin(crate::plugins::NavigationAction::Back);
         }
 
         handle.resolve(self);
@@ -349,7 +349,7 @@ enum FocusType {
 pub struct DeferredAction {
     focus: Option<FocusType>,
     anims: Vec<Animation>,
-    load_plugin: Option<crate::plugins::PluginLoadType>,
+    load_plugin: Option<crate::plugins::NavigationAction>,
     restricted_action: Option<&'static str>,
     message: Option<String>,
 }
@@ -369,7 +369,7 @@ impl DeferredAction {
     pub fn revert_focus(&mut self) {
         self.focus = Some(FocusType::Revert);
     }
-    pub fn load_plugin(&mut self, kind: crate::plugins::PluginLoadType) {
+    pub fn load_plugin(&mut self, kind: crate::plugins::NavigationAction) {
         self.load_plugin = Some(kind);
     }
     pub fn finalize_restricted_action(&mut self, tag: &'static str) {

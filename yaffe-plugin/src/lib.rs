@@ -23,15 +23,9 @@ pub enum PathType {
     File(String),
 }
 
-#[derive(Copy, Clone)]
-pub enum LoadStatus {
-    Initial,
-    Refresh(Page)
-}
-
 pub enum SelectedAction {
     Start(std::process::Command),
-    Load,
+    Load(String),
 }
   
 impl YaffePluginItem {
@@ -47,25 +41,38 @@ impl YaffePluginItem {
 }
 
 pub type InitializeResult = Result<(), String>;
-pub type LoadResult = Result<(Vec<YaffePluginItem>, Page), String>;
-pub type Page = bool;
+pub type LoadResult = Result<LoadedItems, String>;
+
+pub struct LoadedItems {
+    pub results: Vec<YaffePluginItem>,
+    pub next_page: String,
+}
+impl LoadedItems {
+    pub fn next(results: Vec<YaffePluginItem>, next_page: String) -> LoadResult {
+        Ok(LoadedItems { results, next_page })
+    }
+    pub fn finish(results: Vec<YaffePluginItem>) -> LoadResult {
+        Ok(LoadedItems { results, next_page: String::from("") })
+    }
+}
+
+#[macro_export]
+#[allow(unused_macros)]
+macro_rules! create_plugin {
+    ($init:expr) => {
+        #[no_mangle]
+        pub fn initialize() -> Box<dyn YaffePlugin> {
+            Box::new($init)
+        }
+    };
+}
 
 pub trait YaffePlugin {
     fn name(&self) -> &'static str;
     fn initialize(&mut self, settings: &HashMap<String, PluginSetting>) -> InitializeResult;
     fn settings(&self) -> Vec<(&'static str, PluginSetting)>;
-    fn initial_load(&mut self);
-    fn load_items(&mut self, size: u32, settings: &HashMap<String, PluginSetting>) -> LoadResult;
-    fn on_selected(&mut self, name: &str, path: &str, settings: &HashMap<String, PluginSetting>) -> SelectedAction;
-    fn on_back(&mut self) -> bool { false }
-}
-
-pub fn load_next_page(results: Vec<YaffePluginItem>) -> LoadResult {
-    Ok((results, true))
-}
-
-pub fn finish_loading(results: Vec<YaffePluginItem>) -> LoadResult {
-    Ok((results, false))
+    fn load_items(&mut self, size: u32, navigation_state: &Vec<String>, page: &str) -> LoadResult;
+    fn on_selected(&mut self, name: &str, path: &str) -> SelectedAction;
 }
 
 pub fn try_get_str(settings: &HashMap<String, PluginSetting>, name: &'static str) -> Option<String> {
@@ -94,10 +101,3 @@ pub fn try_get_f32(settings: &HashMap<String, PluginSetting>, name: &'static str
     }
     None
 }
-
-
-// #[panic_handler]
-// fn panic(_info: &PanicInfo) -> ! {
-//     loop {}
-// }
-

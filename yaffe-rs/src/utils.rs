@@ -1,3 +1,4 @@
+
 use speedy2d::dimen::Vector2;
 
 pub type LogicalSize  = LogicalPosition;

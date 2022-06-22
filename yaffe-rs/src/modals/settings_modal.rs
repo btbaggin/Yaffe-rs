@@ -85,5 +85,9 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
 
         //Save settings
         state.settings.serialize().display_failure("Unable to save settings", state);
+
+        if let Some(plugin) = &content.plugin_file {
+            crate::plugins::reload_settings(state, &plugin);
+        }
     }
 }

@@ -9,14 +9,14 @@ impl super::Widget for PlatformList {
             Actions::Down =>  {
                 if state.selected_platform < state.platforms.len() - 1 { 
                     state.selected_platform += 1;
-                    handler.load_plugin(crate::plugins::PluginLoadType::Initial);
+                    handler.load_plugin(crate::plugins::NavigationAction::Initialize);
                 }
                 true
             }
             Actions::Up => {
                 if state.selected_platform > 0 { 
                     state.selected_platform -= 1;
-                    handler.load_plugin(crate::plugins::PluginLoadType::Initial);
+                    handler.load_plugin(crate::plugins::NavigationAction::Initialize);
                 }
                 true
             }
@@ -32,7 +32,7 @@ impl super::Widget for PlatformList {
                         display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(on_update_platform_close));
                     },
                     PlatformType::Plugin => {
-                        let (plugin, _) = platform.get_plugin(state).unwrap();
+                        let plugin = platform.get_plugin(state).unwrap();
                         let plugin = plugin.borrow().file.clone();
                         let modal = Box::new(SettingsModal::new(&state.settings, Some(&plugin)));
                         

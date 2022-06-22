@@ -1,4 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![feature(maybe_uninit_array_assume_init)]
+#![feature(assert_matches)]
 use std::time::Instant;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -92,6 +94,7 @@ mod input;
 mod plugins;
 mod controls;
 mod utils;
+mod pooled_cache;
 use utils::{Transparent};
 use widgets::*;
 use overlay::OverlayWindow;
@@ -325,7 +328,7 @@ fn main() {
     let settings = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
         Err(e) => {
-            logger::log_entry!(logger::LogTypes::Error, "{:?}", e);
+            logger::log_entry!(logger::LogTypes::Error, "Unable to load settings: {:?}", e);
             settings::SettingsFile::default()
         },
     };
