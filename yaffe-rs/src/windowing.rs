@@ -98,7 +98,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
         .with_visible(true);
     let size = create_window(&mut windows, &el, &mut ct, builder, handler);
 
-     //Doing full size seems to make it fullscreen and it loses transparency
+    //Doing full size seems to make it fullscreen and it loses transparency
     let builder = WindowBuilder::new()
         .with_title("Overlay")
         .with_inner_size(glutin::dpi::PhysicalSize::new(size.x - 1., size.y - 1.)) 
