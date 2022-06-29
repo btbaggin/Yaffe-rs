@@ -122,6 +122,7 @@ impl<'a, const C: usize, T> Iterator for PooledCacheIter<'a, C, T> {
             None => None,
             Some(p) => {
                 let index = (self.pool_index - 1, self.index);
+                let data = p.get(self.index);
                 if let None = data {
                     return None; //TODO this isnt quite right
                 } else {
