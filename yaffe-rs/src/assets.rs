@@ -1,15 +1,15 @@
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::rc::Rc;
 use std::cell::RefCell;
 use speedy2d::Graphics2D;
-use crate::{PhysicalSize, PhysicalRect};
+use crate::{RawDataPointer, PhysicalSize, PhysicalRect};
 use crate::job_system::JobQueue;
-use crate::logger::PanicLogEntry;
+use crate::logger::{PanicLogEntry, LogTypes, log_entry};
 use speedy2d::font::*;
 use speedy2d::image::*;
 use std::time::Instant;
-// use std::assert_matches::assert_matches;
+use crate::pooled_cache::PooledCache;
+use std::assert_matches::assert_matches;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Images {
@@ -129,11 +129,20 @@ impl YaffeTexture {
     pub fn get_handle(&self) -> &Rc<ImageHandle> { &self.image }
 }
 
-static mut STATIC_ASSET_MAP: Option<HashMap<AssetTypes, AssetSlot>> = None;
-static mut FILE_ASSET_MAP: Option<HashMap<String, RefCell<AssetSlot>>> = None;
+//Stores static assets (something from AssetTypes)
+static mut STATIC_ASSET_MAP: Option<PooledCache<32, AssetTypes, AssetSlot>> = None;
+
+//Stores dyanmic assets (something loaded from a path)
+static mut FILE_ASSET_MAP: Option<PooledCache<32, String, RefCell<AssetSlot>>> = None;
+
+//Mutex for accessing FILE_ASSET_MAP when its being written to
+//Easier and allows finer access than wrapping FILE_ASSET_MAP in a mutex
+lazy_static::lazy_static! {
+    static ref FILE_ASSET_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+}
 
 pub fn initialize_asset_cache() {
-    let mut map = HashMap::new();
+    let mut map = PooledCache::new();
     map.insert(AssetTypes::Image(Images::PlaceholderBanner), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/banner.png"))));
     map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/background.jpg"))));
 
@@ -141,7 +150,7 @@ pub fn initialize_asset_cache() {
     
     unsafe { STATIC_ASSET_MAP = Some(map); }
 
-    unsafe { FILE_ASSET_MAP = Some(HashMap::with_capacity(64)); }
+    unsafe { FILE_ASSET_MAP = Some(PooledCache::new()); }
 }
 
 pub fn preload_assets(graphics: &mut Graphics2D) {
@@ -150,7 +159,7 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
 
-        for tex in read_texture_atlas(r"./Assets/atlas.tex") {
+        for tex in read_texture_atlas("./Assets/atlas.tex") {
             let image_type = match tex.0.as_str() {
                 "error.png" => Images::Error,
                 "question.png" => Images::Question,
@@ -178,7 +187,7 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
         }
     }
 
-    fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut std::collections::HashMap<AssetTypes, AssetSlot>) {
+    fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, AssetTypes, AssetSlot>) {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear, path).log_and_panic();
         let image = Rc::new(data);
         let texture = YaffeTexture { image: image.clone(), bounds: None };
@@ -191,7 +200,7 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
 }
 
 fn get_slot_mut(t: AssetTypes) -> &'static mut AssetSlot {
-    unsafe { STATIC_ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_and_panic("Invalid asset slot reqeust") }
+    unsafe { STATIC_ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_and_panic("Invalid asset slot request") }
 }
 
 fn asset_path_is_valid(path: &AssetPathType) -> bool {
@@ -206,7 +215,7 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, queue: &mut JobQu
        asset_path_is_valid(&slot.path) {
         if let Ok(ASSET_STATE_UNLOADED) = slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed) {
 
-            queue.send(crate::JobType::LoadImage(crate::RawDataPointer::new(slot)));
+            queue.send(crate::JobType::LoadImage((slot.path.clone(), RawDataPointer::new(slot))));
             return None;
         }
     }
@@ -236,7 +245,7 @@ pub fn request_image<'a>(piet: &mut crate::Graphics, queue: &mut JobQueue, image
 pub fn request_preloaded_image<'a>(graphics: &mut crate::Graphics, image: Images) -> &'a YaffeTexture {
     let slot = get_slot_mut(AssetTypes::Image(image));
 
-    //TODO std::assert_matches::assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
+    std::assert_matches::assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
     assert_eq!(slot.state.load(Ordering::Relaxed), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
@@ -254,8 +263,7 @@ pub fn request_preloaded_image<'a>(graphics: &mut crate::Graphics, image: Images
 pub fn request_font(font: Fonts) -> &'static Font {
     let slot = get_slot_mut(AssetTypes::Font(font));
 
-    //TODO
-    //assert_matches!(slot.path, AssetPathType::File(path) if std::path::Path::new(&slot.path).exists())
+    assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
     assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
     if let None = slot.image {
@@ -270,11 +278,10 @@ pub fn request_font(font: Fonts) -> &'static Font {
     panic!("Requested font on a non-font asset slot");
 }
 
-pub fn load_image_async(slot: crate::RawDataPointer) {
-    let asset_slot = slot.get_inner::<AssetSlot>();
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Loading image asynchronously {:?}", asset_slot.path);
+pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
+    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Loading image asynchronously {:?}", path);
 
-    let data = match &asset_slot.path {
+    let data = match &path {
         AssetPathType::File(path) => std::fs::read(&path).log_and_panic(),
         AssetPathType::Url(path) =>  {
             let image = reqwest::blocking::get(path).unwrap().bytes().log_and_panic();
@@ -288,15 +295,15 @@ pub fn load_image_async(slot: crate::RawDataPointer) {
     match reader.decode() {
         Ok(image) => {
             let buffer = image.into_rgba8();
+            // TODO this FILE_ASSET_LOCK issue still isnt fixed
+            let _lock = FILE_ASSET_LOCK.lock().unwrap();
+            let asset_slot = slot.get_inner::<AssetSlot>();
             asset_slot.dimensions = buffer.dimensions();
             asset_slot.data = buffer.into_vec();
+            asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
         },
-        Err(e) => {
-            crate::logger::log_entry!(crate::logger::LogTypes::Warning, "Error loading {:?}: {:?}", asset_slot.path, e);
-            return;
-        }
+        Err(e) => log_entry!(LogTypes::Warning, "Error loading {:?}: {:?}", path, e),
     }
-    asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
 }
 
 pub fn get_asset_path(platform: &str, name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
@@ -314,23 +321,19 @@ pub fn get_asset_path(platform: &str, name: &str) -> (std::path::PathBuf, std::p
 }
 
 pub fn get_cached_file<'a>(file: &AssetPathType) -> &'a RefCell<AssetSlot> {
-
     //This acts as a cache of exe images
     //If our list ever reloads or we reqeust the same image (recent vs emulator)
     //We will grab the cached image so we dont need to reload the image data
-
-    //TODO safety: since we pass was pointers to AssetSlots to background threads
-    //if this Hashmap resizes and moves things around while an image is loading
-    //that image can be loaded into random memory
     let map = unsafe { FILE_ASSET_MAP.as_mut().unwrap() };
     let key = match file {
         AssetPathType::File(path) => path,
         AssetPathType::Url(url) => url,
     };
-    if !map.contains_key(key) {
+    if !map.contains(key) {
+        let _lock = FILE_ASSET_LOCK.lock().unwrap();
         map.insert(key.clone(), RefCell::new(AssetSlot::new(file.clone())));
     }
-    map.get(key).unwrap()
+    map.get_mut(key).unwrap()
 }
 
 pub fn clear_old_cache(state: &crate::YaffeState) {
@@ -338,30 +341,45 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
 
     let mut to_remove = vec!();
     let mut total_memory = 0;
-    let mut last_used = ("", Instant::now());
-    for (key, value) in map.iter() {
+    let mut last_used = ((0, 0), Instant::now());
+    for (index, value) in map.iter() {
         let slot = value.borrow();
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
             total_memory += slot.data.len();
 
             //Find oldest asset
             if slot.last_request < last_used.1 {
-                last_used = (&key, slot.last_request);
+                last_used = (index, slot.last_request);
             } else if slot.last_request.elapsed().as_secs() > 60 {
                 //If it hasnt been requested in a minute, remove it regardless
-                to_remove.push(key.clone());
+                to_remove.push(index);
             }
         }
     }
+    // for (key, index) in map.indexes() {
+    //     let slot = value.borrow();
+    //     if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+    //         total_memory += slot.data.len();
+
+    //         //Find oldest asset
+    //         if slot.last_request < last_used.1 {
+    //             last_used = (&key, slot.last_request);
+    //         } else if slot.last_request.elapsed().as_secs() > 60 {
+    //             //If it hasnt been requested in a minute, remove it regardless
+    //             to_remove.push(key.clone());
+    //         }
+    //     }
+    // }
 
     //Remove oldest asset if we are over our memory threshold
     //This will happen once per frame until we are under the threshold
     if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize {
-        to_remove.push(last_used.0.to_string());
+        to_remove.push(last_used.0);
     }
 
+    let _lock = FILE_ASSET_LOCK.lock().unwrap();
     for r in to_remove {
-        map.remove(&r);
+        map.remove_at(r);
     }
 }
 

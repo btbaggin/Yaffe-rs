@@ -1,15 +1,14 @@
 use yaffe_plugin::YaffePlugin;
 use dlopen::wrapper::{Container, WrapperApi};
-use crate::logger::{PanicLogEntry, UserMessage};
+use crate::logger::{PanicLogEntry, LogEntry, UserMessage, log_entry, LogTypes};
 pub use yaffe_plugin::*;
 use std::ops::{DerefMut, Deref};
-use std::collections::HashMap;
 
 #[derive(Copy, Clone)]
-pub enum PluginLoadType {
-	Initial,
+pub enum NavigationAction {
+	Initialize,
 	Refresh,
-	Append,
+	Fetch,
 	Back,
 }
 
@@ -20,52 +19,58 @@ pub struct Plugin {
 	data: Box<dyn YaffePlugin>,
 	_container: Container<PluginWrapper>, //There for keeping reference to the library
 	pub file: String,
-	pub page: yaffe_plugin::LoadStatus,
+
+	needs_load: bool,
+	next_page: String,
+	navigation_state: Vec<String>
 }
 impl Plugin {
-	pub fn load(&mut self, kind: PluginLoadType, size: u32, settings: &HashMap<String, PluginSetting>) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
+	pub fn load(&mut self, kind: NavigationAction, size: u32) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
 		match kind {
-			PluginLoadType::Initial => {
-				crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Plugin requested initial load");
+			NavigationAction::Initialize => {
+				log_entry!(LogTypes::Fine, "Plugin requested initial load");
 
-				self.data.initial_load();
-				self.page = yaffe_plugin::LoadStatus::Initial;
+				self.navigation_state.clear();
+				self.needs_load = true;
 			},
-			PluginLoadType::Refresh => {
-				crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Plugin requested refresh");
-				self.page = yaffe_plugin::LoadStatus::Initial;
+			NavigationAction::Refresh => {
+				log_entry!(LogTypes::Fine, "Plugin requested refresh");
+				self.needs_load = true;
 			},
-			PluginLoadType::Append => {
-				crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Plugin requested append");
+			NavigationAction::Fetch => {
+				log_entry!(LogTypes::Fine, "Plugin requested append");
 			},
-			PluginLoadType::Back => {
-				crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Plugin requested back action");
-				if self.data.on_back() {
-					self.page = yaffe_plugin::LoadStatus::Initial;
-				}
+			NavigationAction::Back => {
+				log_entry!(LogTypes::Fine, "Plugin requested back action");
+				self.navigation_state.pop();
+				self.needs_load = self.navigation_state.len() > 0;
 			}
 		}
 
-		if Plugin::needs_load(self.page) {
-			crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Calling load_items on plugin");
-			let result = self.data.load_items(size, settings);
+		if self.needs_load {
+			log_entry!(LogTypes::Fine, "Calling load_items on plugin");
+			let result = self.data.load_items(size, &self.navigation_state, &self.next_page);
 			match result {
-				Ok((items, page)) => {
-					self.page = yaffe_plugin::LoadStatus::Refresh(page);
-					return Ok(items)
+				Ok(results) => {
+					self.next_page = results.next_page;
+					self.needs_load = !self.next_page.is_empty();
+					return Ok(results.results)
 				}
 				Err(s) => Err(s)
 			}
-		} else
-		{
+		} else {
 			Ok(vec!())
 		}
 	}
 
-	fn needs_load(page: LoadStatus) -> bool {
-		match page {
-			LoadStatus::Initial => true,
-			LoadStatus::Refresh(p) => p,
+	pub fn select(&mut self, name: &str, path: &str) -> Option<std::io::Result<std::process::Child>> {
+		let action = self.data.on_selected(name, path);
+		match action {
+			yaffe_plugin::SelectedAction::Load(state) => {
+				self.navigation_state.push(state);
+				None
+			},
+			yaffe_plugin::SelectedAction::Start(mut p) => Some(p.spawn()),
 		}
 	}
 }
@@ -121,8 +126,10 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 					let mut plugin = Plugin { 
 						_container: cont, 
 						file: file.to_string(),
-						page: yaffe_plugin::LoadStatus::Initial,
-						data 
+						needs_load: true,
+						next_page: String::from(""),
+						data,
+						navigation_state: vec!()
 					};
 
 					//Ensure all settings are present
@@ -138,17 +145,28 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 	}
 }
 
-pub fn load_plugin_items(kind: PluginLoadType, state: &mut crate::YaffeState) {
-	if let Some((plugin, settings)) = state.get_platform().get_plugin(state) {
+pub fn reload_settings(state: &mut crate::YaffeState, plugin_name: &str) {
+	let settings = state.settings.plugin(plugin_name);
+	for p in &state.plugins {
+		let mut plugin = p.borrow_mut();
+		if plugin.file == plugin_name {
+			plugin.data.initialize(&settings).log("Unable to reload settings");
+			return;
+		}
+	}
+}
+
+pub fn load_plugin_items(kind: NavigationAction, state: &mut crate::YaffeState) {
+	if let Some(plugin) = state.get_platform().get_plugin(state) {
 		let x = state.settings.get_i32(crate::SettingNames::ItemsPerRow);
 		let y = state.settings.get_i32(crate::SettingNames::ItemsPerColumn);
 
-		let items = plugin.borrow_mut().load(kind, (x * y) as u32, &settings);
+		let items = plugin.borrow_mut().load(kind, (x * y) as u32);
 		if let Some(items) = items.display_failure("Error loading plugin", state) {
 			let platform = &mut state.platforms[state.selected_platform];
 			match kind {
-				PluginLoadType::Initial | PluginLoadType::Refresh | PluginLoadType::Back => platform.apps.clear(),
-				_ => {},
+				NavigationAction::Fetch => {}
+				_ => platform.apps.clear(),
 			}
 			for i in items {
 				platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));

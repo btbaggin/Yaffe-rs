@@ -3,7 +3,7 @@
 fn main() {   
     //Link x11 libs                                                                  
     #[cfg(target_os="linux")] 
-    for lib in &["X11", "Xau", "xcb", "Xdmcp"] {                                
+    for lib in &["X11", "xcb", "Xau", "Xdmcp"] {                                
         println!("cargo:rustc-link-lib=static={}", lib);                        
     }          
     

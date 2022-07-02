@@ -5,7 +5,8 @@ use crate::logger::*;
 use std::collections::HashSet;
 
 //This is used to pass a raw pointer to the assetslot between threads
-//Since PietImage isnt marked Send we just pass the raw pointer, we don't touch the image off the main thread
+//Use very rarely when mutability and lifetimes cause issues
+//Passing YaffeState around is currently safe due to internal structures being threadsafe
 #[derive(Clone, Copy)]
 pub struct RawDataPointer(*mut u8);
 unsafe impl std::marker::Send for RawDataPointer {}
@@ -64,7 +65,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
     loop {
         let msg = queue.recv().log_and_panic();
         match msg {
-            JobType::LoadImage(slot) => crate::assets::load_image_async(slot),
+            JobType::LoadImage((path, slot)) => crate::assets::load_image_async(path, slot),
     
             JobType::DownloadUrl((t, url, path)) => {
                 crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Downloading file from {}", url.to_str().unwrap());
@@ -125,7 +126,9 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
 pub enum JobType {
     /// Loads an image synchronously
     /// Should only be called through the asset system
-    LoadImage(RawDataPointer),
+    /// We copy the AssetPathType from the slot so 
+    /// the locks on the slot are shorter
+    LoadImage((crate::assets::AssetPathType, RawDataPointer)),
 
     /// Downloads the file at a given url and writes it to the file system
     DownloadUrl((crate::net_api::Authentication, std::path::PathBuf, std::path::PathBuf)),

@@ -254,7 +254,7 @@ impl AppList {
 
             if let crate::platform::PlatformType::Plugin = state.get_platform().kind {
                 if self.first_visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {
-                    handler.load_plugin(crate::plugins::PluginLoadType::Append);
+                    handler.load_plugin(crate::plugins::NavigationAction::Fetch);
                 }
             }
         }
@@ -267,16 +267,16 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
         if let Some(platform) = state.platforms.get(exe.platform_index) {
             let child = match platform.kind {
                 crate::platform::PlatformType::Plugin => {
-                    let (plugin, settings) = platform.get_plugin(state).unwrap();
-                    let action = plugin.borrow_mut().on_selected(&exe.name, &exe.file, &settings);
+                    let plugin = platform.get_plugin(state).unwrap();
+                    let process = plugin.borrow_mut().select(&exe.name, &exe.file);
 
-                    match action {
-                        yaffe_plugin::SelectedAction::Load => {
-                            handler.load_plugin(crate::plugins::PluginLoadType::Refresh);
+                    match process {
+                        None => {
+                            handler.load_plugin(crate::plugins::NavigationAction::Refresh);
                             handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
                             return;
                         },
-                        yaffe_plugin::SelectedAction::Start(mut p) => p.spawn(),
+                        Some(p) => p,
                     }
                 },
                 _ => {
