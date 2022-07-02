@@ -11,6 +11,7 @@ use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 /* 
  * TODO
  * some sort of setting caching at the beginning of each frame
+ * use simple_logger library
 */
 
 const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -315,6 +316,7 @@ impl windowing::WindowHandler for WidgetTree {
 }
 
 fn main() {
+    simple_logger::SimpleLogger::new().init().unwrap();
     //Check for and apply updates on startup
     if std::path::Path::new(UPDATE_FILE_PATH).exists() {
         match platform_layer::update() { 

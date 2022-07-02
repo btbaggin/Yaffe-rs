@@ -51,6 +51,34 @@ struct YaffeWindow {
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
 }
 
+fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()>) -> Option<glutin::WindowedContext<glutin::NotCurrent>> {
+    for vsync in &[true, false] {
+        for multisampling in &[16, 8, 4, 2, 1, 0] {
+
+            let mut windowed_context = glutin::ContextBuilder::new()
+                .with_vsync(*vsync)
+                .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (2, 0)));
+
+            if *multisampling > 1 {
+                windowed_context = windowed_context.with_multisampling(*multisampling);
+            }
+
+            let result = windowed_context.build_windowed(window_builder.clone(), event_loop);
+
+            match result {
+                Ok(context) => {
+                    return Some(context);
+                }
+                Err(err) => {
+                    crate::logger::log_entry!(crate::logger::LogTypes::Warning, "Failed to create context: {:?}", err);
+                }
+            }
+        }
+    }
+
+    None
+}
+
 fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowId, YaffeWindow>,
                  event_loop: &EventLoop<()>, 
                  tracker: &mut context_tracker::ContextTracker, 
@@ -59,7 +87,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
 
     use crate::logger::PanicLogEntry;
     //WSL seems to require vsync
-    let windowed_context = glutin::ContextBuilder::new().with_vsync(true).build_windowed(builder, event_loop).log_and_panic();
+    let windowed_context = create_best_context(&builder, &event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
     let id = windowed_context.window().id();
