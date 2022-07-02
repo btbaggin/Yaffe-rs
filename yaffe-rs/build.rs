@@ -1,4 +1,4 @@
-//Linux builds require open-ssl, mesa-dev, x11-dev
+//Linux builds require open-ssl, mesa-dev, x11-devw libasound2-dev
 
 fn main() {   
     //Link x11 libs                                                                  
