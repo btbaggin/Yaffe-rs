@@ -53,7 +53,7 @@ struct YaffeWindow {
 
 fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()>) -> Option<glutin::WindowedContext<glutin::NotCurrent>> {
     for vsync in &[true, false] {
-        for multisampling in &[16, 8, 4, 2, 1, 0] {
+        for multisampling in &[8, 4, 2, 1, 0] {
 
             let mut windowed_context = glutin::ContextBuilder::new()
                 .with_vsync(*vsync)
@@ -66,9 +66,7 @@ fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()
             let result = windowed_context.build_windowed(window_builder.clone(), event_loop);
 
             match result {
-                Ok(context) => {
-                    return Some(context);
-                }
+                Ok(context) => { return Some(context); }
                 Err(err) => {
                     crate::logger::log_entry!(crate::logger::LogTypes::Warning, "Failed to create context: {:?}", err);
                 }
@@ -86,7 +84,6 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> PhysicalSize {
 
     use crate::logger::PanicLogEntry;
-    //WSL seems to require vsync
     let windowed_context = create_best_context(&builder, &event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
@@ -151,44 +148,48 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 WindowEvent::CloseRequested => {
                     crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Closing window");
 
-                    let window = windows.get_mut(&window_id).unwrap();
-                    *control_flow = ControlFlow::Exit;
-                    window.handler.borrow_mut().on_stop();
+                    if let Some(window) = windows.get_mut(&window_id) {
+                        *control_flow = ControlFlow::Exit;
+                        window.handler.borrow_mut().on_stop();
+                    }
                 },
 
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Scale factor changed, redrawing");
 
-                    let window = windows.get_mut(&window_id).unwrap();
-                    let context = ct.get_current(window.context_id).unwrap();
+                    if let Some(window) = windows.get_mut(&window_id) {
+                        let context = ct.get_current(window.context_id).unwrap();
 
-                    window.size = PhysicalSize::new(new_inner_size.width as f32, new_inner_size.height as f32);
+                        window.size = PhysicalSize::new(new_inner_size.width as f32, new_inner_size.height as f32);
 
-                    window.handler.borrow_mut().on_resize(new_inner_size.width, new_inner_size.height);
-                    context.windowed().window().request_redraw();
+                        window.handler.borrow_mut().on_resize(new_inner_size.width, new_inner_size.height);
+                        context.windowed().window().request_redraw();
+                    }
                 },
 
                 WindowEvent::Resized(physical_size) => {
                     crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Window resized, redrawing");
 
-                    let window = windows.get_mut(&window_id).unwrap();
-                    let context = ct.get_current(window.context_id).unwrap();
+                    if let Some(window) = windows.get_mut(&window_id) {
+                        let context = ct.get_current(window.context_id).unwrap();
 
-                    window.size = PhysicalSize::new(physical_size.width as f32, physical_size.height as f32);
+                        window.size = PhysicalSize::new(physical_size.width as f32, physical_size.height as f32);
 
-                    context.windowed().resize(physical_size);
-                    window.renderer.set_viewport_size_pixels(Vector2::new(physical_size.width, physical_size.height));
-                    window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
+                        context.windowed().resize(physical_size);
+                        window.renderer.set_viewport_size_pixels(Vector2::new(physical_size.width, physical_size.height));
+                        window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
 
-                    context.windowed().window().request_redraw();
+                        context.windowed().window().request_redraw();
+                    }
                 },
 
                 WindowEvent::Focused(_focused) => {
                     crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Focus changed, redrawing");
 
-                    let window = windows.get_mut(&window_id).unwrap();
-                    let context = ct.get_current(window.context_id).unwrap();
-                    context.windowed().window().request_redraw();
+                    if let Some(window) = windows.get_mut(&window_id) {
+                        let context = ct.get_current(window.context_id).unwrap();
+                        context.windowed().window().request_redraw();
+                    }
                 },
 
                 WindowEvent::ModifiersChanged(state) => mods = state,
@@ -200,12 +201,15 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     let action = if let Some(action) = input_map.get(input.virtual_keycode, None) {
                         action.clone()
                     } else if matches!(input.virtual_keycode, Some(VirtualKeyCode::V)) && mods.ctrl() {
-                            let window = windows.get_mut(&window_id).unwrap();
-                            let context = ct.get_current(window.context_id).unwrap();
+                            if let Some(window) = windows.get_mut(&window_id) {
+                                let context = ct.get_current(window.context_id).unwrap();
 
-                            match crate::platform_layer::get_clipboard(context.windowed().window()) {
-                                Some(clip) => crate::Actions::KeyPress(InputType::Paste(clip)),
-                                _ => return,
+                                match crate::platform_layer::get_clipboard(context.windowed().window()) {
+                                    Some(clip) => crate::Actions::KeyPress(InputType::Paste(clip)),
+                                    _ => return,
+                                }
+                            } else {
+                                return;
                             }
                     } else {
                         crate::Actions::KeyPress(InputType::Key(input.virtual_keycode.unwrap()))
@@ -229,19 +233,20 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
             },
 
             Event::RedrawRequested(id) => {
-                let window = windows.get_mut(&id).unwrap();
-                let context = ct.get_current(window.context_id).unwrap();
+                if let Some(window) = windows.get_mut(&id) {
+                    let context = ct.get_current(window.context_id).unwrap();
 
-                let scale = context.windowed().window().scale_factor() as f32;
-                let size = PhysicalSize::new(window.size.x as f32, window.size.y as f32);
-                let mut handle = window.handler.borrow_mut();
-                window.renderer.draw_frame(|graphics| {
-                    if !handle.on_frame(graphics, delta_time, size, scale) {
-                        *control_flow = ControlFlow::Exit;
-                        handle.on_stop();
-                    }
-                });
-                context.windowed().swap_buffers().unwrap();
+                    let scale = context.windowed().window().scale_factor() as f32;
+                    let size = PhysicalSize::new(window.size.x as f32, window.size.y as f32);
+                    let mut handle = window.handler.borrow_mut();
+                    window.renderer.draw_frame(|graphics| {
+                        if !handle.on_frame(graphics, delta_time, size, scale) {
+                            *control_flow = ControlFlow::Exit;
+                            handle.on_stop();
+                        }
+                    });
+                    context.windowed().swap_buffers().unwrap();
+                }
             },
 
             Event::MainEventsCleared => {
