@@ -76,7 +76,7 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
                     crate::platform_layer::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state)
                 },
                 "logging_level" => {
-                    crate::logger::set_log_level(control.value().parse::<i32>().unwrap());
+                    crate::logger::set_log_level(control.value());
                     state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state)
                 },
                 _ => state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state),

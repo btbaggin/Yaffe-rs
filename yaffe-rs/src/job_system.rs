@@ -68,10 +68,10 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
             JobType::LoadImage((path, slot)) => crate::assets::load_image_async(path, slot),
     
             JobType::DownloadUrl((t, url, path)) => {
-                crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Downloading file from {}", url.to_str().unwrap());
+                crate::logger::info!("Downloading file from {}", url.to_str().unwrap());
 
                 match crate::net_api::send_request_no_parms(t, url.to_str().unwrap()) {
-                    Err(e) => crate::logger::log_entry!(LogTypes::Error, "{:?}", e),
+                    Err(e) => crate::logger::error!("{:?}", e),
                     Ok(bytes) => {
                         //Download and write file to disk
                         let file = bytes.bytes().unwrap();

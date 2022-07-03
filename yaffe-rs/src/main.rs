@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
 use speedy2d::color::Color;
-use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
+use crate::logger::{UserMessage, PanicLogEntry, LogEntry, error};
 
 /* 
  * TODO
@@ -316,12 +316,13 @@ impl windowing::WindowHandler for WidgetTree {
 }
 
 fn main() {
-    simple_logger::SimpleLogger::new().init().unwrap();
+    crate::logger::init();
+    
     //Check for and apply updates on startup
     if std::path::Path::new(UPDATE_FILE_PATH).exists() {
         match platform_layer::update() { 
             Ok(_) => return,
-            Err(e) => crate::logger::log_entry!(crate::logger::LogTypes::Error, "Updated file found, but unable to run updater {:?}", e),
+            Err(e) => error!("Updated file found, but unable to run updater {:?}", e),
         }
     }
 
@@ -330,11 +331,11 @@ fn main() {
     let settings = match settings::load_settings("./settings.txt") {
         Ok(settings) => settings,
         Err(e) => {
-            logger::log_entry!(logger::LogTypes::Error, "Unable to load settings: {:?}", e);
+            logger::error!("Unable to load settings: {:?}", e);
             settings::SettingsFile::default()
         },
     };
-    logger::set_log_level(settings.get_i32(SettingNames::LoggingLevel));
+    logger::set_log_level(&settings.get_str(SettingNames::LoggingLevel));
 
     let q = Arc::new(std::sync::Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree(q.clone());

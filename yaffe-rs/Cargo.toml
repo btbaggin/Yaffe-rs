@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 sqlite3 = "0.24.0"
-speedy2d = { version = "1.7.0", default-features = false, features = ["image-loading"] }
+speedy2d = { version = "1.7.*", default-features = false, features = ["image-loading"] }
 spmc = "^0.3"
 chrono = "^0.4"
 serde_json = "^1"
@@ -23,7 +23,7 @@ dlopen = "0.1.8"
 dlopen_derive = "0.1.3"
 lazy_static = "1.4.0"
 yaffe-plugin = { path = "../yaffe-plugin" }
-simple_logger = { version = "1.11", default-features = false, features = ["colors"] }
+log = { version = "0.4.14" }
 
 [target.'cfg(target_os="windows")'.dependencies.winapi]
 version = "0.3.9"

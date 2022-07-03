@@ -148,7 +148,7 @@ fn send_and_return(builder: reqwest::blocking::RequestBuilder) -> Result<reqwest
 }
 
 pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<GameInfo>> {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Searching for game {}", name);
+    crate::logger::info!("Searching for game {}", name);
 
     let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1.1/Games/ByGameName", 
                      &[("name", name), 
@@ -166,7 +166,7 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
         let ids = array.iter().map(|v| v["id"].as_i64().unwrap().to_string()).collect::<Vec<String>>();
         let ids = ids.join(",");
 
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Getting all images for game {}", name);
+    crate::logger::info!("Getting all images for game {}", name);
 
     //Get the image data for the games
         let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1/Games/Images", 
@@ -198,7 +198,7 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
 }
 
 pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo>> {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Searching for platform {}", name);
+    crate::logger::info!("Searching for platform {}", name);
     
     let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)]);
 
@@ -230,7 +230,7 @@ fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str
 }
 
 pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResult<bool> {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Checking for updates");
+    crate::logger::info!("Checking for updates");
 
     //For some reason this doesnt work when putting q as a query parameter
     let resp = serde_json::from_str::<serde_json::Value>(&send_request_no_parms(Authentication::Google, "https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents")?.text()?)?;
@@ -252,10 +252,10 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
     let data = data_request!(Authentication::Google, &url, &[("alt", "media")]);
 
     let version = std::str::from_utf8(&data).unwrap();
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Found remote version {}", version);
+    crate::logger::info!("Found remote version {}", version);
 
     if needs_updating(crate::CARGO_PKG_VERSION, version) {
-        crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Remote version greater than current version. Updating...");
+        crate::logger::info!("Remote version greater than current version. Updating...");
 
         //Get updated exe file and write to temp location
         let exe_file = files.get("yaffe-rs.exe");

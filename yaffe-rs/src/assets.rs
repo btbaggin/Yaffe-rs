@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use speedy2d::Graphics2D;
 use crate::{RawDataPointer, PhysicalSize, PhysicalRect};
 use crate::job_system::JobQueue;
-use crate::logger::{PanicLogEntry, LogTypes, log_entry};
+use crate::logger::{PanicLogEntry, info, warn};
 use speedy2d::font::*;
 use speedy2d::image::*;
 use std::time::Instant;
@@ -279,7 +279,7 @@ pub fn request_font(font: Fonts) -> &'static Font {
 }
 
 pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Loading image asynchronously {:?}", path);
+    info!("Loading image asynchronously {:?}", path);
 
     let data = match &path {
         AssetPathType::File(path) => std::fs::read(&path).log_and_panic(),
@@ -302,7 +302,7 @@ pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
             asset_slot.data = buffer.into_vec();
             asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
         },
-        Err(e) => log_entry!(LogTypes::Warning, "Error loading {:?}: {:?}", path, e),
+        Err(e) => warn!("Error loading {:?}: {:?}", path, e),
     }
 }
 

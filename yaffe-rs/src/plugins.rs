@@ -1,6 +1,6 @@
 use yaffe_plugin::YaffePlugin;
 use dlopen::wrapper::{Container, WrapperApi};
-use crate::logger::{PanicLogEntry, LogEntry, UserMessage, log_entry, LogTypes};
+use crate::logger::{PanicLogEntry, LogEntry, UserMessage, info};
 pub use yaffe_plugin::*;
 use std::ops::{DerefMut, Deref};
 
@@ -28,27 +28,27 @@ impl Plugin {
 	pub fn load(&mut self, kind: NavigationAction, size: u32) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
 		match kind {
 			NavigationAction::Initialize => {
-				log_entry!(LogTypes::Fine, "Plugin requested initial load");
+				info!("Plugin requested initial load");
 
 				self.navigation_state.clear();
 				self.needs_load = true;
 			},
 			NavigationAction::Refresh => {
-				log_entry!(LogTypes::Fine, "Plugin requested refresh");
+				info!("Plugin requested refresh");
 				self.needs_load = true;
 			},
 			NavigationAction::Fetch => {
-				log_entry!(LogTypes::Fine, "Plugin requested append");
+				info!("Plugin requested append");
 			},
 			NavigationAction::Back => {
-				log_entry!(LogTypes::Fine, "Plugin requested back action");
+				info!("Plugin requested back action");
 				self.navigation_state.pop();
 				self.needs_load = self.navigation_state.len() > 0;
 			}
 		}
 
 		if self.needs_load {
-			log_entry!(LogTypes::Fine, "Calling load_items on plugin");
+			info!("Calling load_items on plugin");
 			let result = self.data.load_items(size, &self.navigation_state, &self.next_page);
 			match result {
 				Ok(results) => {
@@ -115,7 +115,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 				let file = path.file_stem().unwrap().to_string_lossy();
 				let message = format!("Failed to load plugin {:?}", file);
 				
-				crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Found plugin {}", file);
+				info!("Found plugin {}", file);
 
 				let container: Option<Container<PluginWrapper>> = unsafe { Container::load(path.clone()) }.display_failure(&message, state);
 				if let Some(cont) = container {

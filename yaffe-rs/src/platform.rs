@@ -145,7 +145,7 @@ impl Executable {
 }
 
 pub fn get_database_info(state: &mut YaffeState) {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Refreshing information from database");
+    crate::logger::info!("Refreshing information from database");
 
     create_database().log_message_and_panic("Unable to create database");
     let mut platforms = get_all_platforms();
@@ -175,7 +175,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                     let file = path.file_name().unwrap().to_string_lossy();
                     let name = path.file_stem().unwrap().to_string_lossy();
                     let name = clean_file_name(&name);
-                    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Found local game {}", name);
+                    crate::logger::info!("Found local game {}", name);
                     
                     let id = platform.id.unwrap();
                     let state_ptr = crate::RawDataPointer::new(state);
@@ -195,7 +195,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                                                                 banner.to_string_lossy().to_string()));
 
                     } else {
-                        crate::logger::log_entry!(crate::logger::LogTypes::Fine, "{} not found in database, performing search", name);
+                        crate::logger::info!("{} not found in database, performing search", name);
 
                         //We need to check if the file was already sent for a search
                         //If we dont something like this could happen:
@@ -214,7 +214,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
             assert!(false);
         }
         PlatformType::Recents => {
-            crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Getting recent games");
+            crate::logger::info!("Getting recent games");
 
             let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 
                       state.settings.get_i32(crate::SettingNames::ItemsPerColumn) as f32 *
@@ -246,7 +246,7 @@ fn clean_file_name(file: &str) -> &str {
 }
 
 pub fn insert_platform(state: &mut YaffeState, data: &crate::database::PlatformData) {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Inserting new platform into database {}", data.name);
+    crate::logger::info!("Inserting new platform into database {}", data.name);
 
     crate::database::insert_platform(data.id, &data.name, &data.path, &data.args, &data.folder).log_and_panic();
 
@@ -254,7 +254,7 @@ pub fn insert_platform(state: &mut YaffeState, data: &crate::database::PlatformD
 }
 
 pub fn insert_game(state: &mut YaffeState, data: &crate::database::GameData) {
-    crate::logger::log_entry!(crate::logger::LogTypes::Fine, "Inserting new game into database {}", data.name);
+    crate::logger::info!("Inserting new game into database {}", data.name);
 
     crate::database::insert_game(data.id, 
                                  data.platform, 
