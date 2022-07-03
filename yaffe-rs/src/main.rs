@@ -392,8 +392,9 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
             },
             "Exit Yaffe" => state.running = false, 
             "Shut Down" => { 
-                state.running = false;
-                crate::platform_layer::shutdown().display_failure("Failed to shut down", state); 
+                if let Some(_) = crate::platform_layer::shutdown().display_failure("Failed to shut down", state) {
+                    state.running = false;
+                }
             },
             _ => panic!("Unknown menu option"),
         }
