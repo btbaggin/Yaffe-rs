@@ -280,10 +280,12 @@ unsafe fn x_paste_type(atom: u64, display: &mut x11::xlib::Display, window: u64,
 }
 
 pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
+    //https://stackoverflow.com/questions/6787318/set-alsa-master-volume-from-c-code
     //https://stackoverflow.com/questions/57918821/how-to-get-and-set-volume-in-linux-using-alsa-using-c
     let mixer = alsa::Mixer::new("default", true)?;
-    let id = alsa::mixer::SelemId::new("PCM", 0);
-    
+    let id = alsa::mixer::SelemId::new("Master", 0);
+    // let id = alsa::mixer::SelemId::new("PCM", 0);
+
     let selem = mixer.find_selem(&id);
     if let Some(selem) = selem {
         let (_, max) = selem.get_playback_volume_range();

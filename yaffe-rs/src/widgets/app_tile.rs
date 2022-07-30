@@ -3,8 +3,7 @@ use crate::{YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize}
 use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
-use crate::logger::PanicLogEntry;
-use crate::assets::{request_asset_image, request_image, request_preloaded_image, Images};
+use crate::assets::{request_asset_image, request_image, Images};
 
 pub const ANIMATION_TIME: f32 = 0.25;
 const SELECTED_SCALAR: f32 = 0.2;
@@ -13,16 +12,14 @@ const ROM_OUTLINE_SIZE: f32 = 7.5;
 const VISIBLE_FLAG: u8 = 0x01;
 
 pub struct AppTile { 
-    queue: crate::ThreadSafeJobQueue,
     index: usize,
     flags: u8,
     pub position: LogicalPosition,
     pub size: LogicalSize,
 }
 impl AppTile {
-    pub fn new(q: crate::ThreadSafeJobQueue, index: usize) -> AppTile {
+    pub fn new(index: usize) -> AppTile {
         AppTile { 
-            queue: q,
             index: index,
             flags: VISIBLE_FLAG,
             position: LogicalPosition::new(0., 0.),
@@ -116,11 +113,9 @@ impl AppTile {
         let slot = crate::assets::get_cached_file(&exe.boxart);
         let slot = &mut slot.borrow_mut();
 
-        let lock = self.queue.lock().log_and_panic();
-        let mut queue = lock.borrow_mut();
-        if let Some(i) = request_asset_image(graphics, &mut queue, slot) {
+        if let Some(i) = request_asset_image(graphics, slot) {
             i.render(graphics, Rect::point_and_size(position, target_size));
-        } else if let Some(i) = request_image(graphics, &mut queue, Images::Placeholder) {
+        } else if let Some(i) = request_image(graphics, Images::Placeholder) {
             i.render(graphics, Rect::point_and_size(position, target_size));
         }
     }
@@ -130,15 +125,12 @@ impl AppTile {
         let exe = &p.apps[self.index];
         let slot = crate::assets::get_cached_file(&exe.boxart);
 
-        let lock = self.queue.lock().log_and_panic();
-        let mut queue = lock.borrow_mut();
-
         if let Ok(mut slot) = slot.try_borrow_mut() {
-            if let Some(i) = request_asset_image(graphics, &mut queue, &mut slot) {
+            if let Some(i) = request_asset_image(graphics, &mut slot) {
                 return i.size()
             }
         } 
 
-        request_preloaded_image(graphics, Images::Placeholder).size()
+        request_image(graphics, Images::Placeholder).unwrap().size()
     }
 }

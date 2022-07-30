@@ -65,7 +65,6 @@ macro_rules! widget {
     }) => {
         #[allow(unused_variables)]
         pub struct $name { 
-            #[allow(dead_code)]queue: crate::ThreadSafeJobQueue, 
             pub position: crate::LogicalPosition,
             pub size: crate::LogicalSize,
             $($element: $ty),* 
@@ -83,9 +82,8 @@ macro_rules! widget {
             fn get_id(&self) -> crate::widgets::WidgetId { std::any::TypeId::of::<$name>() }
         }
         impl $name {
-            pub fn new(q: crate::ThreadSafeJobQueue) -> $name {
+            pub fn new() -> $name {
                 $name { 
-                    queue: q, 
                     position: crate::LogicalPosition::new(0., 0.),
                     size: crate::LogicalSize::new(0., 0.),
                     $($element: $value),*
@@ -420,7 +418,7 @@ pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition
     graphics.draw_text(right, color, &text);
     if let Some(i) = image {
         right.x -= size.y;
-        let i = crate::assets::request_preloaded_image(graphics, i);
+        let i = crate::assets::request_image(graphics, i).unwrap();
         i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
     }
 

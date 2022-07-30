@@ -1,10 +1,9 @@
 
-use std::collections::{HashMap, LinkedList};
+use std::collections::{HashMap, LinkedList, linked_list::Iter};
 use std::cmp::Eq;
 use std::hash::Hash;
 use std::mem::MaybeUninit;
 use std::sync::Mutex;
-use std::collections::linked_list::Iter;
 
 pub type PooledCacheIndex = (usize, usize);
 
@@ -38,9 +37,6 @@ impl<const C: usize, T: Sized> CachePool<C, T> {
     fn get_mut(&mut self, index: usize) -> Option<&mut T> { 
         self.data[index].as_mut()
     }
-    fn get(&self, index: usize) -> Option<&T> {
-        self.data[index].as_ref()
-    }
 }
 pub struct PooledCache<const C: usize, K: Eq + Hash, T> {
     map: HashMap<K, PooledCacheIndex>,
@@ -65,17 +61,10 @@ impl<const C: usize, K: Eq + Hash, T> PooledCache<C, K, T> {
         None
     }
 
-    pub fn get(&self, file: &K) -> Option<&T> {
+    pub fn get_index_mut(&mut self, index: PooledCacheIndex) -> Option<&mut T> { 
         let _lock = self.lock.lock().unwrap();
-        if let Some(i) = self.map.get(file) {
-            let pool = self.data.iter().skip(i.0).next().unwrap();
-            return pool.get(i.1);
-        }
-        None
-    }
-
-    pub fn contains(&self, file: &K) -> bool {
-        self.map.get(file).is_some()
+        let pool = self.data.iter_mut().skip(index.0).next().unwrap();
+        pool.get_mut(index.1)
     }
 
     pub fn remove_at(&mut self, index: PooledCacheIndex) {
@@ -84,11 +73,13 @@ impl<const C: usize, K: Eq + Hash, T> PooledCache<C, K, T> {
         pool.data[index.1] = None;
     }
 
-    pub fn iter(&self) -> PooledCacheIter<C, T> {
+    pub fn indexes(&self) -> PooledCacheIter<C, T> {
         PooledCacheIter { pools: self.data.iter(), curr: None, pool_index: 0, index: 0 }
     }
 
     pub fn insert(&mut self, file: K, data: T) {
+        if self.map.get(&file).is_some() { return }
+
         let _lock = self.lock.lock().unwrap();
         for (i, pool) in self.data.iter_mut().enumerate() {
             if pool.count < C {
@@ -110,7 +101,7 @@ pub struct PooledCacheIter<'a, const C: usize, T> {
     index: usize,
 }
 impl<'a, const C: usize, T> Iterator for PooledCacheIter<'a, C, T> {
-    type Item = (PooledCacheIndex, &'a T);
+    type Item = PooledCacheIndex;
     fn next(&mut self) -> Option<Self::Item> {
         self.index += 1;
         if self.curr.is_none() || self.index >= self.curr.unwrap().count {
@@ -118,17 +109,13 @@ impl<'a, const C: usize, T> Iterator for PooledCacheIter<'a, C, T> {
             self.index = 0;
             self.pool_index += 1;
         }
-        match self.curr {
-            None => None,
-            Some(p) => {
-                let index = (self.pool_index - 1, self.index);
-                let data = p.get(self.index);
-                if let None = data {
-                    return None; //TODO this isnt quite right
-                } else {
-                    return Some((index, data.unwrap()));
-                }
-            },
+
+        let index = (self.pool_index - 1, self.index);
+        if let Some(p) = self.curr {
+            if let Some(_) = p.data[self.index] {
+                return Some(index);
+            }
         }
+        return None;
     }
 }

@@ -33,7 +33,7 @@ impl Log for YaffeLogger {
 
 pub fn set_log_level(level: &str) {
     use core::str::FromStr;
-    let level = LevelFilter::from_str(level).unwrap(); //TODO dont unwrap
+    let level = LevelFilter::from_str(level).log_and_panic();
     log::set_max_level(level)
 }
 

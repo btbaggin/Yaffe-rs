@@ -103,7 +103,7 @@ fn draw_header(graphics: &mut crate::Graphics, state: &YaffeState, y: f32, width
     };
 
     let y = y + MARGIN * 2.;
-    let i = crate::assets::request_preloaded_image(graphics, image);
+    let i = crate::assets::request_image(graphics, image).unwrap();
     i.render(graphics, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)));
     
     let y = y + ICON_SIZE;

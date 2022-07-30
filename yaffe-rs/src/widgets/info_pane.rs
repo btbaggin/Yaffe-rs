@@ -3,7 +3,6 @@ use crate::colors::*;
 use crate::assets::{request_image, request_asset_image, Images};
 use crate::platform::Rating;
 use crate::widgets::UiElement;
-use crate::logger::PanicLogEntry;
 
 widget!(pub struct InfoPane { 
     scroll_timer: f32 = 0., 
@@ -32,14 +31,12 @@ impl super::Widget for InfoPane {
         if let Some(app) = state.get_executable() {
             //Banner image
             let mut height = 0.;
-            let lock = self.queue.lock().log_and_panic();
-            let mut queue = lock.borrow_mut();
 
             let slot = crate::assets::get_cached_file(&app.banner);
             let slot = &mut slot.borrow_mut();
 
-            let mut image = request_asset_image(graphics, &mut queue, slot);
-            if let None = image { image = request_image(graphics, &mut queue, Images::PlaceholderBanner); }
+            let mut image = request_asset_image(graphics, slot);
+            if let None = image { image = request_image(graphics, Images::PlaceholderBanner); }
             if let Some(i) = image {
                 //Invalid image files can cause size to be zero
                 let size = i.size().to_logical(graphics.scale_factor);
@@ -63,7 +60,7 @@ impl super::Widget for InfoPane {
             };
             
             if let Some(image) = rating_image {
-                if let Some(i) = request_image(graphics, &mut queue, image) {
+                if let Some(i) = request_image(graphics, image) {
                     //Size rating image according to banner height
                     let ratio = IMAGE_SIZE.y / height;
                     let rating_size = if ratio > 1. {

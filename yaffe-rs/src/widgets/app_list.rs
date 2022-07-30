@@ -102,7 +102,7 @@ impl AppList {
             self.tiles.clear();
 
             for i in 0..platform.apps.len() {
-                self.tiles.push(AppTile::new(self.queue.clone(), i));
+                self.tiles.push(AppTile::new(i));
             }
 
             self.cached_platform = state.selected_platform;

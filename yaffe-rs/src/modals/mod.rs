@@ -7,7 +7,7 @@ mod settings_modal;
 use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper};
 use crate::settings::SettingNames;
 use crate::colors::*;
-use crate::assets::{request_preloaded_image, Images};
+use crate::assets::{request_image, Images};
 
 pub use list_modal::{ListItem, ListModal};
 pub use overlay_modal::OverlayModal;
@@ -206,7 +206,7 @@ pub fn render_modal(settings: &crate::settings::SettingsFile, modal: &Modal, gra
     //Icon
     let mut icon_position = LogicalPosition::new(window_position.x + MARGIN, window_position.y + MARGIN + TITLEBAR_SIZE); //Window + margin for window + margin for icon
     if let Some(image) = modal.icon {
-        let icon = request_preloaded_image(graphics, image);
+        let icon = request_image(graphics, image).unwrap();
         let icon_rect = Rect::new(icon_position, icon_position + LogicalSize::new(ICON_SIZE, ICON_SIZE));
 
         icon.render(graphics, icon_rect);
