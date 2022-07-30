@@ -57,14 +57,15 @@ pub enum AssetPathType {
 pub enum AssetData {
     Image(YaffeTexture),
     Font(Font),
+    Raw(Vec<u8>),
+    None,
 }
 
 pub struct AssetSlot {
     state: AtomicU8,
     path: AssetPathType,
-    data: Vec<u8>,
     dimensions: (u32, u32),
-    image: Option<AssetData>,
+    data: AssetData,
     last_request: Instant,
 }
 impl AssetSlot {
@@ -72,9 +73,8 @@ impl AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_UNLOADED),
             path,
-            data: Vec::with_capacity(0),
             dimensions: (0, 0),
-            image: None,
+            data: AssetData::None,
             last_request: Instant::now(),
         }
     }
@@ -83,9 +83,8 @@ impl AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
             path: AssetPathType::File(String::from(path)),
-            data: Vec::with_capacity(0),
             dimensions: (0, 0),
-            image: Some(AssetData::Image(image)),
+            data: AssetData::Image(image),
             last_request: Instant::now(),
         }
     }
@@ -97,9 +96,8 @@ impl AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
             path: AssetPathType::File(String::from(path)),
-            data: Vec::with_capacity(0),
             dimensions: (0, 0),
-            image: Some(AssetData::Font(font)),
+            data: AssetData::Font(font),
             last_request: Instant::now(),
         }
     }
@@ -217,15 +215,14 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, slot: &'a mut Ass
         }
     }
 
-    if let None = slot.image {
-        if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
-            slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
-            slot.data = Vec::with_capacity(0);
+    if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+        if let AssetData::Raw(data) = &slot.data {
+            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &data).log_and_panic();
+            slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
         }
     }
 
-    if let Some(AssetData::Image(image)) = slot.image.as_ref() {
+    if let AssetData::Image(image) = &slot.data {
         slot.last_request = Instant::now();
         Some(image)
     } else {
@@ -245,12 +242,12 @@ pub fn request_font(font: Fonts) -> &'static Font {
     assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
     assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
 
-    if let None = slot.image {
-        let font = speedy2d::font::Font::new(&slot.data).log_and_panic();
-        slot.image = Some(AssetData::Font(font));
+    if let AssetData::Raw(data) = &slot.data {
+        let font = speedy2d::font::Font::new(&data).log_and_panic();
+        slot.data = AssetData::Font(font);
     }
 
-    if let Some(AssetData::Font(font)) = slot.image.as_ref() {
+    if let AssetData::Font(font) = &slot.data {
         slot.last_request = Instant::now();
         return font;
     }
@@ -276,7 +273,7 @@ pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
             let buffer = image.into_rgba8();
             let asset_slot = slot.get_inner::<AssetSlot>();
             asset_slot.dimensions = buffer.dimensions();
-            asset_slot.data = buffer.into_vec();
+            asset_slot.data = AssetData::Raw(buffer.into_vec());
             asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
         },
         Err(e) => warn!("Error loading {:?}: {:?}", path, e),
@@ -323,7 +320,7 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
         let slot = map.get_index_mut(index).unwrap();
         let slot = slot.borrow();
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            total_memory += slot.data.len();
+            total_memory += 0;//TODO slot.data.len();
 
             //Find oldest asset
             if slot.last_request < last_request {
