@@ -112,15 +112,15 @@ impl YaffeTexture {
     pub fn render(&self, graphics: &mut crate::Graphics, rect: crate::Rect) {
         let rect = rect.to_physical(graphics.scale_factor);
         if let Some(b) = &self.bounds {
-            graphics.graphics.draw_rectangle_image_subset_tinted(rect, Color::WHITE, b.clone(), &self.image);
+            graphics.draw_rectangle_image_subset_tinted(rect, Color::WHITE, b.clone(), &self.image);
         } else {
-            graphics.graphics.draw_rectangle_image(rect, &self.image);
+            graphics.draw_rectangle_image(rect, &self.image);
         }
     }
 
     pub fn render_tinted(&self, graphics: &mut crate::Graphics, color: Color, rect: crate::Rect) {
         let rect = rect.to_physical(graphics.scale_factor);
-        graphics.graphics.draw_rectangle_image_tinted(rect, color, &self.image);
+        graphics.draw_rectangle_image_tinted(rect, color, &self.image);
     }
 
     pub fn size(&self) -> PhysicalSize {
@@ -219,7 +219,7 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, slot: &'a mut Ass
 
     if let None = slot.image {
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            let image = graphics.graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
+            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &slot.data).log_and_panic();
             slot.image = Some(AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None }));
             slot.data = Vec::with_capacity(0);
         }

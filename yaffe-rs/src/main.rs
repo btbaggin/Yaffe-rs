@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::cell::RefCell;
 use speedy2d::color::Color;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry, error};
+use std::ops::{Deref, DerefMut};
 
 /* 
  * TODO
@@ -132,10 +133,20 @@ impl<'a> Graphics<'a> {
         } else {
             self.graphics.set_clip(None);
         }
-        
-
     }
 }
+impl<'a> Deref for Graphics<'a> {
+    type Target = speedy2d::Graphics2D;
+    fn deref(&self) -> &Self::Target {
+        &self.graphics
+    }
+}
+impl<'a> DerefMut for Graphics<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.graphics
+    }
+}
+
 
 pub struct Platform {
     id: Option<i64>,
