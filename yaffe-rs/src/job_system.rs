@@ -62,8 +62,7 @@ pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
 }
 
 fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Sender<u8>) {
-    loop {
-        let msg = queue.recv().log_and_panic();
+    while let Ok(msg) = queue.recv() {
         match msg {
             JobType::LoadImage((path, slot)) => crate::assets::load_image_async(path, slot),
     
