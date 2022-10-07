@@ -67,12 +67,6 @@ impl<const C: usize, K: Eq + Hash, T> PooledCache<C, K, T> {
         pool.get_mut(index.1)
     }
 
-    pub fn remove_at(&mut self, index: PooledCacheIndex) {
-        let _lock = self.lock.lock().unwrap();
-        let pool = self.data.iter_mut().skip(index.0).next().unwrap();
-        pool.data[index.1] = None;
-    }
-
     pub fn indexes(&self) -> PooledCacheIter<C, T> {
         PooledCacheIter { pools: self.data.iter(), curr: None, pool_index: 0, index: 0 }
     }

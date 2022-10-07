@@ -191,7 +191,7 @@ impl YaffeState {
            settings: settings::SettingsFile, 
            queue: ThreadSafeJobQueue) -> YaffeState {
         YaffeState {
-            overlay: overlay,
+            overlay,
             selected_platform: 0,
             selected_app: 0,
             platforms: vec!(),
@@ -201,9 +201,9 @@ impl YaffeState {
             restricted_mode: RestrictedMode::Off,
             restricted_last_approve: None,
             modals: std::sync::Mutex::new(vec!()),
-            queue: queue,
+            queue,
             refresh_list: true,
-            settings: settings,
+            settings,
             running: true,
             update_timer: 0.,
         }
