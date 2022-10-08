@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(assert_matches)]
-use std::time::Instant;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
+use platform::scan_new_files;
 use speedy2d::color::Color;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry, error};
 use std::ops::{Deref, DerefMut};
@@ -109,7 +109,7 @@ pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Re
 
 pub struct Graphics<'a> {
     graphics: &'a mut speedy2d::Graphics2D,
-    queue: Option<ThreadSafeJobQueue>,
+    queue: Option<job_system::ThreadSafeJobQueue>,
     scale_factor: f32,
     bounds: Rect,
     delta_time: f32,
@@ -151,7 +151,6 @@ impl<'a> DerefMut for Graphics<'a> {
 pub struct Platform {
     id: Option<i64>,
     name: String,
-    path: String,
     apps: Vec<Executable>,
     kind: platform::PlatformType,
     plugin_index: usize,
@@ -168,7 +167,6 @@ pub struct Executable {
     banner: crate::assets::AssetPathType,
 }
 
-type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<job_system::JobQueue>>>;
 pub struct YaffeState {
     overlay: Rc<RefCell<OverlayWindow>>,
     selected_platform: usize,
@@ -177,10 +175,9 @@ pub struct YaffeState {
     plugins: Vec<RefCell<plugins::Plugin>>,
     focused_widget: widgets::WidgetId,
     modals: std::sync::Mutex<Vec<modals::Modal>>,
-    queue: ThreadSafeJobQueue,
+    queue: job_system::ThreadSafeJobQueue,
     search_info: widgets::SearchInfo,
     restricted_mode: RestrictedMode,
-    restricted_last_approve: Option<Instant>,
     refresh_list: bool,
     settings: settings::SettingsFile,
     running: bool,
@@ -189,7 +186,7 @@ pub struct YaffeState {
 impl YaffeState {
     fn new(overlay: Rc<RefCell<OverlayWindow>>, 
            settings: settings::SettingsFile, 
-           queue: ThreadSafeJobQueue) -> YaffeState {
+           queue: job_system::ThreadSafeJobQueue) -> YaffeState {
         YaffeState {
             overlay,
             selected_platform: 0,
@@ -199,7 +196,6 @@ impl YaffeState {
             search_info: SearchInfo::new(),
             focused_widget: get_widget_id!(widgets::PlatformList),
             restricted_mode: RestrictedMode::Off,
-            restricted_last_approve: None,
             modals: std::sync::Mutex::new(vec!()),
             queue,
             refresh_list: true,
@@ -289,10 +285,9 @@ impl windowing::WindowHandler for WidgetTree {
                 match self.data.restricted_mode {
                     RestrictedMode::On(_) => l.add_item(String::from("Disable Restricted Mode")),
                     RestrictedMode::Off => l.add_item(String::from("Enable Restricted Mode")),
-                    RestrictedMode::Pending => {},
                 }
                 l.add_item(String::from("Add Emulator"));
-                l.add_item(String::from("Add Application"));
+                l.add_item(String::from("Scan For New Roms"));
     
                 display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
                 true
@@ -377,7 +372,7 @@ fn build_ui_tree() -> WidgetContainer {
     root
 }
 
-fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &Box<dyn modals::ModalContent>, handler: &mut crate::DeferredAction) {
+fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &Box<dyn modals::ModalContent>, _: &mut crate::DeferredAction) {
     if let modals::ModalResult::Ok = result {
         let list_content = content.as_any().downcast_ref::<modals::ListModal<String>>().unwrap();
         
@@ -386,21 +381,20 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
                 let content = Box::new(modals::PlatformDetailModal::emulator());
                 display_modal(state, "New Emulator", Some("Confirm"), content, modals::ModalSize::Half, Some(modals::on_add_platform_close));
             },
-            "Add Application" => {
-                let content = Box::new(modals::PlatformDetailModal::application());
-                display_modal(state, "New Application", Some("Confirm"), content, modals::ModalSize::Half, Some(modals::on_add_platform_close));
-            },
             "Settings" => {
                 let content = Box::new(modals::SettingsModal::new(&state.settings, None));
                 display_modal(state, "Settings", Some("Confirm"), content, modals::ModalSize::Third, Some(modals::on_settings_close));
             },
             "Disable Restricted Mode" => {
-                restrictions::disable_restrictions(state, handler);
-            },
-            "Enable Restricted Mode" => {
-                state.restricted_mode = RestrictedMode::Pending;
                 let content = Box::new(modals::SetRestrictedModal::new());
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, modals::ModalSize::Third, Some(restrictions::on_restricted_modal_close))
+            },
+            "Enable Restricted Mode" => {
+                let content = Box::new(modals::SetRestrictedModal::new());
+                display_modal(state, "Restricted Mode", Some("Set passcode"), content, modals::ModalSize::Third, Some(restrictions::on_restricted_modal_close))
+            },
+            "Scan For New Roms" => {
+                scan_new_files(state);
             },
             "Exit Yaffe" => state.running = false, 
             "Shut Down" => { 

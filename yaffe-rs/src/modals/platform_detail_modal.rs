@@ -9,35 +9,23 @@ pub struct PlatformDetailModal {
     id: i64,
 }
 impl PlatformDetailModal {
-    pub fn application() -> PlatformDetailModal {
-        let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
-        controls.insert("Name", Box::new(TextBox::from_str("")));
-        controls.insert("Executable", Box::new(TextBox::from_str("")));
-        controls.insert("Args", Box::new(TextBox::from_str("")));
-        controls.insert("Image", Box::new(TextBox::from_str("")));
-
-        PlatformDetailModal { controls, id: 0, }
-    }
-
     pub fn emulator() -> PlatformDetailModal {
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         controls.insert("Name", Box::new(TextBox::from_str("")));
         controls.insert("Executable", Box::new(TextBox::from_str("")));
         controls.insert("Args", Box::new(TextBox::from_str("")));
-        controls.insert("Folder", Box::new(TextBox::from_str("")));
 
         PlatformDetailModal { controls, id: 0, }
     }
 
     pub fn from_existing(plat: &crate::Platform, id: i64) -> PlatformDetailModal {
         //This should never fail since we orignally got it from the database
-        let (path, args, roms) = crate::database::get_platform_info(id).log_and_panic();
+        let (path, args) = crate::database::get_platform_info(id).log_and_panic();
 
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         controls.insert("Name", Box::new(TextBox::new(plat.name.clone())));
         controls.insert("Executable", Box::new(TextBox::new(path)));
         controls.insert("Args", Box::new(TextBox::new(args)));
-        controls.insert("Folder", Box::new(TextBox::new(roms)));
 
         PlatformDetailModal { controls, id, }
     }
@@ -82,8 +70,7 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
         let name = content.controls.by_tag("Name").unwrap();
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-        let folder = content.controls.by_tag("Folder").unwrap();
-        queue.send(crate::JobType::SearchPlatform((state_ptr, name.value().to_string(), exe.value().to_string(), args.value().to_string(), folder.value().to_string())));  
+        queue.send(crate::JobType::SearchPlatform((state_ptr, name.value().to_string(), exe.value().to_string(), args.value().to_string()))).unwrap();
     }
 }
 
@@ -94,8 +81,7 @@ pub fn on_update_platform_close(state: &mut YaffeState, result: ModalResult, con
 
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-        let folder = content.controls.by_tag("Folder").unwrap();
-		crate::database::update_platform(content.id, &exe.value(), &args.value(), &folder.value())
+		crate::database::update_platform(content.id, &exe.value(), &args.value())
             .display_failure("Unable to update platform", state);
     }
 }

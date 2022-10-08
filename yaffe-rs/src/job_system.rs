@@ -1,8 +1,12 @@
 use std::thread;
+use std::cell::RefCell;
+use std::sync::Arc;
 use crate::net_api::*;
 use crate::modals::{ListModal, display_modal, ModalSize, on_platform_found_close};
 use crate::logger::*;
-use std::collections::HashSet;
+
+pub type JobQueue = spmc::Sender<JobType>;
+pub type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<JobQueue>>>;
 
 //This is used to pass a raw pointer to the assetslot between threads
 //Use very rarely when mutability and lifetimes cause issues
@@ -24,25 +28,6 @@ impl RawDataPointer {
     }
 }
 
-pub struct JobQueue {
-    queue: spmc::Sender<JobType>,
-    set: HashSet<String>,
-} 
-impl JobQueue {
-    /// Sends a message to the job system for asynchronous processing
-    /// Each new message type needs custom handling
-    pub fn send(&mut self, job: JobType) {
-        self.queue.send(job).unwrap()
-    }
-
-    /// Same as `send` but allows `already_sent` to check if its already been used
-    pub fn send_with_key(&mut self, key: String, job: JobType) {
-        if self.set.insert(key) {
-            self.send(job);
-        }
-    }
-}
-
 /// Starts a single producer multiple consumer job threading system
 /// Jobs can be sent to this system using the returned JobQueue
 pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
@@ -58,7 +43,7 @@ pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
         });
     }
 
-    (JobQueue { queue: tx, set: HashSet::new() }, notify_rx)
+    (tx, notify_rx)
 }
 
 fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Sender<u8>) {
@@ -79,18 +64,18 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
                 }
             }
 
-            JobType::SearchPlatform((state, name, path, args, rom)) => {
+            JobType::SearchPlatform((state, name, path, args)) => {
                 let state = state.get_inner::<crate::YaffeState>();
                 if let Some(result) = search_platform(&name).display_failure("Unable to send message for platform search", state) {
 
                     if let Some(plat) = result.get_exact() {
-                        let plat = crate::database::PlatformData::new(plat, path.clone(), args.clone(), rom.clone());
+                        let plat = crate::database::PlatformData::new(plat, path.clone(), args.clone());
                         crate::platform::insert_platform(state, &plat);
 
                     } else if result.count > 0 {
                         let mut content: ListModal<crate::database::PlatformData> = ListModal::new(Some(format!("Found {} results for '{}'", result.count, &name)));
                         for i in result.results {
-                            content.add_item(crate::database::PlatformData::new(&i, path.clone(), args.clone(), rom.clone()));
+                            content.add_item(crate::database::PlatformData::new(&i, path.clone(), args.clone()));
                         }
 
                         display_modal(state, "Select Platform", None, Box::new(content), ModalSize::Half, Some(on_platform_found_close));
@@ -133,7 +118,7 @@ pub enum JobType {
     DownloadUrl((crate::net_api::Authentication, std::path::PathBuf, std::path::PathBuf)),
 
     /// Searches TheGamesDb for a given platform
-    SearchPlatform((RawDataPointer, String, String, String, String)),
+    SearchPlatform((RawDataPointer, String, String, String)),
 
     /// Searches TheGamesDb for a given game
     SearchGame((RawDataPointer, String, String, i64)),

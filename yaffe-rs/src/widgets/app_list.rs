@@ -15,13 +15,6 @@ widget!(pub struct AppList {
 });
 
 impl super::Widget for AppList {
-    fn on_restricted_action_finalized(&self, state: &YaffeState, tag: &'static str, handler: &mut DeferredAction) {
-        match tag {
-            "start" => start_game(state, handler),
-            _ => panic!("not supported"),
-        }
-    }
-
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
@@ -43,7 +36,9 @@ impl super::Widget for AppList {
                 true 
             }
             Actions::Accept => {
-                crate::restrictions::verify_restricted_action(state, "start", handler);
+                if crate::restrictions::verify_restricted_action(state) {
+                    start_game(state, handler)
+                }
                 true
             },
             Actions::Info => {
@@ -282,11 +277,11 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
                 _ => {
                     let id = platform.id.unwrap();
                     //This should never fail since we got it from the database
-                    let (path, args, roms) = crate::database::get_platform_info(id).log_message_and_panic("Platform not found");
+                    let (path, args) = crate::database::get_platform_info(id).log_message_and_panic("Platform not found");
                     crate::database::update_game_last_run(exe, id).log("Unable to update game last run");
 
                     let mut process = &mut std::process::Command::new(path);
-                    let exe_path = std::path::Path::new(&roms).join(&exe.file);
+                    let exe_path = platform.get_rom_path().join(&exe.file);
 
                     process = process.arg(exe_path.to_str().unwrap());
                     if !args.is_empty() { process = process.args(args.split(' ')); }

@@ -46,9 +46,6 @@ pub trait Widget: FocusableWidget {
 
     /// Called when the control loses focus
     fn lost_focus(&mut self, _: Rect, _: &mut DeferredAction) {}
-
-    /// Called when a restricted action has been validated
-    fn on_restricted_action_finalized(&self, _: &YaffeState, _: &'static str, _: &mut DeferredAction) {}
 }
 
 #[macro_export]
@@ -198,21 +195,6 @@ impl WidgetTree {
 
         handle.resolve(self);
     }
-
-    fn finalize_restricted_action(&mut self, tag: &'static str) {
-        //Check if the restricted action is to turn it off
-        //This is specially handled because we don't want every widget to 
-        //have to code for it
-        if crate::restrictions::try_disable_restrictions(&mut self.data, tag) { return; }
-
-        let mut handle = DeferredAction::new();
-        if let Some(last) = self.focus.last() {
-            if let Some(focus) = self.find_widget(*last) {
-                focus.widget.on_restricted_action_finalized(&self.data, tag, &mut handle);
-            }
-        }
-        handle.resolve(self);
-    }
 }
 
 impl Deref for WidgetTree {
@@ -324,17 +306,6 @@ impl WidgetContainer {
         }
         None
     }
-
-    fn find_widget(&self, widget: WidgetId) -> Option<&WidgetContainer> {
-        let id = self.widget.get_id();
-        if widget == id { return Some(self) }
-
-        for i in self.children.iter() {
-            let widget = i.find_widget(widget);
-            if widget.is_some() { return widget; }
-        }
-        None
-    }
 }
 
 
@@ -348,7 +319,6 @@ pub struct DeferredAction {
     focus: Option<FocusType>,
     anims: Vec<Animation>,
     load_plugin: Option<crate::plugins::NavigationAction>,
-    restricted_action: Option<&'static str>,
     message: Option<String>,
 }
 impl DeferredAction {
@@ -357,7 +327,6 @@ impl DeferredAction {
             focus: None,
             load_plugin: None,
             anims: vec!(),
-            restricted_action: None,
             message: None,
         }
     }
@@ -370,18 +339,11 @@ impl DeferredAction {
     pub fn load_plugin(&mut self, kind: crate::plugins::NavigationAction) {
         self.load_plugin = Some(kind);
     }
-    pub fn finalize_restricted_action(&mut self, tag: &'static str) {
-        self.restricted_action = Some(tag);
-    }
     pub fn display_message(&mut self, message: String) {
         self.message = Some(message);
     }
 
     pub fn resolve(self, ui: &mut WidgetTree) {
-        if let Some(tag) = self.restricted_action {
-            ui.finalize_restricted_action(tag);
-        }
-
         match self.focus {
             None => { /*do nothing*/ }
             Some(FocusType::Revert) => ui.revert_focus(),

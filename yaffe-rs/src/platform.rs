@@ -6,6 +6,7 @@ use crate::logger::PanicLogEntry;
 use super::{Platform, Executable};
 use std::convert::{TryFrom, TryInto};
 use std::cell::RefCell;
+use std::path::Path;
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -56,11 +57,10 @@ impl TryFrom<String> for Rating {
 }
 
 impl Platform {
-    pub fn new(id: i64, name: String, path: String) -> Platform {
+    pub fn new(id: i64, name: String) -> Platform {
         super::Platform {
             id: Some(id),
             name: name,
-            path: path,
             apps: vec!(),
             kind: PlatformType::Emulator,
             plugin_index: 0,
@@ -71,7 +71,6 @@ impl Platform {
         super::Platform {
             id: None,
             name: name,
-            path: String::from(""),
             apps: vec!(),
             kind: PlatformType::Recents,
             plugin_index: 0,
@@ -82,7 +81,6 @@ impl Platform {
         super::Platform {
             id: None,
             name: name,
-            path: String::from(""),
             apps: vec!(),
             kind: PlatformType::Plugin,
             plugin_index: index,
@@ -95,6 +93,10 @@ impl Platform {
             return Some(plugin);
         }
         None
+    }
+
+    pub fn get_rom_path(&self) -> std::path::PathBuf {
+        std::path::Path::new("./Roms").join(&self.name)
     }
 }
 
@@ -163,11 +165,11 @@ pub fn get_database_info(state: &mut YaffeState) {
     state.platforms = platforms;
 }
 
-fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, index: usize) {
-    match platforms[index].kind {
-        PlatformType::Emulator => {
-            let platform = platforms.get_mut(index).unwrap();
-            for entry in std::fs::read_dir(std::path::Path::new(&platform.path)).log_and_panic() {
+pub fn scan_new_files(state: &mut YaffeState) {
+    let state_ptr = crate::RawDataPointer::new(state);
+    for p in &state.platforms {
+        if let PlatformType::Emulator = p.kind {
+            for entry in std::fs::read_dir(p.get_rom_path()).log_and_panic() {
                 let entry = entry.unwrap();
                 let path = entry.path();
                 if path.is_file() && is_allowed_file_type(&path) {
@@ -177,36 +179,39 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
                     let name = clean_file_name(&name);
                     crate::logger::info!("Found local game {}", name);
                     
-                    let id = platform.id.unwrap();
-                    let state_ptr = crate::RawDataPointer::new(state);
-
                     let lock = state.queue.lock().log_and_panic();
                     let mut queue = lock.borrow_mut();
-                    if let Ok((name, overview, players, rating)) = get_game_info(id, &file) {
-                        let (boxart, banner) = crate::assets::get_asset_path(&platform.name, &name);
-    
-                        platform.apps.push(Executable::new_game(String::from(file), 
-                                                                name, 
-                                                                overview, 
-                                                                index, 
-                                                                players as u8, 
-                                                                rating.try_into().expect("Something went very wrong"), 
-                                                                boxart.to_string_lossy().to_string(), 
-                                                                banner.to_string_lossy().to_string()));
-
-                    } else {
+                    
+                    let id = p.id.unwrap();
+                    let exists = get_game_exists(id, &file).log_and_panic();
+                    if !exists {
                         crate::logger::info!("{} not found in database, performing search", name);
-
-                        //We need to check if the file was already sent for a search
-                        //If we dont something like this could happen:
-                        //Finds files A and B it needs to look up
-                        //Comes back and A gets a modal
-                        //Upon accepting A modal we refresh the screen
-                        //Find B it needs to look up, but there is already a modal pending user action
-                        queue.send_with_key(file.to_string(), crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), id)));
+                        queue.send(crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), id))).unwrap();
                     }
                 }
             }
+        }
+    }
+}
+
+fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, index: usize) {
+    match platforms[index].kind {
+        PlatformType::Emulator => {
+            let platform = platforms.get_mut(index).unwrap();
+            for g in get_all_games(platform.id.unwrap()) {
+                let name = g.0;
+                let (boxart, banner) = crate::assets::get_asset_path(&platform.name, &name);
+                platform.apps.push(Executable::new_game(g.4, 
+                            name, 
+                            g.1, 
+                            index, 
+                            g.2 as u8, 
+                            g.3.try_into().expect("Something went very wrong"), 
+                            boxart.to_string_lossy().to_string(), 
+                            banner.to_string_lossy().to_string()));
+
+            }
+            
             platform.apps.sort_by(|a, b| a.name.cmp(&b.name));
         }
         PlatformType::Plugin => {
@@ -248,7 +253,14 @@ fn clean_file_name(file: &str) -> &str {
 pub fn insert_platform(state: &mut YaffeState, data: &crate::database::PlatformData) {
     crate::logger::info!("Inserting new platform into database {}", data.name);
 
-    crate::database::insert_platform(data.id, &data.name, &data.path, &data.args, &data.folder).log_and_panic();
+    crate::database::insert_platform(data.id, &data.name, &data.args, &data.folder).log_and_panic();
+    if !Path::new("./Roms").exists() {
+        std::fs::create_dir("./Roms").unwrap();
+    }
+    let folder = Path::new("./Roms").join(&data.name);
+    if !folder.exists() {
+        std::fs::create_dir(folder).unwrap();
+    }
 
     state.refresh_list = true;
 }
@@ -270,12 +282,11 @@ pub fn insert_game(state: &mut YaffeState, data: &crate::database::GameData) {
     let lock = state.queue.lock().log_and_panic();
     let mut queue = lock.borrow_mut();
 
-    use std::path::Path;
     let boxart_url = Path::new("https://cdn.thegamesdb.net/images/medium/").join(data.boxart.clone());
-    queue.send(crate::JobType::DownloadUrl((crate::net_api::Authentication::None, boxart_url.to_owned(), boxart)));
+    queue.send(crate::JobType::DownloadUrl((crate::net_api::Authentication::None, boxart_url.to_owned(), boxart))).unwrap();
 
     let banner_url = Path::new("https://cdn.thegamesdb.net/images/medium/").join(data.banner.clone());
-    queue.send(crate::JobType::DownloadUrl((crate::net_api::Authentication::None, banner_url.to_owned(), banner)));
+    queue.send(crate::JobType::DownloadUrl((crate::net_api::Authentication::None, banner_url.to_owned(), banner))).unwrap();
 
     state.refresh_list = true;
 }

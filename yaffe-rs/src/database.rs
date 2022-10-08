@@ -9,7 +9,8 @@ static QS_GET_ALL_PLATFORMS: &str = "SELECT ID, Platform, Roms FROM Platforms OR
 static QS_ADD_PLATFORM: &str = "INSERT INTO Platforms ( ID, Platform, Path, Args, Roms ) VALUES ( @PlatformId, @Platform, @Path, @Args, @Roms )";
 static QS_UPDATE_PLATFORM: &str = "UPDATE Platforms SET Path = @Path, Args = @Args, Roms = @Roms WHERE ID = @ID";
 
-static QS_GET_GAME: &str = "SELECT ID, Name, Overview, Players, Rating, FileName FROM Games WHERE Platform = @Platform AND FileName = @Game";
+static QS_GET_GAME_EXISTS: &str = "SELECT COUNT(1) FROM Games WHERE Platform = @Platform AND FileName = @Game";
+static QS_GET_ALL_GAMES: &str = "SELECT ID, Name, Overview, Players, Rating, FileName FROM Games WHERE Platform = @Platform";
 static QS_GET_RECENT_GAMES: &str = "SELECT g.Name, g.Overview, g.Players, g.Rating, g.FileName, p.ID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT @Max";
 static QS_ADD_GAME: &str = "INSERT INTO Games (ID, Platform, Name, Overview, Players, Rating, FileName) VALUES ( @GameId, @Platform, @Name, @Overview, @Players, @Rating, @FileName )";
 static QS_UPDATE_GAME_LAST_RUN: &str = "UPDATE Games SET LastRun = strftime('%s', 'now', 'localtime') WHERE Platform = @Platform AND FileName = @Game";
@@ -27,16 +28,14 @@ pub enum QueryError {
 pub struct PlatformData {
     pub id: i64,
     pub name: String,
-    pub path: String,
     pub args: String,
     pub folder: String,
 }
 impl PlatformData {
-    pub fn new(info: &crate::net_api::PlatformInfo, path: String, args: String, folder: String) -> PlatformData {
+    pub fn new(info: &crate::net_api::PlatformInfo, args: String, folder: String) -> PlatformData {
         PlatformData {
             id: info.id,
             name: info.name.clone(),
-            path: path,
             args: args,
             folder: folder,
         }
@@ -165,29 +164,28 @@ pub(super) fn get_all_platforms() -> Vec<Platform> {
     execute_select(stmt, |r| {
         let id = r.read::<i64>(0).unwrap();
         let name = r.read::<String>(1).unwrap();
-        let path = r.read::<String>(2).unwrap();
-        result.push(Platform::new(id, name, path));
+        result.push(Platform::new(id, name));
     });
 
     result
 }
 
 /// Adds a new platform
-pub fn insert_platform(id: i64, name: &str, path: &str, args: &str, folder: &str) -> QueryResult<()> {
+pub fn insert_platform(id: i64, name: &str, args: &str, folder: &str) -> QueryResult<()> {
     crate::logger::info!("Inserting new platform into database {}", name);
 
     let con = YaffeConnection::new();
-    let stmt = create_statement!(con, QS_ADD_PLATFORM, id, name, path, args, folder);
+    let stmt = create_statement!(con, QS_ADD_PLATFORM, id, name, "", args, folder);
 
     execute_update(stmt)?;
     Ok(())
 }
 
 /// Updates attributes of an existing platform
-pub fn update_platform(platform: i64, path: &str, args: &str, folder: &str) -> QueryResult<()> {
+pub fn update_platform(platform: i64, args: &str, folder: &str) -> QueryResult<()> {
     let con = YaffeConnection::new();
 
-    let stmt = create_statement!(con, QS_UPDATE_PLATFORM, path, args, folder, platform);
+    let stmt = create_statement!(con, QS_UPDATE_PLATFORM, "", args, folder, platform);
     execute_update(stmt)
 }
 
@@ -200,14 +198,14 @@ pub fn get_platform_name(platform: i64) -> QueryResult<String> {
 }
 
 /// Gets Name, Path, and Args of a Platform
-pub fn get_platform_info(platform: i64) -> QueryResult<(String, String, String)> {
+pub fn get_platform_info(platform: i64) -> QueryResult<(String, String)> {
 	crate::logger::info!("Getting information for platform {}", platform);
 
     let con = YaffeConnection::new();
     let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);
     execute_select_once(&mut stmt)?;
 
-    Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<String>(3).unwrap()))
+    Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(3).unwrap()))
 }
 
 /// Gets the most recent games launched from Yaffe
@@ -242,15 +240,34 @@ pub(super) fn get_recent_games(max: i64, map: &Vec<Platform>) -> Vec<Executable>
     result
 }
 
+pub(super) fn get_all_games(platform: i64) -> Vec<(String, String, i64, i64, String)> {
+    let con = YaffeConnection::new();
+    let stmt = create_statement!(con, QS_GET_ALL_GAMES, platform);
+
+    let mut result = vec!();
+    execute_select(stmt, |r| {
+        let name = r.read::<String>(1).unwrap();
+        let overview = r.read::<String>(2).unwrap();
+        let players = r.read::<i64>(3).unwrap();
+        let rating = r.read::<i64>(4).unwrap();
+        let filename = r.read::<String>(5).unwrap();
+
+        result.push((name, overview, players, rating, filename))
+    });
+
+    result
+}
+
 /// Gets Name, Overview, Players, and Rating of a game
-pub(super) fn get_game_info(id: i64, file: &str) -> QueryResult<(String, String, i64, i64)> {
+pub(super) fn get_game_exists(id: i64, file: &str) -> QueryResult<bool> {
     crate::logger::info!("Getting all applications for {}", file);
 
     let con = YaffeConnection::new();
-    let mut stmt = create_statement!(con, QS_GET_GAME, id, file);
+    let mut stmt = create_statement!(con, QS_GET_GAME_EXISTS, id, file);
 
     if let Ok(_) = execute_select_once(&mut stmt) {
-        return Ok((stmt.read::<String>(1).unwrap(), stmt.read::<String>(2).unwrap(), stmt.read::<i64>(3).unwrap(), stmt.read::<i64>(4).unwrap()));
+        let count = stmt.read::<i64>(0).unwrap();
+        return Ok(count > 0);
     } else {
         Err(QueryError::NoResults)
     }

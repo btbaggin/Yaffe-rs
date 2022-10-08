@@ -65,7 +65,7 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, slot: &'a mut Ass
             if let Some(queue) = &graphics.queue {
                 let lock = queue.lock().log_and_panic();
                 let mut queue = lock.borrow_mut();
-                queue.send(crate::JobType::LoadImage((slot.path.clone(), RawDataPointer::new(slot))));
+                queue.send(crate::JobType::LoadImage((slot.path.clone(), RawDataPointer::new(slot)))).unwrap();
             }
             return None;
         }

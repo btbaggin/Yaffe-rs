@@ -121,7 +121,6 @@ stringy_enum! {
         LightShadeFactor("light_shade_factor") = SettingValue::F32(0.3),
         DarkShadeFactor("dark_shade_factor") = SettingValue::F32(-0.6),
         InfoScrollSpeed("info_scroll_speed") = SettingValue::F32(20.),
-        RestrictedApprovalValidTime("restricted_approval_valid_time") = SettingValue::I32(3600),
         ItemsPerRow("items_per_row") = SettingValue::I32(4),
         ItemsPerColumn("items_per_column") = SettingValue::I32(3),
         FontColor("font_color") = SettingValue::Color(Color::from_rgba(0.95, 0.95, 0.95, 1.)),

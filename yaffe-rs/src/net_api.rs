@@ -265,7 +265,7 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
 
         let url = std::path::Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join("?alt=media");
         let file = std::path::Path::new(crate::UPDATE_FILE_PATH);
-        queue.send(crate::job_system::JobType::DownloadUrl((crate::net_api::Authentication::Google, url.to_owned(), file.to_owned())));
+        queue.send(crate::job_system::JobType::DownloadUrl((crate::net_api::Authentication::Google, url.to_owned(), file.to_owned()))).unwrap();
 
         return Ok(true)
     }
