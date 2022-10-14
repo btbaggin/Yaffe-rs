@@ -4,15 +4,20 @@
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
+use std::sync::Mutex;
+use std::ops::{Deref, DerefMut};
 use platform::scan_new_files;
 use speedy2d::color::Color;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry, error};
-use std::ops::{Deref, DerefMut};
+use crate::assets::AssetPathType;
 
 /* 
  * TODO
- * Get rid of preloaded images
- * 
+ * Better ORM stuff
+ * Auto DB migration with type introspection?
+ * use git for update instead of drive
+ * custom modals for platform and game scraping
+ * display more info on info pane
 */
 
 const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -81,7 +86,7 @@ pub mod ui {
 
 mod widgets;
 mod assets;
-mod database;
+mod data;
 mod modals;
 mod platform;
 mod platform_layer;
@@ -94,7 +99,7 @@ mod settings;
 mod windowing;
 mod input;
 mod plugins;
-mod controls;
+mod ui_control;
 mod utils;
 mod pooled_cache;
 use utils::{Transparent};
@@ -163,8 +168,7 @@ pub struct Executable {
     rating: platform::Rating,
     players: u8,
     platform_index: usize,
-    boxart: crate::assets::AssetPathType,
-    banner: crate::assets::AssetPathType,
+    boxart: AssetPathType,
 }
 
 pub struct YaffeState {
@@ -174,7 +178,7 @@ pub struct YaffeState {
     platforms: Vec<Platform>,
     plugins: Vec<RefCell<plugins::Plugin>>,
     focused_widget: widgets::WidgetId,
-    modals: std::sync::Mutex<Vec<modals::Modal>>,
+    modals: Mutex<Vec<modals::Modal>>,
     queue: job_system::ThreadSafeJobQueue,
     search_info: widgets::SearchInfo,
     restricted_mode: RestrictedMode,
@@ -196,7 +200,7 @@ impl YaffeState {
             search_info: SearchInfo::new(),
             focused_widget: get_widget_id!(widgets::PlatformList),
             restricted_mode: RestrictedMode::Off,
-            modals: std::sync::Mutex::new(vec!()),
+            modals: Mutex::new(vec!()),
             queue,
             refresh_list: true,
             settings,
@@ -278,18 +282,20 @@ impl windowing::WindowHandler for WidgetTree {
 
         match action {
             Actions::ShowMenu => {
-                let mut l = Box::new(modals::ListModal::new(None));
-                l.add_item(String::from("Exit Yaffe"));
-                l.add_item(String::from("Shut Down"));
-                l.add_item(String::from("Settings"));
+                //TODO this modal can stack which I dont like
+                let mut items = vec!();
+                items.push(String::from("Scan For New Roms"));
+                items.push(String::from("Add Emulator"));
                 match self.data.restricted_mode {
-                    RestrictedMode::On(_) => l.add_item(String::from("Disable Restricted Mode")),
-                    RestrictedMode::Off => l.add_item(String::from("Enable Restricted Mode")),
+                    RestrictedMode::On(_) => items.push(String::from("Disable Restricted Mode")),
+                    RestrictedMode::Off => items.push(String::from("Enable Restricted Mode")),
                 }
-                l.add_item(String::from("Add Emulator"));
-                l.add_item(String::from("Scan For New Roms"));
+                items.push(String::from("Settings"));
+                items.push(String::from("Exit Yaffe"));
+                items.push(String::from("Shut Down"));
     
-                display_modal(&mut self.data, "Menu", None, l, modals::ModalSize::Third, Some(on_menu_close));
+                let l = Box::new(modals::ListModal::new(items));
+                display_modal(&mut self.data, "Menu", None, l, Some(on_menu_close));
                 true
             },
             Actions::ToggleOverlay => { false /* Overlay handles this */ }
@@ -335,7 +341,7 @@ fn main() {
 
     let (queue, notify) = job_system::start_job_system();
 
-    let settings = match settings::load_settings("./settings.txt") {
+    let settings = match settings::load_settings("./yaffe.settings") {
         Ok(settings) => settings,
         Err(e) => {
             logger::error!("Unable to load settings: {:?}", e);
@@ -344,7 +350,7 @@ fn main() {
     };
     logger::set_log_level(&settings.get_str(SettingNames::LoggingLevel));
 
-    let q = Arc::new(std::sync::Mutex::new(RefCell::new(queue)));
+    let q = Arc::new(Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree();
     let overlay = overlay::OverlayWindow::new(settings.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
@@ -379,19 +385,19 @@ fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &
         match &list_content.get_selected()[..] {
             "Add Emulator" => {
                 let content = Box::new(modals::PlatformDetailModal::emulator());
-                display_modal(state, "New Emulator", Some("Confirm"), content, modals::ModalSize::Half, Some(modals::on_add_platform_close));
+                display_modal(state, "New Emulator", Some("Confirm"), content, Some(modals::on_add_platform_close));
             },
             "Settings" => {
-                let content = Box::new(modals::SettingsModal::new(&state.settings, None));
-                display_modal(state, "Settings", Some("Confirm"), content, modals::ModalSize::Third, Some(modals::on_settings_close));
+                let content = Box::new(modals::SettingsModal::new(&state.settings));
+                display_modal(state, "Settings", Some("Confirm"), content, Some(modals::on_settings_close));
             },
             "Disable Restricted Mode" => {
                 let content = Box::new(modals::SetRestrictedModal::new());
-                display_modal(state, "Restricted Mode", Some("Set passcode"), content, modals::ModalSize::Third, Some(restrictions::on_restricted_modal_close))
+                display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(restrictions::on_restricted_modal_close))
             },
             "Enable Restricted Mode" => {
                 let content = Box::new(modals::SetRestrictedModal::new());
-                display_modal(state, "Restricted Mode", Some("Set passcode"), content, modals::ModalSize::Third, Some(restrictions::on_restricted_modal_close))
+                display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(restrictions::on_restricted_modal_close))
             },
             "Scan For New Roms" => {
                 scan_new_files(state);

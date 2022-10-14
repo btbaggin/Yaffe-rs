@@ -1,6 +1,6 @@
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
 use crate::{colors::*, ui::*};
-use crate::modals::{PlatformDetailModal, SettingsModal, on_update_platform_close, on_settings_close, ModalSize, display_modal};
+use crate::modals::{PlatformDetailModal, on_update_platform_close, display_modal};
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -28,15 +28,8 @@ impl super::Widget for PlatformList {
                 let platform = state.get_platform();
                 match platform.kind {
                     PlatformType::Emulator => {
-                        let modal = Box::new(PlatformDetailModal::from_existing(platform, platform.id.unwrap()));
-                        display_modal(state, "Platform Info", Some("Save"), modal, ModalSize::Half, Some(on_update_platform_close));
-                    },
-                    PlatformType::Plugin => {
-                        let plugin = platform.get_plugin(state).unwrap();
-                        let plugin = plugin.borrow().file.clone();
-                        let modal = Box::new(SettingsModal::new(&state.settings, Some(&plugin)));
-                        
-                        display_modal(state, "Settings", Some("Save"), modal, ModalSize::Half, Some(on_settings_close));
+                        let modal = Box::new(PlatformDetailModal::from_existing(platform));
+                        display_modal(state, "Platform Info", Some("Save"), modal, Some(on_update_platform_close));
                     },
                     _ => {},
                 }

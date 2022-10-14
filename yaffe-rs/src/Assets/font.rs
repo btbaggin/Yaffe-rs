@@ -14,10 +14,11 @@ pub fn request_font(font: Fonts) -> &'static Font {
     let slot = get_slot_mut(AssetTypes::Font(font));
 
     assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
-    assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested preloaded image, but image is not loaded");
+    assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested font, but font is not loaded");
 
-    if let AssetData::Raw(data) = &slot.data {
+    if let AssetData::Raw((data, _)) = &slot.data {
         let font = speedy2d::font::Font::new(&data).log_and_panic();
+        slot.data_length = data.len();
         slot.data = AssetData::Font(font);
     }
 

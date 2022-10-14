@@ -1,6 +1,3 @@
-// #![no_std]
-// use core::panic::PanicInfo;
-
 use std::collections::HashMap;
 
 pub struct YaffePluginItem {

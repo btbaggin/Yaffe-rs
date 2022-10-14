@@ -91,7 +91,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
             }
             _ => {
                 if self.showing { 
-                    let result = self.modal.content.action(action, helper);
+                    let result = self.modal.action(action, helper);
                     if let modals::ModalResult::Ok = result {
                         // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
                         // see process_is_running

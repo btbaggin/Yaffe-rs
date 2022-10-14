@@ -362,7 +362,7 @@ impl DeferredAction {
 
         if let Some(message) = self.message {
             let message = Box::new(crate::modals::MessageModalContent::new(&message));
-            crate::modals::display_modal(&mut ui.data, "Error", None, message, crate::modals::ModalSize::Half, None);
+            crate::modals::display_modal(&mut ui.data, "Error", None, message, None);
         }
     }
 }

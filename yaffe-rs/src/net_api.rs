@@ -1,11 +1,24 @@
 use serde_json::Value;
+use reqwest::blocking::{Response, RequestBuilder, Client};
 use std::collections::HashMap;
+use std::path::Path;
+use crate::data::{PlatformInfo, GameInfo};
 type ServiceResult<T> = Result<T, ServiceError>;
 
 pub enum Authentication {
     GamesDb,
     Google,
     None,
+}
+
+pub struct GameScrapeResult {
+    pub info: GameInfo,
+    pub boxart: String,
+}
+impl crate::ui_control::ListItem for GameScrapeResult {
+    fn to_display(&self) -> String {
+        self.info.name.clone()
+    }
 }
 
 //https://api.thegamesdb.net/
@@ -30,44 +43,6 @@ impl<T> ServiceResponse<T> {
             Some(&self.results[self.exact_index as usize])
         } else { 
             None
-        }
-    }
-}
-
-pub struct GameInfo {
-    pub name: String,
-    pub id: i64,
-    pub players: i64,
-    pub overview: String,
-    pub rating: String,
-    pub banner: String,
-    pub boxart: String,
-}
-
-impl GameInfo {
-    fn new(banner: String, boxart: String, value: &Value) -> GameInfo {
-        GameInfo {
-            name: String::from(value["game_title"].as_str().unwrap()),
-            id: value["id"].as_i64().unwrap(),
-            players: value["players"].as_i64().unwrap(),
-            overview: String::from(get_null_string(value, "overview")),
-            rating: String::from(get_null_string(value, "rating")),
-            banner,
-            boxart,
-        }
-    }
-}
-
-pub struct PlatformInfo {
-    pub id: i64,
-    pub name: String,
-}
-
-impl PlatformInfo {
-    fn new(value: &Value) -> PlatformInfo {
-        PlatformInfo {
-            id: value["id"].as_i64().unwrap(),
-            name: String::from(value["name"].as_str().unwrap()),
         }
     }
 }
@@ -112,10 +87,10 @@ macro_rules! data_request {
     };
 }
 /// Sends a request that has no query parameters
-pub fn send_request_no_parms(t: Authentication, url: &str) -> Result<reqwest::blocking::Response, ServiceError> {
+pub fn send_request_no_parms(t: Authentication, url: &str) -> Result<Response, ServiceError> {
     let api_key = get_api_key(&t);
 
-    let client = reqwest::blocking::Client::new();
+    let client = Client::new();
     let mut builder = client.get(url);
     if let Some(key) = api_key {
         builder = builder.query(&[key]);
@@ -124,10 +99,10 @@ pub fn send_request_no_parms(t: Authentication, url: &str) -> Result<reqwest::bl
 }
 
 /// Sends a request using one or more query parameters
-pub fn send_request<T: serde::ser::Serialize + ?Sized>(t: Authentication, url: &str, parms: &T) -> Result<reqwest::blocking::Response, ServiceError> {
+pub fn send_request<T: serde::ser::Serialize + ?Sized>(t: Authentication, url: &str, parms: &T) -> Result<Response, ServiceError> {
     let api_key = get_api_key(&t);
 
-    let client = reqwest::blocking::Client::new();
+    let client = Client::new();
     let mut builder = client.get(url).query(parms);
     if let Some(key) = api_key {
         builder = builder.query(&[key]);
@@ -135,7 +110,7 @@ pub fn send_request<T: serde::ser::Serialize + ?Sized>(t: Authentication, url: &
     send_and_return(builder)
 }
 
-fn send_and_return(builder: reqwest::blocking::RequestBuilder) -> Result<reqwest::blocking::Response, ServiceError> {
+fn send_and_return(builder: RequestBuilder) -> Result<Response, ServiceError> {
     match builder.send() {
         Ok(resp) => {
             if resp.status().is_success() { 
@@ -147,7 +122,7 @@ fn send_and_return(builder: reqwest::blocking::RequestBuilder) -> Result<reqwest
     }
 }
 
-pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<GameInfo>> {
+pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
     crate::logger::info!("Searching for game {}", name);
 
     let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1.1/Games/ByGameName", 
@@ -170,12 +145,11 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
 
     //Get the image data for the games
         let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1/Games/Images", 
-                        &[("games_id", &ids[..]), ("filter[type]", "banner,boxart")]);
+                        &[("games_id", &*ids), ("filter[type]", "boxart")]);
 
         let images = &resp["data"]["images"];
         for game in array {
 
-            let mut banner = String::from("");
             let mut boxart = String::from("");
             let id = game["id"].as_i64().unwrap();
             for image in images[id.to_string()].as_array().unwrap() {
@@ -184,20 +158,26 @@ pub fn search_game(name: &str, platform: i64) -> ServiceResult<ServiceResponse<G
                 let kind = get_null_string(image, "type");
                 let file = get_null_string(image, "filename");
                 match (kind, side) {
-                    ("banner", _) => banner = String::from(file),
                     ("boxart", "front") => boxart = String::from(file),
                     (_, _) => {},
                 }
             }
 
-            result.results.push(GameInfo::new(banner, boxart, game));
+            let name = String::from(game["game_title"].as_str().unwrap());
+            let id = game["id"].as_i64().unwrap();
+            let players = game["players"].as_i64().unwrap();
+            let overview = String::from(get_null_string(game, "overview"));
+            let rating = String::from(get_null_string(game, "rating"));
+
+            let info = GameInfo::new(id, name, overview, players, rating, exe.clone(), platform);
+            result.results.push(GameScrapeResult { info, boxart });
         }
     }
 
     Ok(result)
 }
 
-pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo>> {
+pub fn search_platform(name: &str, path: String, args: String) -> ServiceResult<ServiceResponse<PlatformInfo>> {
     crate::logger::info!("Searching for platform {}", name);
     
     let resp = json_request!(Authentication::GamesDb, "https://api.thegamesdb.net/v1/Platforms/ByPlatformName", &[("name", name)]);
@@ -208,7 +188,9 @@ pub fn search_platform(name: &str) -> ServiceResult<ServiceResponse<PlatformInfo
     let mut result = ServiceResponse::new(count, exact);
 
     for value in array {
-        result.results.push(PlatformInfo::new(value));
+        let id = value["id"].as_i64().unwrap();
+        let name = String::from(value["name"].as_str().unwrap());
+        result.results.push(PlatformInfo::new(id, name, path.clone(), args.clone()));
     }
 
     Ok(result)
@@ -263,8 +245,8 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
             return Err(ServiceError::Other("yaffe-rs.exe not found in remote repository"));
         }
 
-        let url = std::path::Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join("?alt=media");
-        let file = std::path::Path::new(crate::UPDATE_FILE_PATH);
+        let url = Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join("?alt=media");
+        let file = Path::new(crate::UPDATE_FILE_PATH);
         queue.send(crate::job_system::JobType::DownloadUrl((crate::net_api::Authentication::Google, url.to_owned(), file.to_owned()))).unwrap();
 
         return Ok(true)

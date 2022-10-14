@@ -12,7 +12,6 @@ use super::{AssetData, ASSET_STATE_LOADED, ASSET_STATE_PENDING, ASSET_STATE_UNLO
 pub enum Images {
     Background,
     Placeholder,
-    PlaceholderBanner,
     Error,
     Question,
     ArrowUp,
@@ -72,8 +71,8 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, slot: &'a mut Ass
     }
 
     if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-        if let AssetData::Raw(data) = &slot.data {
-            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, slot.dimensions, &data).log_and_panic();
+        if let AssetData::Raw((data, dimensions)) = &slot.data {
+            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, &data).log_and_panic();
             slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
         }
     }
@@ -108,10 +107,12 @@ pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
 
     match reader.decode() {
         Ok(image) => {
-            let buffer = image.into_rgba8();
             let asset_slot = slot.get_inner::<AssetSlot>();
-            asset_slot.dimensions = buffer.dimensions();
-            asset_slot.data = AssetData::Raw(buffer.into_vec());
+            let buffer = image.into_rgba8();
+            let dimensions = buffer.dimensions();
+            let data = buffer.into_vec();
+            asset_slot.data_length = data.len();
+            asset_slot.data = AssetData::Raw((data, dimensions));
             asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
         },
         Err(e) => warn!("Error loading {:?}: {:?}", path, e),

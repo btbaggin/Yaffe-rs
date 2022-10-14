@@ -1,6 +1,6 @@
 use crate::{ui::*, YaffeState, Actions, Rect};
 use crate::modals::*;
-use crate::controls::*;
+use crate::ui_control::*;
 use crate::logger::{UserMessage, LogEntry};
 use crate::settings::{SettingsFile, SettingValue};
 use std::str::FromStr;
@@ -9,16 +9,13 @@ const STARTUP_TASK: &str = "Yaffe";
 
 pub struct SettingsModal {
     settings: FocusGroup<dyn UiControl>,
-    plugin_file: Option<String>,
 }
 impl SettingsModal {
-    pub fn new(settings: &SettingsFile, plugin: Option<&str>) -> SettingsModal {
+    pub fn new(settings: &SettingsFile) -> SettingsModal {
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
-        let mut setting_names = settings.get_full_settings(plugin);
-        if let None = plugin {
-            let set = crate::platform_layer::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
-            controls.insert("run_at_startup", Box::new(CheckBox::new(set)));
-        }
+        let mut setting_names = settings.get_full_settings();
+        let set = crate::platform_layer::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
+        controls.insert("run_at_startup", Box::new(CheckBox::new(set)));
 
         setting_names.sort_by(|x, y| x.0.cmp(&y.0));
         for (name, default) in setting_names {
@@ -31,17 +28,16 @@ impl SettingsModal {
             controls.insert(&name, Box::new(control));
         }
 
-        let plugin_file = if let Some(plugin) = plugin { Some(plugin.to_string()) } 
-        else { None };
-
-        SettingsModal { settings: controls, plugin_file }
+        SettingsModal { settings: controls }
     }
 }
 
+//TODO make this generic
 impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 {
-        (crate::font::get_font_size(settings, graphics) + MARGIN) * self.settings.len() as f32
+    fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
+        let height = (crate::font::get_font_size(settings, graphics) + MARGIN) * self.settings.len() as f32;
+        LogicalSize::new(modal_width(rect, ModalSize::Half), height)
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
@@ -77,17 +73,13 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
                 },
                 "logging_level" => {
                     crate::logger::set_log_level(control.value());
-                    state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state)
+                    state.settings.set_setting(&name, control.value()).display_failure("Unable to save settings", state)
                 },
-                _ => state.settings.set_setting(content.plugin_file.as_ref(), &name, control.value()).display_failure("Unable to save settings", state),
+                _ => state.settings.set_setting(&name, control.value()).display_failure("Unable to save settings", state),
             };
         }
 
         //Save settings
         state.settings.serialize().display_failure("Unable to save settings", state);
-
-        if let Some(plugin) = &content.plugin_file {
-            crate::plugins::reload_settings(state, &plugin);
-        }
     }
 }

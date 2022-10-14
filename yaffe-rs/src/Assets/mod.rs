@@ -33,15 +33,15 @@ pub enum AssetPathType {
 pub enum AssetData {
     Image(YaffeTexture),
     Font(Font),
-    Raw(Vec<u8>),
+    Raw((Vec<u8>, (u32, u32))),
     None,
 }
 
 pub struct AssetSlot {
     state: AtomicU8,
     path: AssetPathType,
-    dimensions: (u32, u32),
     data: AssetData,
+    data_length: usize,
     last_request: Instant,
 }
 impl AssetSlot {
@@ -49,18 +49,19 @@ impl AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_UNLOADED),
             path,
-            dimensions: (0, 0),
             data: AssetData::None,
+            data_length: 0,
             last_request: Instant::now(),
         }
     }
 
     pub fn preloaded(path: &str, image: YaffeTexture) -> AssetSlot {
+        let size = image.size();
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
             path: AssetPathType::File(String::from(path)),
-            dimensions: (0, 0),
             data: AssetData::Image(image),
+            data_length: (size.x * size.y * 4.) as usize,
             last_request: Instant::now(),
         }
     }
@@ -72,8 +73,8 @@ impl AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
             path: AssetPathType::File(String::from(path)),
-            dimensions: (0, 0),
             data: AssetData::Font(font),
+            data_length: data.len(),
             last_request: Instant::now(),
         }
     }
@@ -88,13 +89,11 @@ static mut FILE_ASSET_MAP: Option<PooledCache<32, String, RefCell<AssetSlot>>> =
 
 pub fn initialize_asset_cache() {
     let mut map = PooledCache::new();
-    map.insert(AssetTypes::Image(Images::PlaceholderBanner), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/banner.png"))));
     map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/background.jpg"))));
 
     map.insert(AssetTypes::Font(Fonts::Regular), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
     
     unsafe { STATIC_ASSET_MAP = Some(map); }
-
     unsafe { FILE_ASSET_MAP = Some(PooledCache::new()); }
 }
 
@@ -145,18 +144,15 @@ fn asset_path_is_valid(path: &AssetPathType) -> bool {
     }
 }
 
-pub fn get_asset_path(platform: &str, name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+pub fn get_asset_path(platform: &str, name: &str) -> std::path::PathBuf {
     use std::path::Path;
 
     let platform = Path::new("./Assets").join(crate::platform_layer::sanitize_file(platform));
-    let name = Path::new(&platform).join(crate::platform_layer::sanitize_file(name));
-    if !platform.exists() { std::fs::create_dir(platform).unwrap(); }
+    let name = crate::platform_layer::sanitize_file(name);
+    let name = format!("{}.jpg", name);
+    let boxart = platform.join(&name);
 
-    let banner = Path::new(&name).join("banner.jpg");
-    let boxart = Path::new(&name).join("boxart.jpg");
-    if !name.exists() { std::fs::create_dir(name).log_and_panic(); }
-
-    (boxart.to_owned(), banner.to_owned())
+    boxart.to_owned()
 }
 
 pub fn get_cached_file<'a>(file: &AssetPathType) -> &'a RefCell<AssetSlot> {
@@ -184,7 +180,7 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
         let slot = map.get_index_mut(index).unwrap();
         let mut slot = slot.borrow_mut();
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            total_memory += 0;//TODO slot.data.len();
+            total_memory += slot.data_length;
 
             //Find oldest asset
             if slot.last_request < last_request {
@@ -205,6 +201,5 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
         let mut slot = slot.borrow_mut();
         slot.data = AssetData::None;
         slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
-
     }
 }

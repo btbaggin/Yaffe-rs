@@ -3,11 +3,11 @@ yaffe-rs/target
 yaffe-rs/Assets
 yaffe-rs/plugins
 log.txt
-settings.txt
+yaffe.settings
 yaffe-rs.exe
 Yaffe.db
 Assets/atlas.tex
-Roms
+yaffe-rs/Roms
 Cargo.lock
 RCa21132
 api_key.txt

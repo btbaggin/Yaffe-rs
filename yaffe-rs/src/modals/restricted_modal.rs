@@ -1,6 +1,7 @@
-use crate::{Actions, LogicalPosition, Rect, colors::*, ui::*};
+use crate::{Actions, LogicalPosition, LogicalSize, Rect, colors::*, ui::*};
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::RestrictedPasscode;
+use super::{modal_width, ModalSize};
 use std::hash::{Hash, Hasher};
 
 pub struct SetRestrictedModal {
@@ -18,8 +19,9 @@ impl SetRestrictedModal {
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 { 
-        crate::font::get_font_size(settings, graphics) + MARGIN
+    fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
+        let height = crate::font::get_font_size(settings, graphics) + MARGIN;
+        LogicalSize::new(modal_width(rect, ModalSize::Third), height)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {

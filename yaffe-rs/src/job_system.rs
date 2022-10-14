@@ -2,7 +2,7 @@ use std::thread;
 use std::cell::RefCell;
 use std::sync::Arc;
 use crate::net_api::*;
-use crate::modals::{ListModal, display_modal, ModalSize, on_platform_found_close};
+use crate::modals::{GameScraperModal, PlatformScraperModal, display_modal, on_platform_found_close};
 use crate::logger::*;
 
 pub type JobQueue = spmc::Sender<JobType>;
@@ -66,38 +66,35 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
 
             JobType::SearchPlatform((state, name, path, args)) => {
                 let state = state.get_inner::<crate::YaffeState>();
-                if let Some(result) = search_platform(&name).display_failure("Unable to send message for platform search", state) {
+                if let Some(result) = search_platform(&name, path, args).display_failure("Unable to send message for platform search", state) {
 
-                    if let Some(plat) = result.get_exact() {
-                        let plat = crate::database::PlatformData::new(plat, path.clone(), args.clone());
-                        crate::platform::insert_platform(state, &plat);
-
-                    } else if result.count > 0 {
-                        let mut content: ListModal<crate::database::PlatformData> = ListModal::new(Some(format!("Found {} results for '{}'", result.count, &name)));
+                    if result.count > 0 {
+                        let mut items = vec!();
                         for i in result.results {
-                            content.add_item(crate::database::PlatformData::new(&i, path.clone(), args.clone()));
+                            items.push(i);
                         }
-
-                        display_modal(state, "Select Platform", None, Box::new(content), ModalSize::Half, Some(on_platform_found_close));
+                        
+                        let content = PlatformScraperModal::new(items);
+                        display_modal(state, "Select Platform", None, Box::new(content), Some(on_platform_found_close));
                     }
                 }
             }
 
             JobType::SearchGame((state, exe, name, plat_id)) => {
                 let state = state.get_inner::<crate::YaffeState>();
-                if let Some(result) = search_game(&name, plat_id).display_failure("Unable to send message for game search", state) {
+                if let Some(result) = search_game(&name, exe, plat_id).display_failure("Unable to send message for game search", state) {
 
                     if let Some(game) = result.get_exact() {
-                        let data = crate::database::GameData::new(game, exe.clone(), plat_id);
-                        crate::platform::insert_game(state, &data);
+                        crate::platform::insert_game(state, &game.info, game.boxart.clone());
 
                     } else if result.count > 0 {
-                        let mut content: ListModal<crate::database::GameData> = ListModal::new(Some(format!("Found {} results for '{}'", result.count, &name)));
+                        let mut items = vec!();
                         for i in result.results {
-                            content.add_item(crate::database::GameData::new(&i, exe.clone(), plat_id));
+                            items.push(i);
                         }
-
-                        display_modal(state, "Select Game", None, Box::new(content), ModalSize::Half, Some(crate::modals::on_game_found_close));
+                        
+                        let content = GameScraperModal::new(items);
+                        display_modal(state, "Select Game", None, Box::new(content), Some(crate::modals::on_game_found_close));
                     }
                 }
             }

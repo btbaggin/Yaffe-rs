@@ -1,6 +1,6 @@
 use yaffe_plugin::YaffePlugin;
 use dlopen::wrapper::{Container, WrapperApi};
-use crate::logger::{PanicLogEntry, LogEntry, UserMessage, info};
+use crate::logger::{PanicLogEntry, UserMessage, info};
 pub use yaffe_plugin::*;
 use std::ops::{DerefMut, Deref};
 
@@ -133,25 +133,12 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 					};
 
 					//Ensure all settings are present
-					state.settings.populate_plugin_settings(&plugin);
 					let settings = state.settings.plugin(&plugin.file);
-
 					if plugin.data.initialize(&settings).display_failure(&message, state).is_some() {
 						state.plugins.push(std::cell::RefCell::new(plugin));
 					}
 				}
 			}
-		}
-	}
-}
-
-pub fn reload_settings(state: &mut crate::YaffeState, plugin_name: &str) {
-	let settings = state.settings.plugin(plugin_name);
-	for p in &state.plugins {
-		let mut plugin = p.borrow_mut();
-		if plugin.file == plugin_name {
-			plugin.data.initialize(&settings).log("Unable to reload settings");
-			return;
 		}
 	}
 }

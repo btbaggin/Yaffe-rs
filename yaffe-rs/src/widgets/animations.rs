@@ -13,7 +13,7 @@ pub enum AnimationTarget {
     V2((LogicalPosition, LogicalPosition)),
 }
 
-pub struct Animation<> {
+pub struct Animation {
     widget: WidgetId,
     duration: f32,
     remaining: f32,

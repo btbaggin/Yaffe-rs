@@ -102,7 +102,7 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
             Err(e) => {
                 let message = format!("{}: {:?}", message, e);
                 let message = Box::new(crate::modals::MessageModalContent::new(&message));
-                crate::modals::display_modal(state, "Error", None, message, crate::modals::ModalSize::Half, None);
+                crate::modals::display_modal(state, "Error", None, message, None);
                 None
             }
             Ok(r) => Some(r),

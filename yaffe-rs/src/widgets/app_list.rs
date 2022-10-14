@@ -277,8 +277,8 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
                 _ => {
                     let id = platform.id.unwrap();
                     //This should never fail since we got it from the database
-                    let (path, args) = crate::database::get_platform_info(id).log_message_and_panic("Platform not found");
-                    crate::database::update_game_last_run(exe, id).log("Unable to update game last run");
+                    let (path, args) = crate::data::PlatformInfo::get_info(id).log_message_and_panic("Platform not found");
+                    crate::data::GameInfo::update_last_run(id, &exe.file).log("Unable to update game last run");
 
                     let mut process = &mut std::process::Command::new(path);
                     let exe_path = platform.get_rom_path().join(&exe.file);

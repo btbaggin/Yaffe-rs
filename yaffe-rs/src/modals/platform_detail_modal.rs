@@ -1,7 +1,7 @@
 use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::controls::*;
+use crate::ui_control::*;
 use crate::ui::MARGIN;
 
 pub struct PlatformDetailModal {
@@ -18,9 +18,10 @@ impl PlatformDetailModal {
         PlatformDetailModal { controls, id: 0, }
     }
 
-    pub fn from_existing(plat: &crate::Platform, id: i64) -> PlatformDetailModal {
+    pub fn from_existing(plat: &crate::Platform) -> PlatformDetailModal {
         //This should never fail since we orignally got it from the database
-        let (path, args) = crate::database::get_platform_info(id).log_and_panic();
+        let id = plat.id.unwrap();
+        let (path, args) = crate::data::PlatformInfo::get_info(id).log_and_panic();
 
         let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
         controls.insert("Name", Box::new(TextBox::new(plat.name.clone())));
@@ -33,8 +34,9 @@ impl PlatformDetailModal {
 
 impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, settings: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 {
-        (crate::font::get_font_size(settings, graphics) + crate::ui::MARGIN) * 4.
+    fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
+        let height = (crate::font::get_font_size(settings, graphics) + crate::ui::MARGIN) * self.controls.len() as f32;
+        LogicalSize::new(modal_width(rect, ModalSize::Half), height)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -81,25 +83,7 @@ pub fn on_update_platform_close(state: &mut YaffeState, result: ModalResult, con
 
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-		crate::database::update_platform(content.id, &exe.value(), &args.value())
+		crate::data::PlatformInfo::update(content.id, &exe.value(), &args.value())
             .display_failure("Unable to update platform", state);
-    }
-}
-
-pub fn on_platform_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
-    if let ModalResult::Ok = result {
-        let content = content.as_any().downcast_ref::<ListModal<crate::database::PlatformData>>().unwrap();
-
-        let item = content.get_selected();
-        crate::platform::insert_platform(state, item);
-    }
-}
-
-pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
-    if let ModalResult::Ok = result {
-        let content = content.as_any().downcast_ref::<ListModal<crate::database::GameData>>().unwrap();
-
-        let item = content.get_selected();
-        crate::platform::insert_game(state, item);
     }
 }

@@ -1,7 +1,7 @@
 use speedy2d::color::Color;
 use crate::Rect;
 use crate::{Actions, LogicalSize};
-use crate::modals::{ModalResult, ModalContent};
+use crate::modals::{ModalResult, ModalContent, modal_width, ModalSize};
 use crate::logger::LogEntry;
 
 const VOLUME_STEP: f32 = 0.05;
@@ -22,8 +22,9 @@ impl OverlayModal {
 
 impl ModalContent for OverlayModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn get_height(&self, _: &crate::settings::SettingsFile, graphics: &crate::Graphics, _: f32) -> f32 {
-        32. * graphics.scale_factor
+    fn size(&self, _: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
+        let height = 32. * graphics.scale_factor;
+        LogicalSize::new(modal_width(rect, ModalSize::Half), height)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {

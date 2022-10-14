@@ -24,7 +24,6 @@ pub enum RestrictedMode {
     Off,
 }
 
-
 fn passcodes_equal(source: &RestrictedPasscode, target: &RestrictedPasscode) -> bool {
     for i in 0..source.len() {
         if source.code[i] != target.code[i] { return false; }

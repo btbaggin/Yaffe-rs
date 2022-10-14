@@ -29,8 +29,6 @@ impl From<std::num::ParseFloatError> for SettingLoadError {
     }
 }
 
-pub type PluginSettings = HashMap<String, HashMap<String, SettingValue>>;
-
 #[derive(Clone)]
 pub enum SettingValue {
     String(String),
@@ -154,7 +152,6 @@ pub struct SettingsFile {
     settings: HashMap<String, SettingValue>, 
     path: std::path::PathBuf,
     last_write: SystemTime,
-    plugins: PluginSettings,
 }
 impl SettingsFile {
     pub fn default() -> SettingsFile {
@@ -162,81 +159,48 @@ impl SettingsFile {
             settings: HashMap::default(), 
             path: std::path::PathBuf::default(), 
             last_write: SystemTime::now(),
-            plugins: PluginSettings::default(),
         }
     }
 
     pub fn plugin(&self, name: &str) -> HashMap<String, yaffe_plugin::PluginSetting> {
-        let settings = self.plugins.get(name).unwrap();
-        translate_to_plugin_settings(settings)
-    }
-
-    /// Ensures the plugin settings have all possible values.
-    /// Should only be called on plugin initialization
-    pub fn populate_plugin_settings(&mut self, plugin: &crate::plugins::Plugin) {
-        let settings = self.plugins.entry(plugin.file.clone()).or_insert(HashMap::default());
-
-        for (name, default) in plugin.settings() {
-            //Add any missing settings
-            if !settings.contains_key(name) { 
-                settings.insert(name.to_string(), default.into());
-            } 
+        let settings = Path::new("./plugins").join(format!("{}.settings", name));
+        match load_settings(settings) {
+            Ok(settings) => translate_to_plugin_settings(&settings),
+            Err(_) => HashMap::new()
         }
     }
 
     /// Returns all possible settings that can be set and their current (or default) values
-    pub fn get_full_settings(&self, plugin: Option<&str>) -> Vec<(String, SettingValue)> {
+    pub fn get_full_settings(&self) -> Vec<(String, SettingValue)> {
         let mut result = vec!();
-        match plugin {
-            Some(plugin) => {
-                let settings = self.plugins.get(plugin).unwrap();
+        for name in SETTINGS {
+            //Get configured value if it exists, otherwise default
+            let value = if let Some(value) = self.settings.get(*name) { value.clone() }
+            else { SettingNames::get_default(name) };
 
-                for (name, default) in settings {
-                    result.push((name.clone(), default.clone()))
-                }
-            }
-            None => {
-                for name in SETTINGS {
-                    //Get configured value if it exists, otherwise default
-                    let value = if let Some(value) = self.settings.get(*name) { value.clone() }
-                    else { SettingNames::get_default(name) };
-
-                    result.push((name.to_string(), value));
-                }
-            }
-        };
+            result.push((name.to_string(), value));
+        }
         result
     }
 
-    pub fn set_setting(&mut self, plugin: Option<&String>, name: &str, value: &str) -> Result<(), SettingLoadError> {
-        let (settings, value) = match plugin {
-            Some(file) => {
-                //It's ok to do unwrap here because they are gauranteed to be present due to populate_plugin_settings
-                let settings = self.plugins.get_mut(file).unwrap();
-                let setting = settings.get(name).unwrap().clone();
+    pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
+        assert!(SETTINGS.iter().position(|&n| n == name).is_some());
 
-                (settings, setting.from_string(value, false)?)
-            },
-            None => {
-                assert!(SETTINGS.iter().position(|&n| n == name).is_some());
-
-                let setting = SettingNames::get_default(name);
-                (&mut self.settings, setting.from_string(value, true)?)
-            },
-        };
-        
+        let setting = SettingNames::get_default(name);
+        let value = setting.from_string(value, true)?;
+    
         //Value was either removed or the default, don't add it
         if value.is_none() { 
-            settings.remove(name);
+            self.settings.remove(name);
             return Ok(()); 
         }
 
         //Add or insert new value
         let value = value.unwrap();
-        if let None = settings.get(name) {
-            settings.insert(name.to_string(), value);
+        if let None = self.settings.get(name) {
+            self.settings.insert(name.to_string(), value);
         } else {
-            *settings.get_mut(name).unwrap() = value;
+            *self.settings.get_mut(name).unwrap() = value;
         }
         Ok(())
     }
@@ -264,22 +228,13 @@ impl SettingsFile {
             write_line(key, value, &mut file)?;
         }
 
-        //write settings for each plugin
-        for (plugin, settings) in self.plugins.iter() {
-            file.write_all(format!("\n--{}\n", plugin).as_bytes())?;
-
-            for (key, value) in settings.iter() {
-                write_line(key, value, &mut file)?;
-            }
-        }
-
         Ok(())
     }
 }
 
-fn translate_to_plugin_settings(settings: &HashMap<String, SettingValue>) -> HashMap<String, yaffe_plugin::PluginSetting> {
+fn translate_to_plugin_settings(settings: &SettingsFile) -> HashMap<String, yaffe_plugin::PluginSetting> {
 	let mut result = HashMap::new();
-	for (key, value) in settings.iter() {
+	for (key, value) in settings.settings.iter() {
 
 		if let Ok(value) = yaffe_plugin::PluginSetting::try_from(value) {
 			result.insert(key.clone(), value);
@@ -298,7 +253,6 @@ pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<Settings
         settings: HashMap::new(), 
         path: path_buf, 
         last_write: last_write.unwrap(), 
-        plugins: PluginSettings::new(),
     };
     
     populate_settings(&mut settings, data)?;
@@ -327,17 +281,10 @@ pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<bool> {
 }
 
 fn populate_settings(settings: &mut SettingsFile, data: String) -> SettingsResult<()> {
-    let mut current_settings = &mut settings.settings;
+    let current_settings = &mut settings.settings;
     for line in data.lines() {
-
-        if line.starts_with("--") {
-            let (_, name) = line.split_at(2);
-            settings.plugins.insert(String::from(name), HashMap::default());
-            current_settings = settings.plugins.get_mut(name).unwrap();
-
-        }
         //# denotes a comment
-        else if !line.starts_with('#') && !line.is_empty() {
+        if !line.starts_with('#') && !line.is_empty() {
 
             let (key, type_value) = line.split_at(line.find(':').ok_or(SettingLoadError::IncorrectFormat)?);
             let (ty, value) = type_value.split_at(type_value.find('=').ok_or(SettingLoadError::IncorrectFormat)?);
