@@ -218,13 +218,13 @@ impl WidgetContainer {
     pub fn root(widget: impl Widget + 'static) -> WidgetContainer {
         WidgetContainer::new(widget, LogicalSize::new(1.0, 1.0), ContainerAlignment::Left)
     }
-    fn new(widget: impl Widget + 'static, size: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer {
+    fn new(widget: impl Widget + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer {
          WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
-            ratio: size,
+            ratio,
             original_layout: Rect::from_tuples((0., 0.), (0., 0.)),
-            alignment: alignment,
+            alignment,
          }
     }
 
