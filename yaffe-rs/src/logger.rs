@@ -19,7 +19,7 @@ impl Log for YaffeLogger {
             let time_string = chrono::Local::now().format("%x %X");
             let level = record.level();
             let trace = match level {
-                Level::Error => format!("{:?}", backtrace::Backtrace::new()),
+                Level::Error => format!("{:?}", std::backtrace::Backtrace::force_capture()),
                 _ => String::from(""),
             };
             let message = format!("{}: {} [{}]: {} {:?}\n", record.metadata().target(), level.to_string(), time_string, record.args(), trace);

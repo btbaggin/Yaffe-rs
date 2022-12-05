@@ -1,5 +1,5 @@
 use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, ScaleFactor};
-use crate::colors::*;
+use crate::ui_control::{get_font_unfocused_color, get_font_color, MENU_BACKGROUND, get_accent_color, get_font_size};
 
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
@@ -146,7 +146,7 @@ impl super::Widget for SearchBar {
         };
         
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
-        let font_size = crate::font::get_font_size(&state.settings, graphics);
+        let font_size = get_font_size(&state.settings, graphics);
 
         graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
         let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };

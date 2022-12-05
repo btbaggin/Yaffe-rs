@@ -1,6 +1,6 @@
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use crate::{colors::*, ui::*};
 use crate::modals::{PlatformDetailModal, on_update_platform_close, display_modal};
+use crate::ui_control::{MARGIN, get_font_color, get_font_unfocused_color, get_accent_color, get_accent_unfocused_color, get_font_size, MENU_BACKGROUND};
 
 widget!(pub struct PlatformList {});
 impl super::Widget for PlatformList {
@@ -50,7 +50,7 @@ impl super::Widget for PlatformList {
 
         let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
-        let font_size = crate::font::get_font_size(&state.settings, graphics);
+        let font_size = get_font_size(&state.settings, graphics);
 
         let selected_index = state.selected_platform;
         let right = rect.right();
@@ -63,10 +63,9 @@ impl super::Widget for PlatformList {
                 plat_kind = p.kind as i32;
             }
 
-            let name_label = super::get_drawable_text(font_size, &p.name);
             
             //Highlight bar
-            let height = name_label.height().to_logical(graphics);
+            let height = font_size.to_logical(graphics);
             if i == selected_index {
                 let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
@@ -75,6 +74,7 @@ impl super::Widget for PlatformList {
             }
             
             //Label
+            let name_label = super::get_drawable_text(font_size, &p.name);
             graphics.draw_text(LogicalPosition::new(MARGIN, y), text_color, &name_label);
     
             if let PlatformType::Emulator = p.kind {

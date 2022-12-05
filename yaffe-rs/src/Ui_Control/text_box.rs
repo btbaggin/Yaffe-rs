@@ -1,9 +1,9 @@
-use super::{UiControl, draw_label_and_box};
-use crate::{colors::*, Actions, LogicalPosition, ui::*};
+use super::{UiControl, draw_label_and_box, get_font_color, get_font_size, LABEL_SIZE};
+use crate::{Actions, LogicalPosition};
 use crate::widgets::get_drawable_text;
 use crate::settings::SettingsFile;
 use crate::input::InputType;
-use crate::utils::{Rect};
+use crate::utils::Rect;
 use glutin::event::VirtualKeyCode;
 
 pub struct TextBox {
@@ -21,7 +21,7 @@ impl TextBox {
 
 impl UiControl for TextBox {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool) {
-        let font_size = crate::font::get_font_size(settings, graphics);
+        let font_size = get_font_size(settings, graphics);
         let size = container.width() - LABEL_SIZE;
         let control = draw_label_and_box(graphics, settings, &container.top_left(), size, label, focused);
 

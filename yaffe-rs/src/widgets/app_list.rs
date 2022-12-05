@@ -129,7 +129,7 @@ impl AppList {
             tile.apply_filter(&state.search_info, &platform.apps);
 
             //Size each tile according to its aspect ratio and the ideal size
-            AppList::size_individual_tile(state, graphics, tile, &ideal_tile_size, scale_factor);
+            AppList::size_individual_tile(state, graphics, tile, &ideal_tile_size);
 
             let x = (effective_i % self.tiles_x) as f32;
             let y = ((effective_i / self.tiles_x) - (self.first_visible / self.tiles_x)) as f32;
@@ -183,23 +183,11 @@ impl AppList {
         (tiles_x, tiles_y, PhysicalSize::new(width, height))
     }
 
-    fn size_individual_tile(state: &YaffeState, graphics: &mut crate::Graphics, tile: &mut AppTile, size: &LogicalSize, scale_factor: f32) {
-        let mut tile_size = *size;
-
-        //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
-		//We wouldn't want vertical boxart to stretch to the horizontal dimensions
-		//This will scale boxart that is different aspect to fit within the tile_size.Height
-        let bitmap_size = tile.get_image_size(state, graphics).to_logical(scale_factor);
-        let real_aspect = bitmap_size.x / bitmap_size.y;
-        let tile_aspect = tile_size.x / tile_size.y;
-
-        //If an aspect is wider than it is tall, it is > 1
-		//If the two aspect ratios are on other sides of one, it means we need to scale
-		if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
-			tile_size.x = tile_size.y * real_aspect;
-		}
-
-		tile.size = tile_size;
+    fn size_individual_tile(state: &YaffeState, graphics: &mut crate::Graphics, tile: &mut AppTile, size: &LogicalSize) {
+        let image = tile.get_image(state);
+        if let Ok(mut i) = image.try_borrow_mut() {
+            tile.size = super::image_fill(graphics, &mut i, size, true)
+        }
     }
 
     fn increment_index(&self, index: usize, amount: i32, forward: bool) -> (usize, isize) {

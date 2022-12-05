@@ -8,9 +8,8 @@ mod settings_modal;
 
 use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper};
 use crate::settings::{SettingNames, SettingsFile};
-use crate::colors::*;
 use crate::assets::Images;
-use crate::ui::MARGIN;
+use crate::ui_control::{MARGIN, get_font_color, get_font_size, MODAL_OVERLAY_COLOR, MODAL_BACKGROUND, get_accent_color, change_brightness};
 
 pub use list_modal::ListModal;
 pub use overlay_modal::OverlayModal;
@@ -82,12 +81,12 @@ impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, settings: &SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
         let width = modal_width(rect, ModalSize::Half);
-        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::get_font_size(settings, graphics), &self.message, width);
+        let name_label = crate::widgets::get_drawable_text_with_wrap(get_font_size(settings, graphics), &self.message, width);
         LogicalSize::new(width, name_label.height())
     }
 
     fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let name_label = crate::widgets::get_drawable_text_with_wrap(crate::font::get_font_size(settings, graphics), &self.message, rect.width() * graphics.scale_factor);
+        let name_label = crate::widgets::get_drawable_text_with_wrap(get_font_size(settings, graphics), &self.message, rect.width() * graphics.scale_factor);
         graphics.draw_text(*rect.top_left(), get_font_color(settings), &name_label);
     }
 }
@@ -183,8 +182,8 @@ pub fn render_modal(settings: &SettingsFile, modal: &Modal, graphics: &mut crate
     let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE));
     graphics.draw_rectangle(titlebar, titlebar_color);
 
-    let title_text = crate::widgets::get_drawable_text(crate::font::get_font_size(settings, graphics), &modal.title);
-    let title_pos = LogicalPosition::new(titlebar_pos.x + crate::ui::MARGIN, titlebar_pos.y + (TITLEBAR_SIZE - title_text.height()) / 2.);
+    let title_text = crate::widgets::get_drawable_text(get_font_size(settings, graphics), &modal.title);
+    let title_pos = LogicalPosition::new(titlebar_pos.x + MARGIN, titlebar_pos.y + (TITLEBAR_SIZE - title_text.height()) / 2.);
     graphics.draw_text(title_pos, get_font_color(settings), &title_text);
 
     //Content

@@ -1,4 +1,4 @@
-use crate::{ui::*, YaffeState, Actions, Rect};
+use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::ui_control::*;
 use crate::logger::{UserMessage, LogEntry};
@@ -32,17 +32,16 @@ impl SettingsModal {
     }
 }
 
-//TODO make this generic
 impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let height = (crate::font::get_font_size(settings, graphics) + MARGIN) * self.settings.len() as f32;
+        let height = (get_font_size(settings, graphics) + MARGIN) * self.settings.len() as f32;
         LogicalSize::new(modal_width(rect, ModalSize::Half), height)
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let mut y = rect.top();
-        let font_size = crate::font::get_font_size(settings, graphics);
+        let font_size = get_font_size(settings, graphics);
         for (k, v) in &self.settings {
             let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + font_size));
             v.render(graphics, settings, &rect, &k, self.settings.is_focused(&v));

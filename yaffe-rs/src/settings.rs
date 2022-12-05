@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use speedy2d::color::Color;
 use std::convert::{AsRef, TryFrom};
 use std::io::Write;
-use crate::colors::rgba_string;
+use crate::ui_control::rgba_string;
 
 #[derive(Debug)]
 pub enum SettingLoadError {

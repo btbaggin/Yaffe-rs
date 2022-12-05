@@ -7,8 +7,8 @@ use crate::{Executable, Platform};
 pub struct GameInfo {
     id: i64,
     pub name: String,
-    overview: String,
-    players: i64,
+    pub overview: String,
+    pub players: i64,
     file: String,
     rating: i64,
     platform: i64,

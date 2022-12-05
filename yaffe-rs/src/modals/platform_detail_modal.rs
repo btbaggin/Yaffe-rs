@@ -2,7 +2,6 @@ use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::logger::{PanicLogEntry, UserMessage};
 use crate::ui_control::*;
-use crate::ui::MARGIN;
 
 pub struct PlatformDetailModal {
     controls: FocusGroup<dyn UiControl>,
@@ -35,7 +34,7 @@ impl PlatformDetailModal {
 impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let height = (crate::font::get_font_size(settings, graphics) + crate::ui::MARGIN) * self.controls.len() as f32;
+        let height = (get_font_size(settings, graphics) + MARGIN) * self.controls.len() as f32;
         LogicalSize::new(modal_width(rect, ModalSize::Half), height)
     }
 
@@ -52,7 +51,7 @@ impl ModalContent for PlatformDetailModal {
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let mut y = rect.top();
 
-        let font_size = crate::font::get_font_size(settings, graphics);
+        let font_size = get_font_size(settings, graphics);
         for (k, v) in &self.controls {
             let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + font_size));
             v.render(graphics, settings, &rect, &k, self.controls.is_focused(&v));

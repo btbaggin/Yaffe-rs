@@ -3,6 +3,7 @@ use crate::Rect;
 use crate::{Actions, LogicalSize};
 use crate::modals::{ModalResult, ModalContent, modal_width, ModalSize};
 use crate::logger::LogEntry;
+use crate::ui_control::{get_accent_color, LABEL_SIZE};
 
 const VOLUME_STEP: f32 = 0.05;
 
@@ -43,16 +44,15 @@ impl ModalContent for OverlayModal {
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let label = crate::widgets::get_drawable_text(crate::font::get_font_size(settings, graphics), "Volume:");
-        graphics.draw_text(*rect.top_left(), crate::modals::get_font_color(settings), &label); 
+        graphics.simple_text(*rect.top_left(), settings, "Volume:"); 
 
         //Background rectangle
-        let rect = Rect::from_tuples((rect.left() + crate::ui::LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
+        let rect = Rect::from_tuples((rect.left() + LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
         crate::modals::outline_rectangle(graphics, &rect, 2., Color::GRAY);
 
         //Progress rectangle
-        let accent = crate::colors::get_accent_color(settings);
-        let rect = Rect::new(*rect.top_left(), *rect.top_left() + LogicalSize::new(rect.width() * self.volume, rect.height()).into());
+        let accent = get_accent_color(settings);
+        let rect = Rect::percent(rect, LogicalSize::new(self.volume, 1.));
 
         graphics.draw_rectangle(rect, accent);
     }

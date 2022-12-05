@@ -1,7 +1,7 @@
 use std::thread;
 use std::cell::RefCell;
 use std::sync::Arc;
-use crate::net_api::*;
+use crate::scraper::*;
 use crate::modals::{GameScraperModal, PlatformScraperModal, display_modal, on_platform_found_close};
 use crate::logger::*;
 
@@ -51,11 +51,11 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
         match msg {
             JobType::LoadImage((path, slot)) => crate::assets::load_image_async(path, slot),
     
-            JobType::DownloadUrl((t, url, path)) => {
+            JobType::DownloadUrl((url, path)) => {
                 crate::logger::info!("Downloading file from {}", url.to_str().unwrap());
 
-                match crate::net_api::send_request_no_parms(t, url.to_str().unwrap()) {
-                    Err(e) => crate::logger::error!("{:?}", e),
+                match crate::scraper::send_request::<()>(url.to_str().unwrap(), None) {
+                    Err(e) => error!("{:?}", e),
                     Ok(bytes) => {
                         //Download and write file to disk
                         let file = bytes.bytes().unwrap();
@@ -68,7 +68,10 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
                 let state = state.get_inner::<crate::YaffeState>();
                 if let Some(result) = search_platform(&name, path, args).display_failure("Unable to send message for platform search", state) {
 
-                    if result.count > 0 {
+                    if let Some(platform) = result.get_exact() {
+                        crate::platform::insert_platform(state, &platform);
+
+                    } else if result.count > 0 {
                         let mut items = vec!();
                         for i in result.results {
                             items.push(i);
@@ -112,7 +115,7 @@ pub enum JobType {
     LoadImage((crate::assets::AssetPathType, RawDataPointer)),
 
     /// Downloads the file at a given url and writes it to the file system
-    DownloadUrl((crate::net_api::Authentication, std::path::PathBuf, std::path::PathBuf)),
+    DownloadUrl((std::path::PathBuf, std::path::PathBuf)),
 
     /// Searches TheGamesDb for a given platform
     SearchPlatform((RawDataPointer, String, String, String)),

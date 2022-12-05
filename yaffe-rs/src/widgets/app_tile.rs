@@ -1,9 +1,9 @@
 use crate::Transparent;
 use crate::{YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize};
-use crate::colors::*;
 use crate::Rect;
 use crate::widgets::Shifter;
 use crate::assets::{request_asset_image, request_image, Images};
+use crate::ui_control::{get_font_color, get_font_size, MODAL_BACKGROUND};
 
 pub const ANIMATION_TIME: f32 = 0.25;
 const SELECTED_SCALAR: f32 = 0.2;
@@ -66,7 +66,7 @@ impl AppTile {
         if focused {
             //Have alpha fade in as the time grows to full size
             let alpha = f32::powf(animation, 2.);
-            let font_size = crate::font::get_font_size(settings, graphics);
+            let font_size = get_font_size(settings, graphics);
 
             target_size = target_size * (1. + animation * SELECTED_SCALAR);
             position = position - (target_size - self.size) / 2.;
@@ -120,10 +120,14 @@ impl AppTile {
         }
     }
 
-    pub fn get_image_size(&self, state: &YaffeState, graphics: &mut crate::Graphics,) -> PhysicalSize {
+    pub fn get_image<'a>(&self, state: &YaffeState) -> &'a std::cell::RefCell<crate::assets::AssetSlot> {
         let p = state.get_platform();
         let exe = &p.apps[self.index];
-        let slot = crate::assets::get_cached_file(&exe.boxart);
+        crate::assets::get_cached_file(&exe.boxart)
+    }
+
+    pub fn get_image_size(&self, state: &YaffeState, graphics: &mut crate::Graphics,) -> PhysicalSize {
+        let slot = self.get_image(state);
 
         if let Ok(mut slot) = slot.try_borrow_mut() {
             if let Some(i) = request_asset_image(graphics, &mut slot) {

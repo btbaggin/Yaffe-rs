@@ -5,9 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::cell::RefCell;
 use std::sync::Mutex;
-use std::ops::{Deref, DerefMut};
 use platform::scan_new_files;
-use speedy2d::color::Color;
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry, error};
 use crate::assets::AssetPathType;
 
@@ -15,6 +13,7 @@ use crate::assets::AssetPathType;
  * TODO
  * Better ORM stuff
  * Auto DB migration with type introspection?
+ * Add horizontal container and vertical container
  * use git for update instead of drive
  * custom modals for platform and game scraping
  * display more info on info pane
@@ -26,64 +25,6 @@ const UPDATE_FILE_PATH: &'static str = "./yaffe-rs.update";
 #[macro_use]
 extern crate dlopen_derive;
 
-pub mod colors {
-    use speedy2d::color::Color;
-    pub const MENU_BACKGROUND: Color = Color::from_rgba(0.2, 0.2, 0.2, 0.7);
-    pub const MODAL_OVERLAY_COLOR: Color = Color::from_rgba(0., 0., 0., 0.6);
-    pub const MODAL_BACKGROUND: Color = Color::from_rgba(0.1, 0.1, 0.1, 1.);
-    
-    pub fn get_font_color(settings: &crate::settings::SettingsFile) -> Color {
-        settings.get_color(crate::SettingNames::FontColor).clone()
-    }
-    pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
-        let color = settings.get_color(crate::SettingNames::FontColor);
-        change_brightness(&color, -0.4)
-    }
-    
-    pub fn get_accent_color(settings: &crate::settings::SettingsFile) -> Color {
-        settings.get_color(crate::SettingNames::AccentColor)
-    }
-    pub fn get_accent_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
-        let color = settings.get_color(crate::SettingNames::AccentColor);
-        change_brightness(&color, -0.3)
-    }
-
-    pub fn change_brightness(color: &Color, factor: f32) -> Color {
-        let mut r = color.r();
-        let mut g = color.g();
-        let mut b = color.b();
-        let a = color.a();
-
-        if factor < 0. {
-            let factor = 1. + factor;
-            r *= factor;
-            g *= factor;
-            b *= factor;
-        } else {
-            r = (1. - r) * factor + r;
-            g = (1. - g) * factor + g;
-            b  = (1. - b) * factor + b;
-        }
-
-        return Color::from_rgba(r, g, b, a);
-    }
-
-    pub fn rgba_string(c: &Color) -> String {
-        format!("{},{},{},{}", c.r(), c.g(), c.b(), c.a())
-    }
-}
-
-pub mod font {
-    pub fn get_font_size(settings: &crate::settings::SettingsFile, graphics: &crate::Graphics) -> f32 {
-        settings.get_f32(crate::SettingNames::InfoFontSize) * graphics.scale_factor
-    }
-}
-
-pub mod ui {
-    pub const MARGIN: f32 = 10.;
-    pub const LABEL_SIZE: f32 = 250.;
-}
-
 mod widgets;
 mod assets;
 mod data;
@@ -92,7 +33,7 @@ mod platform;
 mod platform_layer;
 mod overlay;
 mod restrictions;
-mod net_api;
+mod scraper;
 mod job_system;
 mod logger;
 mod settings;
@@ -102,56 +43,18 @@ mod plugins;
 mod ui_control;
 mod utils;
 mod pooled_cache;
-use utils::{Transparent};
+mod graphics;
+
+use utils::Transparent;
 use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
-use modals::{display_modal};
+use modals::display_modal;
 use job_system::{JobType, RawDataPointer};
 use input::Actions;
+pub use graphics::Graphics;
 pub use crate::settings::SettingNames;
 pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect, ScaleFactor};
-
-pub struct Graphics<'a> {
-    graphics: &'a mut speedy2d::Graphics2D,
-    queue: Option<job_system::ThreadSafeJobQueue>,
-    scale_factor: f32,
-    bounds: Rect,
-    delta_time: f32,
-}
-impl<'a> Graphics<'a> {
-    pub fn draw_rectangle(&mut self, rect: Rect, color: Color) {
-        self.graphics.draw_rectangle(rect.to_physical(self.scale_factor), color);
-    }
-    pub fn draw_text(&mut self, position: LogicalPosition, color: Color, text: &Rc<speedy2d::font::FormattedTextBlock>) {
-        self.graphics.draw_text(position.to_physical(self.scale_factor), color, text);
-    }
-    pub fn draw_line(&mut self, pos1: LogicalPosition, pos2: LogicalPosition, width: f32, color: Color) {
-        self.graphics.draw_line(pos1.to_physical(self.scale_factor), pos2.to_physical(self.scale_factor), width, color);
-    }
-    pub fn set_clip(&mut self, rect: Option<Rect>) {
-        use speedy2d::shape::Rectangle;
-        if rect.is_some() {
-            let rect = rect.unwrap().to_physical(self.scale_factor);
-            let clip = Rectangle::from_tuples((rect.top_left().x as i32, rect.top_left().y as i32), (rect.bottom_right().x as i32, rect.bottom_right().y as i32));
-            self.graphics.set_clip(Some(clip));
-        } else {
-            self.graphics.set_clip(None);
-        }
-    }
-}
-impl<'a> Deref for Graphics<'a> {
-    type Target = speedy2d::Graphics2D;
-    fn deref(&self) -> &Self::Target {
-        &self.graphics
-    }
-}
-impl<'a> DerefMut for Graphics<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.graphics
-    }
-}
-
 
 pub struct Platform {
     id: Option<i64>,
@@ -238,7 +141,7 @@ impl windowing::WindowHandler for WidgetTree {
                 let lock = self.data.queue.lock().log_and_panic();
                 let mut queue = lock.borrow_mut();
 
-                let applied = net_api::check_for_updates(&mut queue).log("Error checking for updates");
+                let applied = scraper::check_for_updates(&mut queue).log("Error checking for updates");
                 if applied { self.data.update_timer = f32::NAN; }
                 else { self.data.update_timer = 60. * 60.; }
             }

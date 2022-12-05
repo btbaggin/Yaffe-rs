@@ -117,7 +117,7 @@ impl Executable {
             file: item.path,
             name: item.name,
             description: item.description,
-            platform_index: platform_index,
+            platform_index,
             boxart,
             players: 1,
             rating: if !item.restricted { Rating::Everyone } else { Rating::Mature },
@@ -153,7 +153,6 @@ pub fn get_database_info(state: &mut YaffeState) {
         platforms.push(Platform::new(p.id, p.name));
     }
 
-    //TODO this could probably be improved
     for i in 0..platforms.len() {
         refresh_executable(state, &mut platforms, i);
     }
@@ -278,7 +277,7 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
     let mut queue = lock.borrow_mut();
 
     let boxart_url = Path::new("https://cdn.thegamesdb.net/images/medium/").join(boxart.clone());
-    queue.send(crate::JobType::DownloadUrl((crate::net_api::Authentication::None, boxart_url.to_owned(), boxart_file))).unwrap();
+    queue.send(crate::JobType::DownloadUrl((boxart_url.to_owned(), boxart_file))).unwrap();
 
     state.refresh_list = true;
 }

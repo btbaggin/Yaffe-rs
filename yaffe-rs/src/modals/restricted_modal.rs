@@ -1,6 +1,8 @@
-use crate::{Actions, LogicalPosition, LogicalSize, Rect, colors::*, ui::*};
+use crate::{Actions, LogicalPosition, LogicalSize, Rect};
 use crate::modals::{ModalResult, ModalContent};
 use crate::restrictions::RestrictedPasscode;
+use crate::ui_control::{get_font_color, get_font_size, MARGIN};
+use crate::settings::SettingsFile;
 use super::{modal_width, ModalSize};
 use std::hash::{Hash, Hasher};
 
@@ -19,8 +21,8 @@ impl SetRestrictedModal {
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
-        let height = crate::font::get_font_size(settings, graphics) + MARGIN;
+    fn size(&self, settings: &SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
+        let height = get_font_size(settings, graphics) + MARGIN;
         LogicalSize::new(modal_width(rect, ModalSize::Third), height)
     }
 
@@ -35,8 +37,8 @@ impl ModalContent for SetRestrictedModal {
         ModalResult::None
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let font_size = crate::font::get_font_size(settings, graphics);
+    fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
+        let font_size = get_font_size(settings, graphics);
 
         let item_label = crate::widgets::get_drawable_text(font_size, "*");
         for i in 0..self.pass.len() {

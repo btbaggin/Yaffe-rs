@@ -1,8 +1,9 @@
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
 use crate::{YaffeState, Graphics, Actions, LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use std::ops::Deref;
 use crate::widgets::animations::*;
+use crate::assets::{Images, Fonts, AssetSlot};
+use std::ops::Deref;
 use std::time::Instant;
 
 pub mod animations;
@@ -389,16 +390,43 @@ pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition
 
 /// Simple helper method to get a text object
 pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
-    let font = crate::assets::request_font(crate::assets::Fonts::Regular);
+    let font = crate::assets::request_font(Fonts::Regular);
     font.layout_text(text, size, TextOptions::new())
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
 pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
-    let font =  crate::assets::request_font(crate::assets::Fonts::Regular);
+    let font =  crate::assets::request_font(Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);
     font.layout_text(text, size, option)
+}
+
+/// Scales an image to the largest size that can fit in the smallest dimension
+pub fn image_fill(graphics: &mut crate::Graphics, slot: &mut AssetSlot, size: &LogicalSize, expand: bool) -> LogicalSize {
+    let mut tile_size = *size;
+    
+    let bitmap_size = if let Some(i) = crate::assets::request_asset_image(graphics, slot) {
+            i.size()
+    } else {
+        crate::assets::request_image(graphics, Images::Placeholder).unwrap().size()
+    };
+
+    //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
+    //We wouldn't want vertical boxart to stretch to the horizontal dimensions
+    //This will scale boxart that is different aspect to fit within the tile_size.Height
+    let bitmap_size = bitmap_size.to_logical(graphics.scale_factor);
+    let real_aspect = bitmap_size.x / bitmap_size.y;
+    let tile_aspect = tile_size.x / tile_size.y;
+
+    //If an aspect is wider than it is tall, it is > 1
+    //If the two aspect ratios are on other sides of one, it means we need to scale
+    if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
+        //TODO this doesn't work
+        tile_size.x = if expand { tile_size.y * real_aspect } else { tile_size.x * real_aspect };
+    }
+
+    tile_size
 }
 
 trait Shifter {

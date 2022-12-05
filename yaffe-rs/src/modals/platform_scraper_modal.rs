@@ -26,6 +26,7 @@ impl ModalContent for PlatformScraperModal {
     }
 
     fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
+        //TODO add more stuff
         self.list.render(settings, rect, graphics);
     }
 }

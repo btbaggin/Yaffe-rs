@@ -1,12 +1,13 @@
 
-use super::{ModalResult, ModalContent, ListModal, default_modal_action, modal_width, ModalSize};
+use super::{ModalResult, ModalContent, default_modal_action, modal_width, ModalSize};
+use crate::widgets::get_drawable_text_with_wrap;
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
-use crate::net_api::GameScrapeResult;
+use crate::scraper::GameScrapeResult;
 use crate::settings::SettingsFile;
 use crate::input::Actions;
 use crate::assets::{AssetSlot, AssetPathType, request_asset_image};
 use std::cell::RefCell;
-use crate::ui_control::List;
+use crate::ui_control::{List, get_font_color, get_font_size, MARGIN};
 
 
 pub struct GameScraperModal {
@@ -33,27 +34,39 @@ impl ModalContent for GameScraperModal {
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         if self.list.update(action) {
             let item = self.list.get_selected();
-            let path = std::path::Path::new("https://cdn.thegamesdb.net/images/medium/").join(item.boxart.clone());
-            self.slot = RefCell::new(AssetSlot::new(AssetPathType::Url(path.to_string_lossy().to_string())));
+            self.slot = RefCell::new(AssetSlot::new(AssetPathType::Url(format!("https://cdn.thegamesdb.net/images/medium/{}", item.boxart))));
         }
         default_modal_action(action)
     }
 
     fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
+        let half_size = LogicalSize::new(rect.width() / 2., rect.height());
+        let left = Rect::point_and_size(*rect.top_left(), half_size);
+        
+        let image_container = Rect::percent(left, LogicalSize::new(0.75, 0.25));
+
         let mut slot = self.slot.borrow_mut();
+        let size = crate::widgets::image_fill(graphics, &mut slot, &image_container.size(), false);
         if let Some(i) = request_asset_image(graphics, &mut slot) {
-            i.render(graphics, Rect::new(LogicalPosition::new(0., 0.), LogicalSize::new(100., 100.)))
+            i.render(graphics, Rect::point_and_size(*left.top_left(), size))
         }
 
-        self.list.render(settings, rect, graphics);
+        let item = self.list.get_selected();
+        graphics.simple_text(LogicalPosition::new(left.left() + size.x + MARGIN, left.top()), settings, &format!("Players: {}", item.info.players));
+
+        let text = get_drawable_text_with_wrap(get_font_size(settings, graphics), &item.info.overview, left.width());
+        graphics.draw_text(LogicalPosition::new(left.left(), left.top() + size.y), get_font_color(settings), &text);
+        
+        let right = Rect::point_and_size(LogicalPosition::new(rect.left() + half_size.x, rect.top()), half_size);
+        self.list.render(settings, right, graphics);
     }
 }
 
 pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
-        let content = content.as_any().downcast_ref::<ListModal<GameScrapeResult>>().unwrap();
+        let content = content.as_any().downcast_ref::<GameScraperModal>().unwrap();
 
-        let item = content.get_selected();
+        let item = content.list.get_selected();
         crate::platform::insert_game(state, &item.info, item.boxart.clone());
     }
 }

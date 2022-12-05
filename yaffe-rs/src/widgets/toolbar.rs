@@ -1,7 +1,7 @@
 use crate::{YaffeState, widget, LogicalPosition};
-use crate::colors::*;
-use crate::assets::{Images};
+use crate::assets::Images;
 use crate::widgets::Shifter;
+use crate::ui_control::{MARGIN, get_font_color, get_font_size};
 
 widget!(pub struct Toolbar {});
 impl super::Widget for Toolbar {
@@ -9,20 +9,20 @@ impl super::Widget for Toolbar {
         let time = chrono::Local::now();
         let rect = graphics.bounds;
 
-        let font_size = crate::font::get_font_size(&state.settings, graphics);
+        let font_size = get_font_size(&state.settings, graphics);
 
         //Draw time
         let time_string = time.format("%I:%M%p");
         let text = super::get_drawable_text(font_size, &time_string.to_string());
 
-        let mut right = LogicalPosition::new(rect.right() - crate::ui::MARGIN, rect.bottom() - text.height());
-        right = super::right_aligned_text(graphics, right, None, get_font_color(&state.settings), text).shift_x(-crate::ui::MARGIN * 2.);
+        let mut right = LogicalPosition::new(rect.right() - MARGIN, rect.bottom() - text.height());
+        right = super::right_aligned_text(graphics, right, None, get_font_color(&state.settings), text).shift_x(-MARGIN * 2.);
 
         //Draw buttons
         //What actions we can perform depend on what's focused
         if state.focused_widget == crate::get_widget_id!(crate::widgets::AppList) {
             let text = super::get_drawable_text(font_size, "Filter");
-            right = super::right_aligned_text(graphics, right, Some(Images::ButtonY), get_font_color(&state.settings), text).shift_x(-crate::ui::MARGIN * 2.);
+            right = super::right_aligned_text(graphics, right, Some(Images::ButtonY), get_font_color(&state.settings), text).shift_x(-MARGIN * 2.);
 
             let text = super::get_drawable_text(font_size, "Back");
             super::right_aligned_text(graphics, right, Some(Images::ButtonB), get_font_color(&state.settings), text);
@@ -31,7 +31,7 @@ impl super::Widget for Toolbar {
             let platform = state.get_platform();
             if crate::platform::PlatformType::Recents != platform.kind {
                 let text = super::get_drawable_text(font_size, "Settings");
-                right = super::right_aligned_text(graphics, right, Some(Images::ButtonX), get_font_color(&state.settings), text).shift_x(-crate::ui::MARGIN * 2.);
+                right = super::right_aligned_text(graphics, right, Some(Images::ButtonX), get_font_color(&state.settings), text).shift_x(-MARGIN * 2.);
             }
             let text = super::get_drawable_text(font_size, "Select");
             super::right_aligned_text(graphics, right, Some(Images::ButtonA), get_font_color(&state.settings), text);
