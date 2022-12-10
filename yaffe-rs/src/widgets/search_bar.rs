@@ -1,5 +1,5 @@
 use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, ScaleFactor};
-use crate::ui_control::{get_font_unfocused_color, get_font_color, MENU_BACKGROUND, get_accent_color, get_font_size};
+use crate::ui::{get_font_unfocused_color, get_font_color, MENU_BACKGROUND, get_accent_color, get_font_size};
 
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
@@ -49,7 +49,7 @@ widget!(pub struct SearchBar {
     active: bool = false,
     highlight_offset: f32 = 0.
 });
-impl super::Widget for SearchBar {
+impl crate::ui::Widget for SearchBar {
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., -1.) }
 
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
@@ -85,7 +85,7 @@ impl super::Widget for SearchBar {
                 search.increment_index(mask, -1);
 
                 let offset = crate::offset_of!(SearchBar => highlight_offset);
-                handler.animate_f32(self, offset, f32::max(0., search.index as f32 * item_size), 0.1);
+                self.animate(offset, f32::max(0., search.index as f32 * item_size), 0.1);
                 true
             }
             Actions::Right => {
@@ -94,7 +94,7 @@ impl super::Widget for SearchBar {
                 search.increment_index(mask, 1);
 
                 let offset = crate::offset_of!(SearchBar => highlight_offset);
-                handler.animate_f32(self, offset, f32::max(0., search.index as f32 * item_size), 0.1);
+                self.animate(offset, f32::max(0., search.index as f32 * item_size), 0.1);
 
                 true
             }
@@ -118,17 +118,17 @@ impl super::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, original: Rect, handle: &mut DeferredAction) {
+    fn got_focus(&mut self, original: Rect) {
         let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
-        handle.animate_f32(self, offset, original.bottom(), 0.2);
+        self.animate(offset, original.bottom(), 0.2);
 
         self.highlight_offset = 0.;
     }
 
-    fn lost_focus(&mut self, original: Rect, handle: &mut DeferredAction) {
+    fn lost_focus(&mut self, original: Rect) {
         if !self.active {
             let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
-            handle.animate_f32(self, offset, original.top(), 0.2);
+            self.animate(offset, original.top(), 0.2);
         }
     }
 
@@ -167,7 +167,7 @@ impl super::Widget for SearchBar {
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
 
-        let name_label = super::get_drawable_text(font_size, &name);
+        let name_label = crate::ui::get_drawable_text(font_size, &name);
         let half = name_label.width().to_logical(graphics) / 2.;
         graphics.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - name_label.height().to_logical(graphics) / 2.), focused_color, &name_label);
 
@@ -192,7 +192,7 @@ impl super::Widget for SearchBar {
             //If there are no items that match a certain filter we will draw it unfocused
             let bit = i - start;
             let color = if mask & 1 << bit != 0 { focused_color.clone() } else { get_font_unfocused_color(&state.settings) };
-            let item_label = super::get_drawable_text(font_size, &String::from(i as char));
+            let item_label = crate::ui::get_drawable_text(font_size, &String::from(i as char));
             
             let label_half = LogicalSize::new(item_label.width().to_logical(graphics) / 2., item_label.height().to_logical(graphics) / 2.);
             graphics.draw_text(LogicalPosition::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);

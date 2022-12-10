@@ -1,5 +1,5 @@
 use crate::{Rect, LogicalSize, Actions};
-use crate::ui_control::{get_accent_color, get_font_size};
+use crate::ui::{get_accent_color, get_font_size};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;

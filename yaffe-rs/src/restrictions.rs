@@ -1,4 +1,4 @@
-use crate::{YaffeState, modals::ModalContent, modals::ModalResult, modals::SetRestrictedModal};
+use crate::{YaffeState, ui::ModalContent, ui::ModalResult, modals::SetRestrictedModal};
 
 const PIN_SIZE: usize = 8;
 
@@ -49,6 +49,7 @@ pub fn on_restricted_modal_close(state: &mut YaffeState, result: ModalResult, co
 
 pub fn verify_restricted_action(state: &mut YaffeState) -> bool {
     if let RestrictedMode::On(_) = state.restricted_mode {
+        //TODO this is terriable and doesn't really work?
         return false;
     } 
 

@@ -11,10 +11,7 @@ use crate::assets::AssetPathType;
 
 /* 
  * TODO
- * Better ORM stuff
- * Auto DB migration with type introspection?
  * Add horizontal container and vertical container
- * use git for update instead of drive
  * custom modals for platform and game scraping
  * display more info on info pane
 */
@@ -40,16 +37,17 @@ mod settings;
 mod windowing;
 mod input;
 mod plugins;
-mod ui_control;
 mod utils;
 mod pooled_cache;
 mod graphics;
+mod ui;
 
+use ui::DeferredAction;
 use utils::Transparent;
 use widgets::*;
 use overlay::OverlayWindow;
 use restrictions::RestrictedMode;
-use modals::display_modal;
+use ui::display_modal;
 use job_system::{JobType, RawDataPointer};
 use input::Actions;
 pub use graphics::Graphics;
@@ -80,10 +78,10 @@ pub struct YaffeState {
     selected_app: usize,
     platforms: Vec<Platform>,
     plugins: Vec<RefCell<plugins::Plugin>>,
-    focused_widget: widgets::WidgetId,
-    modals: Mutex<Vec<modals::Modal>>,
+    focused_widget: ui::WidgetId,
+    modals: Mutex<Vec<ui::Modal>>,
     queue: job_system::ThreadSafeJobQueue,
-    search_info: widgets::SearchInfo,
+    search_info: SearchInfo,
     restricted_mode: RestrictedMode,
     refresh_list: bool,
     settings: settings::SettingsFile,
@@ -124,12 +122,12 @@ impl YaffeState {
         None
     }
 
-    fn is_widget_focused(&self, widget: &impl FocusableWidget) -> bool {
+    fn is_widget_focused(&self, widget: &impl ui::FocusableWidget) -> bool {
         self.focused_widget == widget.get_id()
     }
 }
 
-impl windowing::WindowHandler for WidgetTree {
+impl windowing::WindowHandler for ui::WidgetTree {
     fn on_fixed_update(&mut self, _: &mut crate::windowing::WindowHelper, delta_time: f32) -> bool {
         //Clear any assets that haven't been requested in a long time
         crate::assets::clear_old_cache(&self.data);
@@ -167,13 +165,13 @@ impl windowing::WindowHandler for WidgetTree {
             self.data.focused_widget = *self.focus.last().unwrap();
             self.render_all(&mut graphics);
 
-            crate::widgets::animations::run_animations(self, delta_time);
+            self.process_animations(delta_time);
 
             //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
                 graphics.bounds = window_rect;
-                modals::render_modal(&self.data.settings, m, &mut graphics);
+                ui::render_modal(&self.data.settings, m, &mut graphics);
             }
         }
 
@@ -204,12 +202,12 @@ impl windowing::WindowHandler for WidgetTree {
             Actions::ToggleOverlay => { false /* Overlay handles this */ }
             _ => {
                 let mut handler = DeferredAction::new();
-                let result = if !modals::is_modal_open(&self.data) {
+                let result = if !ui::is_modal_open(&self.data) {
                     let focus = self.focus.last().log_and_panic();
         
                     self.root.action(&mut self.data, &action, focus, &mut handler)
                 } else {
-                    modals::update_modal(&mut self.data, helper, &action, &mut handler);
+                    ui::update_modal(&mut self.data, helper, &action, &mut handler);
                     true
                 };
                 handler.resolve(self);
@@ -241,6 +239,7 @@ fn main() {
             Err(e) => error!("Updated file found, but unable to run updater {:?}", e),
         }
     }
+    crate::data::init_database().log_message_and_panic("Unable to create database");
 
     let (queue, notify) = job_system::start_job_system();
 
@@ -253,15 +252,16 @@ fn main() {
     };
     logger::set_log_level(&settings.get_str(SettingNames::LoggingLevel));
 
+    let animation = Rc::new(RefCell::new(ui::AnimationManager::new()));
     let q = Arc::new(Mutex::new(RefCell::new(queue)));
-    let root = build_ui_tree();
+    let root = build_ui_tree(animation.clone());
     let overlay = overlay::OverlayWindow::new(settings.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
 
     assets::initialize_asset_cache();
 
-    let mut ui = widgets::WidgetTree::new(root, state);
-    ui.focus(std::any::TypeId::of::<widgets::PlatformList>());
+    let mut ui = ui::WidgetTree::new(root, animation, state);
+    ui.focus(std::any::TypeId::of::<PlatformList>());
  
     let input_map = input::get_input_map();
     let gamepad = platform_layer::initialize_gamepad().log_message_and_panic("Unable to initialize input");
@@ -270,19 +270,21 @@ fn main() {
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
-fn build_ui_tree() -> WidgetContainer {
-    let mut root = WidgetContainer::root(widgets::Background::new());
-    root.add_child(widgets::PlatformList::new(), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
-        .with_child(widgets::AppList::new(), LogicalSize::new(0.75, 1.))
-            .add_child(widgets::SearchBar::new(), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
-            .add_child(widgets::Toolbar::new(), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
-            .add_child(widgets::InfoPane::new(), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
+fn build_ui_tree(animation: Rc<RefCell<ui::AnimationManager>>) -> ui::WidgetContainer {
+    use ui::ContainerAlignment;
+
+    let mut root = ui::WidgetContainer::root(Background::new(animation.clone()));
+    root.add_child(PlatformList::new(animation.clone()), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
+        .with_child(AppList::new(animation.clone()), LogicalSize::new(0.75, 1.))
+            .add_child(SearchBar::new(animation.clone()), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
+            .add_child(Toolbar::new(animation.clone()), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
+            .add_child(InfoPane::new(animation.clone()), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
             
     root
 }
 
-fn on_menu_close(state: &mut YaffeState, result: modals::ModalResult, content: &Box<dyn modals::ModalContent>, _: &mut crate::DeferredAction) {
-    if let modals::ModalResult::Ok = result {
+fn on_menu_close(state: &mut YaffeState, result: ui::ModalResult, content: &Box<dyn ui::ModalContent>, _: &mut crate::DeferredAction) {
+    if let ui::ModalResult::Ok = result {
         let list_content = content.as_any().downcast_ref::<modals::ListModal<String>>().unwrap();
         
         match &list_content.get_selected()[..] {

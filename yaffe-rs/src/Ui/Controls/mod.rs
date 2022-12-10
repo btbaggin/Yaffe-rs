@@ -1,13 +1,14 @@
 use crate::{Actions, LogicalPosition};
 use crate::settings::SettingsFile;
-use crate::modals::outline_rectangle;
-use crate::utils::{Rect};
+use crate::ui::outline_rectangle;
+use crate::utils::Rect;
 use speedy2d::color::Color;
 
 mod text_box;
 mod checkbox;
 mod focus_group;
 mod list;
+mod container;
 pub use text_box::TextBox;
 pub use checkbox::CheckBox;
 pub use focus_group::{FocusGroup, FocusGroupIter};
@@ -18,7 +19,6 @@ pub const LABEL_SIZE: f32 = 250.;
 pub const MENU_BACKGROUND: Color = Color::from_rgba(0.2, 0.2, 0.2, 0.7);
 pub const MODAL_OVERLAY_COLOR: Color = Color::from_rgba(0., 0., 0., 0.6);
 pub const MODAL_BACKGROUND: Color = Color::from_rgba(0.1, 0.1, 0.1, 1.);
-
 
 
 /// Provides functionality for a basic UI control (textbox, checkbox, etc...)

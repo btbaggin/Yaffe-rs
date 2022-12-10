@@ -3,10 +3,9 @@ use crate::logger::PanicLogEntry;
 
 mod platform;
 mod game;
+mod schema;
 pub use platform::PlatformInfo;
 pub use game::GameInfo;
-
-
 
 type QueryResult<T> = Result<T, QueryError>;
 #[derive(Debug)]
@@ -14,7 +13,6 @@ pub enum QueryError {
     NoResults,
     NoUpdate,
 }
-
 
 pub struct YaffeConnection {
     con: sqlite3::Connection,
@@ -75,7 +73,7 @@ fn execute_update(mut stmt: sqlite3::Statement) -> QueryResult<()> {
 }
 
 /// Creates the database if it doesn't exist
-pub fn create_database() -> QueryResult<()> {
+pub fn init_database() -> QueryResult<()> {
     if !std::path::Path::new("./Yaffe.db").exists() {
         let con = YaffeConnection::new();
 
@@ -93,6 +91,10 @@ pub fn create_database() -> QueryResult<()> {
         let stmt = create_statement!(con, QS_CREATE_PLATFORMS_TABLE, );
         execute_update(stmt)?;
     }
+
+    schema::update_schema("Games", GameInfo::default())?;
+    schema::update_schema("Platforms", PlatformInfo::default())?;
+
     Ok(())
 }
 

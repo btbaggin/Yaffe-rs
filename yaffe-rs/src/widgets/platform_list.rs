@@ -1,9 +1,9 @@
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use crate::modals::{PlatformDetailModal, on_update_platform_close, display_modal};
-use crate::ui_control::{MARGIN, get_font_color, get_font_unfocused_color, get_accent_color, get_accent_unfocused_color, get_font_size, MENU_BACKGROUND};
+use crate::modals::{PlatformDetailModal, on_update_platform_close};
+use crate::ui::{MARGIN, get_font_color, get_font_unfocused_color, get_accent_color, get_accent_unfocused_color, get_font_size, MENU_BACKGROUND, display_modal};
 
 widget!(pub struct PlatformList {});
-impl super::Widget for PlatformList {
+impl crate::ui::Widget for PlatformList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Down =>  {
@@ -45,7 +45,7 @@ impl super::Widget for PlatformList {
         graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
 
         //Title
-        let title = crate::widgets::get_drawable_text(32. * graphics.scale_factor, "Yaffe");
+        let title = crate::ui::get_drawable_text(32. * graphics.scale_factor, "Yaffe");
         graphics.draw_text(LogicalPosition::new(rect.width() - title.width().to_logical(graphics) - MARGIN, MARGIN), get_font_color(&state.settings), &title);
 
         let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
@@ -74,12 +74,12 @@ impl super::Widget for PlatformList {
             }
             
             //Label
-            let name_label = super::get_drawable_text(font_size, &p.name);
+            let name_label = crate::ui::get_drawable_text(font_size, &p.name);
             graphics.draw_text(LogicalPosition::new(MARGIN, y), text_color, &name_label);
     
             if let PlatformType::Emulator = p.kind {
                 //Count
-                let num_label = super::get_drawable_text(font_size, &p.apps.len().to_string());
+                let num_label = crate::ui::get_drawable_text(font_size, &p.apps.len().to_string());
                 graphics.draw_text(LogicalPosition::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
             }
             y += height;

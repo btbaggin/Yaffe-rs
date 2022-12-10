@@ -1,9 +1,9 @@
 use speedy2d::color::Color;
 use crate::Rect;
 use crate::{Actions, LogicalSize};
-use crate::modals::{ModalResult, ModalContent, modal_width, ModalSize};
+use crate::modals::{ModalResult, ModalContent, ModalSize};
 use crate::logger::LogEntry;
-use crate::ui_control::{get_accent_color, LABEL_SIZE};
+use crate::ui::{get_accent_color, LABEL_SIZE};
 
 const VOLUME_STEP: f32 = 0.05;
 
@@ -25,7 +25,7 @@ impl ModalContent for OverlayModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, _: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
         let height = 32. * graphics.scale_factor;
-        LogicalSize::new(modal_width(rect, ModalSize::Half), height)
+        LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -48,7 +48,7 @@ impl ModalContent for OverlayModal {
 
         //Background rectangle
         let rect = Rect::from_tuples((rect.left() + LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));
-        crate::modals::outline_rectangle(graphics, &rect, 2., Color::GRAY);
+        crate::ui::outline_rectangle(graphics, &rect, 2., Color::GRAY);
 
         //Progress rectangle
         let accent = get_accent_color(settings);

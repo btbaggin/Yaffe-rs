@@ -1,13 +1,12 @@
 
-use super::{ModalResult, ModalContent, default_modal_action, modal_width, ModalSize};
-use crate::widgets::get_drawable_text_with_wrap;
+use crate::ui::{get_drawable_text_with_wrap, ModalResult, ModalContent, ModalSize};
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
 use crate::scraper::GameScrapeResult;
 use crate::settings::SettingsFile;
 use crate::input::Actions;
 use crate::assets::{AssetSlot, AssetPathType, request_asset_image};
 use std::cell::RefCell;
-use crate::ui_control::{List, get_font_color, get_font_size, MARGIN};
+use crate::ui::{List, get_font_color, get_font_size, MARGIN};
 
 
 pub struct GameScraperModal {
@@ -28,7 +27,7 @@ impl GameScraperModal {
 impl ModalContent for GameScraperModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, _: &SettingsFile, rect: Rect, _: &crate::Graphics) -> LogicalSize {
-        LogicalSize::new(modal_width(rect, ModalSize::Full), rect.height())
+        LogicalSize::new(Self::modal_width(rect, ModalSize::Full), rect.height())
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -36,7 +35,7 @@ impl ModalContent for GameScraperModal {
             let item = self.list.get_selected();
             self.slot = RefCell::new(AssetSlot::new(AssetPathType::Url(format!("https://cdn.thegamesdb.net/images/medium/{}", item.boxart))));
         }
-        default_modal_action(action)
+        Self::default_modal_action(action)
     }
 
     fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
@@ -46,7 +45,7 @@ impl ModalContent for GameScraperModal {
         let image_container = Rect::percent(left, LogicalSize::new(0.75, 0.25));
 
         let mut slot = self.slot.borrow_mut();
-        let size = crate::widgets::image_fill(graphics, &mut slot, &image_container.size(), false);
+        let size = crate::ui::image_fill(graphics, &mut slot, &image_container.size(), false);
         if let Some(i) = request_asset_image(graphics, &mut slot) {
             i.render(graphics, Rect::point_and_size(*left.top_left(), size))
         }

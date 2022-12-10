@@ -1,7 +1,7 @@
 use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::ui_control::*;
+use crate::ui::{UiControl, TextBox, FocusGroup};
 
 pub struct PlatformDetailModal {
     controls: FocusGroup<dyn UiControl>,
@@ -35,7 +35,7 @@ impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
         let height = (get_font_size(settings, graphics) + MARGIN) * self.controls.len() as f32;
-        LogicalSize::new(modal_width(rect, ModalSize::Half), height)
+        LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -45,7 +45,8 @@ impl ModalContent for PlatformDetailModal {
                 return ModalResult::None;
             }
         }
-        default_modal_action(action)
+        //TODO can this be in trait?
+        Self::default_modal_action(action)
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {

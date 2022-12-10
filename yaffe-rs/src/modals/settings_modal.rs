@@ -1,6 +1,6 @@
 use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
-use crate::ui_control::*;
+use crate::ui::{UiControl, TextBox, FocusGroup, rgba_string, CheckBox};
 use crate::logger::{UserMessage, LogEntry};
 use crate::settings::{SettingsFile, SettingValue};
 use std::str::FromStr;
@@ -36,7 +36,7 @@ impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
         let height = (get_font_size(settings, graphics) + MARGIN) * self.settings.len() as f32;
-        LogicalSize::new(modal_width(rect, ModalSize::Half), height)
+        LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
@@ -55,7 +55,7 @@ impl ModalContent for SettingsModal {
                 focus.action(action);
             }
         }
-        default_modal_action(action)
+        Self::default_modal_action(action)
     }
 }
 

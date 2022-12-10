@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use speedy2d::color::Color;
 use std::convert::{AsRef, TryFrom};
 use std::io::Write;
-use crate::ui_control::rgba_string;
+use crate::ui::rgba_string;
 
 #[derive(Debug)]
 pub enum SettingLoadError {
@@ -176,7 +176,7 @@ impl SettingsFile {
         for name in SETTINGS {
             //Get configured value if it exists, otherwise default
             let value = if let Some(value) = self.settings.get(*name) { value.clone() }
-            else { SettingNames::get_default(name) };
+                        else { SettingNames::get_default(name) };
 
             result.push((name.to_string(), value));
         }
@@ -189,18 +189,11 @@ impl SettingsFile {
         let setting = SettingNames::get_default(name);
         let value = setting.from_string(value, true)?;
     
-        //Value was either removed or the default, don't add it
-        if value.is_none() { 
-            self.settings.remove(name);
-            return Ok(()); 
-        }
-
-        //Add or insert new value
-        let value = value.unwrap();
-        if let None = self.settings.get(name) {
-            self.settings.insert(name.to_string(), value);
-        } else {
-            *self.settings.get_mut(name).unwrap() = value;
+        match value { 
+            //Add or insert new value
+            Some(v) => { self.settings.entry(name.to_string()).and_modify(|e| { *e = v.clone() }).or_insert(v); },
+            //Value was either removed or the default, don't add it
+            None => { self.settings.remove(name); },
         }
         Ok(())
     }

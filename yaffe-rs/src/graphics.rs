@@ -1,7 +1,7 @@
-use crate::{Rect, LogicalPosition, get_drawable_text};
+use crate::{Rect, LogicalPosition};
 use crate::settings::SettingsFile;
 use crate::job_system::ThreadSafeJobQueue;
-use crate::ui_control::{get_font_color, get_font_size};
+use crate::ui::{get_font_color, get_font_size, get_drawable_text};
 use speedy2d::color::Color;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;

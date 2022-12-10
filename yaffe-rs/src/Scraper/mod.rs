@@ -17,7 +17,7 @@ pub struct GameScrapeResult {
     pub info: GameInfo,
     pub boxart: String,
 }
-impl crate::ui_control::ListItem for GameScrapeResult {
+impl crate::ui::ListItem for GameScrapeResult {
     fn to_display(&self) -> String {
         self.info.name.clone()
     }

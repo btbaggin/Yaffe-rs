@@ -1,9 +1,9 @@
-use super::{ModalResult, ModalContent, ListModal, default_modal_action, modal_width, ModalSize};
 use crate::{YaffeState, Rect, LogicalSize};
 use crate::data::PlatformInfo;
 use crate::input::Actions;
 use crate::settings::SettingsFile;
-use crate::ui_control::List;
+use crate::modals::ListModal;
+use crate::ui::{List, ModalResult, ModalContent, ModalSize};
 
 pub struct PlatformScraperModal {
     list: List<PlatformInfo>,
@@ -17,12 +17,12 @@ impl PlatformScraperModal {
 impl ModalContent for PlatformScraperModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, _: &SettingsFile, rect: Rect, _: &crate::Graphics) -> LogicalSize {
-        LogicalSize::new(modal_width(rect, ModalSize::Full), rect.height())
+        LogicalSize::new(Self::modal_width(rect, ModalSize::Full), rect.height())
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         self.list.update(action);
-        default_modal_action(action)
+        Self::default_modal_action(action)
     }
 
     fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {

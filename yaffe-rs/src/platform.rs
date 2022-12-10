@@ -146,7 +146,6 @@ impl Executable {
 pub fn get_database_info(state: &mut YaffeState) {
     crate::logger::info!("Refreshing information from database");
 
-    create_database().log_message_and_panic("Unable to create database");
     let mut platforms = vec!();
     platforms.push(Platform::recents(String::from("Recent")));
     for p in crate::data::PlatformInfo::get_all() {

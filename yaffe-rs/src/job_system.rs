@@ -2,7 +2,8 @@ use std::thread;
 use std::cell::RefCell;
 use std::sync::Arc;
 use crate::scraper::*;
-use crate::modals::{GameScraperModal, PlatformScraperModal, display_modal, on_platform_found_close};
+use crate::modals::{GameScraperModal, PlatformScraperModal, on_platform_found_close};
+use crate::ui::display_modal;
 use crate::logger::*;
 
 pub type JobQueue = spmc::Sender<JobType>;

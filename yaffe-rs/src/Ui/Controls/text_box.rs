@@ -1,6 +1,6 @@
 use super::{UiControl, draw_label_and_box, get_font_color, get_font_size, LABEL_SIZE};
 use crate::{Actions, LogicalPosition};
-use crate::widgets::get_drawable_text;
+use crate::ui::get_drawable_text;
 use crate::settings::SettingsFile;
 use crate::input::InputType;
 use crate::utils::Rect;

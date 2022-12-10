@@ -1,12 +1,14 @@
 use crate::create_statement;
 use super::{YaffeConnection, execute_update, execute_select, execute_select_once, QueryResult};
 
-pub struct PlatformInfo {
-    pub id: i64,
-    pub name: String,
-    pub path: String,
-    pub args: String,
-}
+crate::table_struct! (
+    pub struct PlatformInfo {
+        pub id: i64,
+        pub name: String,
+        pub path: String,
+        pub args: String,
+    }
+);
 impl PlatformInfo {
     pub fn new(id: i64, name: String, path: String, args: String) -> PlatformInfo {
         PlatformInfo { id, name, path, args, }
@@ -85,7 +87,7 @@ impl PlatformInfo {
         result
     }
 }
-impl crate::ui_control::ListItem for PlatformInfo {
+impl crate::ui::ListItem for PlatformInfo {
     fn to_display(&self) -> String {
         self.name.clone()
     }

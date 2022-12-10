@@ -14,7 +14,7 @@ widget!(pub struct AppList {
     tile_animation: f32 = 0.
 });
 
-impl super::Widget for AppList {
+impl crate::ui::Widget for AppList {
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
@@ -57,10 +57,10 @@ impl super::Widget for AppList {
         }
     }
 
-    fn got_focus(&mut self, _: Rect, handler: &mut DeferredAction) {
+    fn got_focus(&mut self, _: Rect) {
         self.tile_animation = 0.;
         let offset = crate::offset_of!(AppList => tile_animation);
-        handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
+        self.animate(offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
@@ -186,7 +186,7 @@ impl AppList {
     fn size_individual_tile(state: &YaffeState, graphics: &mut crate::Graphics, tile: &mut AppTile, size: &LogicalSize) {
         let image = tile.get_image(state);
         if let Ok(mut i) = image.try_borrow_mut() {
-            tile.size = super::image_fill(graphics, &mut i, size, true)
+            tile.size = crate::ui::image_fill(graphics, &mut i, size, true)
         }
     }
 
@@ -233,7 +233,7 @@ impl AppList {
 
             self.tile_animation = 0.;
             let offset = crate::offset_of!(AppList => tile_animation);
-            handler.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
+            self.animate(offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
 
             if let crate::platform::PlatformType::Plugin = state.get_platform().kind {
                 if self.first_visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {

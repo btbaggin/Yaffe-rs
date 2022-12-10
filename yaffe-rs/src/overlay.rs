@@ -1,11 +1,11 @@
 use crate::{Rect, PhysicalSize, LogicalPosition};
-use crate::modals;
 use crate::logger::LogEntry;
+use crate::ui;
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
 pub struct OverlayWindow {
-    modal: modals::Modal,
+    modal: ui::Modal,
     process: Option<std::process::Child>,
     showing: bool,
     settings: crate::settings::SettingsFile,
@@ -14,7 +14,7 @@ impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
     pub fn new(settings: crate::settings::SettingsFile) -> std::rc::Rc<std::cell::RefCell<OverlayWindow>> {
         let overlay = OverlayWindow {
-            modal: modals::Modal::overlay(Box::new(modals::OverlayModal::new())),
+            modal: ui::Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
             process: None,
             showing: false,
             settings: settings,
@@ -73,7 +73,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
 
             let mut graphics = crate::Graphics { graphics, queue: None, scale_factor, bounds: window_rect.clone(), delta_time: 0. };
-            modals::render_modal(&self.settings, &self.modal, &mut graphics);
+            crate::ui::render_modal(&self.settings, &self.modal, &mut graphics);
 
         true
     }
@@ -92,7 +92,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
             _ => {
                 if self.showing { 
                     let result = self.modal.action(action, helper);
-                    if let modals::ModalResult::Ok = result {
+                    if let ui::ModalResult::Ok = result {
                         // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
                         // see process_is_running
                         self.process.as_mut().unwrap().kill().log("Unable to kill running process");
