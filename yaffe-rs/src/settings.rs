@@ -136,7 +136,7 @@ macro_rules! settings_get {
             let key = crate::settings::SettingNames::to_string(setting);
 
             let value = if let Some(value) = self.settings.get(key) { value.clone() }
-            else { SettingNames::get_default(key) };
+                        else { SettingNames::get_default(key) };
 
             if let $setting(value) = value {
                 return value.clone();

@@ -1,4 +1,3 @@
-use crate::data::*;
 use crate::assets::AssetPathType;
 use crate::{YaffeState};
 use crate::plugins::Plugin;
@@ -25,6 +24,19 @@ pub enum Rating {
     Mature,
     AdultOnly,
     NotRated,
+}
+impl std::fmt::Display for Rating {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let text = match self {
+            Rating::Everyone => "E - Everyone",
+            Rating::Everyone10 => "E10+ - Everyone 10+",
+            Rating::Teen => "T - Teen",
+            Rating::Mature => "M - Mature 17+",
+            Rating::AdultOnly => "AO - Adult Only 18+",
+            Rating::NotRated => "Not Rated",
+        };
+        write!(f, "{}", text)
+    }
 }
 impl TryFrom<i64> for Rating {
     type Error = ();
@@ -149,7 +161,7 @@ pub fn get_database_info(state: &mut YaffeState) {
     let mut platforms = vec!();
     platforms.push(Platform::recents(String::from("Recent")));
     for p in crate::data::PlatformInfo::get_all() {
-        platforms.push(Platform::new(p.id, p.name));
+        platforms.push(Platform::new(p.id, p.platform));
     }
 
     for i in 0..platforms.len() {
@@ -250,13 +262,13 @@ fn clean_file_name(file: &str) -> &str {
 }
 
 pub fn insert_platform(state: &mut YaffeState, data: &crate::data::PlatformInfo) {
-    crate::logger::info!("Inserting new platform into database {}", data.name);
+    crate::logger::info!("Inserting new platform into database {}", data.platform);
 
     crate::data::PlatformInfo::insert(&data).log_and_panic();
     if !Path::new("./Roms").exists() {
         std::fs::create_dir("./Roms").unwrap();
     }
-    let folder = Path::new("./Roms").join(&data.name);
+    let folder = Path::new("./Roms").join(&data.platform);
     if !folder.exists() {
         std::fs::create_dir(folder).unwrap();
     }

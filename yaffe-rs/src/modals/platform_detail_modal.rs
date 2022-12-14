@@ -1,18 +1,18 @@
 use crate::{YaffeState, Actions, Rect};
 use crate::modals::*;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::ui::{UiControl, TextBox, FocusGroup};
+use crate::ui::{Control, TextBox, Container};
 
 pub struct PlatformDetailModal {
-    controls: FocusGroup<dyn UiControl>,
+    controls: Container,
     id: i64,
 }
 impl PlatformDetailModal {
     pub fn emulator() -> PlatformDetailModal {
-        let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
-        controls.insert("Name", Box::new(TextBox::from_str("")));
-        controls.insert("Executable", Box::new(TextBox::from_str("")));
-        controls.insert("Args", Box::new(TextBox::from_str("")));
+        let mut controls = Container::vertical(1.);
+        controls.add_field("Name", TextBox::from_str("Name".to_string(), ""));
+        controls.add_field("Executable", TextBox::from_str("Executable".to_string(), ""));
+        controls.add_field("Args", TextBox::from_str("Args".to_string(), ""));
 
         PlatformDetailModal { controls, id: 0, }
     }
@@ -22,10 +22,10 @@ impl PlatformDetailModal {
         let id = plat.id.unwrap();
         let (path, args) = crate::data::PlatformInfo::get_info(id).log_and_panic();
 
-        let mut controls: FocusGroup<dyn UiControl> = FocusGroup::new();
-        controls.insert("Name", Box::new(TextBox::new(plat.name.clone())));
-        controls.insert("Executable", Box::new(TextBox::new(path)));
-        controls.insert("Args", Box::new(TextBox::new(args)));
+        let mut controls = Container::vertical(1.);
+        controls.add_field("Name", TextBox::new("Name".to_string(), plat.name.clone()));
+        controls.add_field("Executable", TextBox::new("Executable".to_string(), path));
+        controls.add_field("Args", TextBox::new("Args".to_string(), args));
 
         PlatformDetailModal { controls, id, }
     }
@@ -34,30 +34,17 @@ impl PlatformDetailModal {
 impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let height = (get_font_size(settings, graphics) + MARGIN) * self.controls.len() as f32;
+        let height = (get_font_size(settings, graphics) + MARGIN) * self.controls.child_count() as f32;
         LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
-        if !self.controls.action(action) {
-            if let Some(focus) = self.controls.focus() {
-                focus.action(action);
-                return ModalResult::None;
-            }
-        }
-        //TODO can this be in trait?
+        self.controls.action(action);
         Self::default_modal_action(action)
     }
 
     fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let mut y = rect.top();
-
-        let font_size = get_font_size(settings, graphics);
-        for (k, v) in &self.controls {
-            let rect = Rect::from_tuples((rect.left(), y), (rect.right(), y + font_size));
-            v.render(graphics, settings, &rect, &k, self.controls.is_focused(&v));
-            y += font_size + MARGIN;
-        }
+        self.controls.render(graphics, settings, &rect);
     }
 }
 

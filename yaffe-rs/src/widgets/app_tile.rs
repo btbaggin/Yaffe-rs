@@ -1,7 +1,6 @@
 use crate::Transparent;
 use crate::{YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize};
 use crate::Rect;
-use crate::ui::Shifter;
 use crate::assets::{request_asset_image, request_image, Images};
 use crate::ui::{get_font_color, get_font_size, MODAL_BACKGROUND};
 
@@ -103,7 +102,8 @@ impl AppTile {
 
             //Help
             let text = crate::ui::get_drawable_text(font_size, "Info");
-            menu_position = crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), get_font_color(settings).with_alpha(alpha), text).shift_x(-5.);
+            menu_position = crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), get_font_color(settings).with_alpha(alpha), text);
+            menu_position = LogicalPosition::new(menu_position.x - 5., menu_position.y);
 
             let text = crate::ui::get_drawable_text(font_size, "Run");
             crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), get_font_color(settings).with_alpha(alpha), text);

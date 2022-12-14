@@ -38,30 +38,41 @@ pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc
 }
 
 /// Scales an image to the largest size that can fit in the smallest dimension
-pub fn image_fill(graphics: &mut crate::Graphics, slot: &mut AssetSlot, size: &LogicalSize, expand: bool) -> LogicalSize {
-    let mut tile_size = *size;
-    
+pub fn image_fill(graphics: &mut crate::Graphics, slot: &mut AssetSlot, size: &LogicalSize) -> LogicalSize {
     let bitmap_size = if let Some(i) = crate::assets::request_asset_image(graphics, slot) {
             i.size()
     } else {
         crate::assets::request_image(graphics, Images::Placeholder).unwrap().size()
     };
 
-    //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
-    //We wouldn't want vertical boxart to stretch to the horizontal dimensions
-    //This will scale boxart that is different aspect to fit within the tile_size.Height
     let bitmap_size = bitmap_size.to_logical(graphics.scale_factor);
-    let real_aspect = bitmap_size.x / bitmap_size.y;
-    let tile_aspect = tile_size.x / tile_size.y;
 
-    //If an aspect is wider than it is tall, it is > 1
-    //If the two aspect ratios are on other sides of one, it means we need to scale
-    if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
-        //TODO this doesn't work
-        tile_size.x = if expand { tile_size.y * real_aspect } else { tile_size.x * real_aspect };
+    let mut width = bitmap_size.x;
+    let mut height = bitmap_size.y;
+    // first check if we need to scale width
+    if bitmap_size.x > size.x {
+        //scale width to fit
+        width = size.x;
+        //scale height to maintain aspect ratio
+        height = (width * bitmap_size.y) / bitmap_size.x;
     }
 
-    tile_size
+    // then check if we need to scale even with the new height
+    if height > size.y {
+        //scale height to fit instead
+        height = size.y;
+        //scale width to maintain aspect ratio
+        width = (height * bitmap_size.x) / bitmap_size.y;
+    }
+
+    LogicalSize::new(width, height)
+}
+
+#[macro_export]
+macro_rules! is_widget_focused {
+    ($state:ident, $widget:ty) => {
+        $state.focused_widget == crate::get_widget_id!($widget)
+    }
 }
 
 pub fn outline_rectangle(graphics: &mut crate::Graphics, rect: &Rect, size: f32, color: speedy2d::color::Color) {
@@ -74,14 +85,4 @@ pub fn outline_rectangle(graphics: &mut crate::Graphics, rect: &Rect, size: f32,
     graphics.draw_line(top_right, bottom_right, size, color);
     graphics.draw_line(bottom_right, bottom_left, size, color);
     graphics.draw_line(bottom_left, top_left, size, color);
-}
-
-//TODO this is dumb. remove it
-pub trait Shifter {
-    fn shift_x(&self, amount: f32) -> Self;
-}
-impl Shifter for LogicalPosition {
-    fn shift_x(&self, amount: f32) -> Self {
-        LogicalPosition::new(self.x + amount, self.y)
-    }
 }

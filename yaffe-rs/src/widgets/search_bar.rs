@@ -47,10 +47,11 @@ impl SearchInfo {
 
 widget!(pub struct SearchBar { 
     active: bool = false,
-    highlight_offset: f32 = 0.
+    highlight_offset: f32 = 0.,
+    offset: LogicalPosition = LogicalPosition::new(0., -1.)
 });
 impl crate::ui::Widget for SearchBar {
-    fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., -1.) }
+    fn offset(&self) -> LogicalPosition { self.offset }
 
     fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
         let mask = get_exists_mask(state.search_info.option, &state.get_platform().apps);
@@ -118,17 +119,17 @@ impl crate::ui::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, original: Rect) {
-        let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
-        self.animate(offset, original.bottom(), 0.2);
+    fn got_focus(&mut self, _: &YaffeState) {
+        let offset = crate::offset_of!(SearchBar => offset: LogicalPosition => y);
+        self.animate(offset, 0., 0.2);
 
         self.highlight_offset = 0.;
     }
 
-    fn lost_focus(&mut self, original: Rect) {
+    fn lost_focus(&mut self, _: &YaffeState) {
         if !self.active {
-            let offset = crate::offset_of!(SearchBar => position: LogicalPosition => y);
-            self.animate(offset, original.top(), 0.2);
+            let offset = crate::offset_of!(SearchBar => offset: LogicalPosition => y);
+            self.animate(offset, -1., 0.2);
         }
     }
 
@@ -149,7 +150,7 @@ impl crate::ui::Widget for SearchBar {
         let font_size = get_font_size(&state.settings, graphics);
 
         graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
-        let focused_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
+        let focused_color = if crate::is_widget_focused!(state, SearchBar) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
         let filter_rect = Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());

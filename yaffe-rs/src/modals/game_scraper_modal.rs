@@ -1,25 +1,23 @@
 
-use crate::ui::{get_drawable_text_with_wrap, ModalResult, ModalContent, ModalSize};
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
 use crate::scraper::GameScrapeResult;
 use crate::settings::SettingsFile;
 use crate::input::Actions;
-use crate::assets::{AssetSlot, AssetPathType, request_asset_image};
-use std::cell::RefCell;
-use crate::ui::{List, get_font_color, get_font_size, MARGIN};
+use crate::platform::Rating;
+use crate::assets::{AssetPathType};
+use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
+use std::convert::TryInto;
 
 
 pub struct GameScraperModal {
     list: List<GameScrapeResult>,
-    slot: RefCell<AssetSlot>,
+    details: Container
 }
 impl GameScraperModal {
     pub fn new(items: Vec<GameScrapeResult>) -> GameScraperModal {
-        let path = items[0].boxart.clone();
-        let path = std::path::Path::new("https://cdn.thegamesdb.net/images/medium/").join(path);
         GameScraperModal {
+            details: build_container(&items[0]),
             list: List::new(items),
-            slot: RefCell::new(AssetSlot::new(AssetPathType::Url(path.to_string_lossy().to_string())))
         }
     }
 }
@@ -33,32 +31,35 @@ impl ModalContent for GameScraperModal {
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         if self.list.update(action) {
             let item = self.list.get_selected();
-            self.slot = RefCell::new(AssetSlot::new(AssetPathType::Url(format!("https://cdn.thegamesdb.net/images/medium/{}", item.boxart))));
+            self.details = build_container(item);
         }
         Self::default_modal_action(action)
     }
 
     fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
         let half_size = LogicalSize::new(rect.width() / 2., rect.height());
-        let left = Rect::point_and_size(*rect.top_left(), half_size);
-        
-        let image_container = Rect::percent(left, LogicalSize::new(0.75, 0.25));
 
-        let mut slot = self.slot.borrow_mut();
-        let size = crate::ui::image_fill(graphics, &mut slot, &image_container.size(), false);
-        if let Some(i) = request_asset_image(graphics, &mut slot) {
-            i.render(graphics, Rect::point_and_size(*left.top_left(), size))
-        }
-
-        let item = self.list.get_selected();
-        graphics.simple_text(LogicalPosition::new(left.left() + size.x + MARGIN, left.top()), settings, &format!("Players: {}", item.info.players));
-
-        let text = get_drawable_text_with_wrap(get_font_size(settings, graphics), &item.info.overview, left.width());
-        graphics.draw_text(LogicalPosition::new(left.left(), left.top() + size.y), get_font_color(settings), &text);
-        
-        let right = Rect::point_and_size(LogicalPosition::new(rect.left() + half_size.x, rect.top()), half_size);
+        let size = self.details.render(graphics, settings, &rect);
+        let right = Rect::point_and_size(LogicalPosition::new(rect.left() + size.x, rect.top()), half_size);
         self.list.render(settings, right, graphics);
     }
+}
+
+fn build_container(item: &GameScrapeResult) -> Container {
+    let mut main = Container::vertical(0.5);
+    main.add(Label::new(item.info.name.clone(), Some(crate::ui::TITLE_SIZE)));
+
+    let mut top = Container::horizontal(0.25);
+    let mut details = Container::vertical(1.);
+
+    top.add(Image::new(AssetPathType::Url(format!("https://cdn.thegamesdb.net/images/medium/{}", item.boxart))));
+    details.add(Label::simple(format!("Players: {}", item.info.players)));
+    details.add(Label::simple(format!("Rating: {}", TryInto::<Rating>::try_into(item.info.rating).unwrap())));
+    top.add(details);
+    main.add(top);
+    main.add(Label::wrapping(item.info.overview.clone(), None));
+    
+    main
 }
 
 pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {

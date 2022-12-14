@@ -48,7 +48,7 @@ impl crate::ui::Widget for PlatformList {
         let title = crate::ui::get_drawable_text(32. * graphics.scale_factor, "Yaffe");
         graphics.draw_text(LogicalPosition::new(rect.width() - title.width().to_logical(graphics) - MARGIN, MARGIN), get_font_color(&state.settings), &title);
 
-        let text_color = if state.is_widget_focused(self) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
+        let text_color = if crate::is_widget_focused!(state, PlatformList) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         let font_size = get_font_size(&state.settings, graphics);
 
@@ -69,7 +69,7 @@ impl crate::ui::Widget for PlatformList {
             if i == selected_index {
                 let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
-                if state.is_widget_focused(self) { graphics.draw_rectangle(rect, get_accent_color(&state.settings)); }
+                if crate::is_widget_focused!(state, PlatformList) { graphics.draw_rectangle(rect, get_accent_color(&state.settings)); }
                 else { graphics.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
             }
             

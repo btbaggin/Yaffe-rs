@@ -1,71 +1,62 @@
-use crate::{YaffeState, Graphics, widget, Actions, DeferredAction, LogicalSize, LogicalPosition, ScaleFactor, Rect};
-use crate::assets::{request_image, request_asset_image, Images};
-use crate::platform::Rating;
-use crate::ui::UiElement;
-use crate::ui::{MARGIN, get_font_color, get_font_size, MODAL_BACKGROUND};
+use crate::{YaffeState, Graphics, widget, Actions, DeferredAction, LogicalPosition, ScaleFactor, Rect};
+use crate::ui::{MARGIN, get_font_color, get_drawable_text_with_wrap, get_font_size, MODAL_BACKGROUND, Container, Control, Label, Image, Widget};
+
+const SCROLL_TIMER: f32 = 3.;
 
 widget!(pub struct InfoPane { 
     scroll_timer: f32 = 0., 
-    y_offset: f32 = 0.
+    y_offset: f32 = 0.,
+    container: Container = Container::vertical(1.),
+    offset: LogicalPosition = LogicalPosition::new(1., 0.)
 });
-impl crate::ui::Widget for InfoPane {
-    fn offset(&self) -> LogicalPosition { LogicalPosition::new(1., 0.) }
 
-    fn got_focus(&mut self, original: Rect) {
-        let offset = crate::offset_of!(InfoPane => position: LogicalPosition => x);
-        self.animate(offset, original.left() - self.layout().width(), 0.2);
-        self.scroll_timer = 3.;
+fn build_container(exe: Option<&crate::Executable>) -> Container {
+    let mut main = Container::vertical(1.);
+    if let Some(exe) = exe {
+        main.add(Label::new(exe.name.clone(), Some(crate::ui::TITLE_SIZE)));
+
+        let mut top = Container::horizontal(0.15);
+        let mut details = Container::vertical(1.);
+    
+        top.add(Image::new(exe.boxart.clone()));
+        details.add(Label::simple(format!("Players: {}", exe.players)));
+        details.add(Label::simple(format!("Rating: {}", exe.rating)));
+        top.add(details);
+        main.add(top);
+    }
+    
+    main
+}
+
+impl Widget for InfoPane {
+    fn offset(&self) -> LogicalPosition { self.offset }
+
+    fn got_focus(&mut self, state: &YaffeState) {
+        let offset = crate::offset_of!(InfoPane => offset: LogicalPosition => x);
+        self.animate(offset, 0., 0.2);
+        self.scroll_timer = SCROLL_TIMER;
         self.y_offset = 0.;
+
+        self.container = build_container(state.get_executable())
     }
 
-    fn lost_focus(&mut self, original: Rect) {
-        let offset = crate::offset_of!(InfoPane => position: LogicalPosition => x);
-        self.animate(offset, original.top_left().x, 0.2);
+    fn lost_focus(&mut self, _: &YaffeState) {
+        let offset = crate::offset_of!(InfoPane => offset: LogicalPosition => x);
+        self.animate(offset, 1., 0.2);
     }
 
     fn render(&mut self, graphics: &mut Graphics, state: &YaffeState) { 
         let bounds = graphics.bounds;
         graphics.draw_rectangle(bounds.clone(), MODAL_BACKGROUND);
 
+        let size = self.container.render(graphics, &state.settings, &bounds);
         if let Some(app) = state.get_executable() {
-            //Banner image
-            let mut top = bounds.top() + MARGIN;
+   
+            let top = bounds.top() + size.y + MARGIN;
             let left = bounds.left() + MARGIN;
-            
-            let title = crate::ui::get_drawable_text(48., &app.name);
-            graphics.draw_text(LogicalPosition::new(left, top), get_font_color(&state.settings), &title);
-            top += title.height();
-            
-            let slot = crate::assets::get_cached_file(&app.boxart);
-            let slot = &mut slot.borrow_mut();
-            
-            let image_size = crate::ui::image_fill(graphics, slot, &Rect::percent(bounds, LogicalSize::new(0.5, 0.15)).size(), false);
-            let info_height = image_size.y;
-            let image = request_asset_image(graphics, slot);
-            if let Some(i) = image {
-                i.render(graphics, Rect::point_and_size(LogicalPosition::new(left, top), image_size));
-            }
-
-            //Rating image
-            let rating_image = if let crate::platform::PlatformType::Plugin = state.get_platform().kind { None }
-            else { get_rating_image(&app.rating) };
-            
-            if let Some(image) = rating_image {
-                if let Some(i) = request_image(graphics, image) {
-                    const IMAGE_SIZE: LogicalSize = LogicalSize::new(64., 96.);
-                    let left = left + image_size.x + MARGIN;
-                    let position = LogicalPosition::new(left, top);
-                    i.render(graphics, Rect::point_and_size(position, IMAGE_SIZE));
-                }
-            }
-
-            //TODO add players
-
-            top += info_height + MARGIN;
-
             //Overview
             if !app.description.is_empty() {
-                let name_label = crate::ui::get_drawable_text_with_wrap(get_font_size(&state.settings, graphics), &app.description, (bounds.width() - MARGIN) * graphics.scale_factor);
+                let name_label = get_drawable_text_with_wrap(get_font_size(&state.settings, graphics), &app.description, (bounds.width() - MARGIN) * graphics.scale_factor);
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height().to_logical(graphics) + top > bounds.height() {
@@ -95,13 +86,3 @@ impl crate::ui::Widget for InfoPane {
     }
 }
 
-fn get_rating_image(rating: &Rating) -> Option<Images> {
-    match rating {
-        Rating::Everyone => Some(Images::ErsbEveryone),
-        Rating::Everyone10 => Some(Images::ErsbEveryone10),
-        Rating::Teen => Some(Images::ErsbTeen),
-        Rating::Mature => Some(Images::ErsbMature),
-        Rating::AdultOnly => Some(Images::ErsbAdultOnly),
-        Rating::NotRated => None,
-    }
-}

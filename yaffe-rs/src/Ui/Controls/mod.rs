@@ -1,31 +1,37 @@
 use crate::{Actions, LogicalPosition};
 use crate::settings::SettingsFile;
-use crate::ui::outline_rectangle;
 use crate::utils::Rect;
 use speedy2d::color::Color;
 
 mod text_box;
 mod checkbox;
-mod focus_group;
 mod list;
 mod container;
+mod image;
+mod label;
 pub use text_box::TextBox;
 pub use checkbox::CheckBox;
-pub use focus_group::{FocusGroup, FocusGroupIter};
 pub use list::{List, ListItem};
+pub use container::Container;
+pub use self::image::Image;
+pub use label::Label;
 
 pub const MARGIN: f32 = 10.;
+pub const TITLE_SIZE: f32 = 36.;
 pub const LABEL_SIZE: f32 = 250.;
 pub const MENU_BACKGROUND: Color = Color::from_rgba(0.2, 0.2, 0.2, 0.7);
 pub const MODAL_OVERLAY_COLOR: Color = Color::from_rgba(0., 0., 0., 0.6);
 pub const MODAL_BACKGROUND: Color = Color::from_rgba(0.1, 0.1, 0.1, 1.);
 
-
 /// Provides functionality for a basic UI control (textbox, checkbox, etc...)
-pub trait UiControl {
-    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect, label: &str, focused: bool);
-    fn value(&self) -> &str;
+pub trait Control {
+    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> crate::LogicalSize;
     fn action(&mut self, action: &Actions);
+}
+
+pub trait InputControl: Control {
+    fn value(&self) -> &str;
+    fn set_focused(&mut self, value: bool);
 }
 
 pub fn get_font_size(settings: &crate::settings::SettingsFile, graphics: &crate::Graphics) -> f32 {
@@ -72,7 +78,7 @@ pub fn rgba_string(c: &Color) -> String {
     format!("{},{},{},{}", c.r(), c.g(), c.b(), c.a())
 }
 
-fn draw_label_and_box(graphics: &mut crate::Graphics, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str, focused: bool) -> Rect {
+fn draw_label_and_box(graphics: &mut crate::Graphics, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str) -> Rect {
     let font_size = get_font_size(settings, graphics);
     graphics.simple_text(*pos, settings, label); 
 
@@ -84,9 +90,5 @@ fn draw_label_and_box(graphics: &mut crate::Graphics, settings: &SettingsFile, p
     let factor = settings.get_f32(crate::SettingNames::DarkShadeFactor);
     graphics.draw_rectangle(control, change_brightness(&base, factor));
     
-    if focused {
-        let light_factor = settings.get_f32(crate::SettingNames::LightShadeFactor);
-        outline_rectangle(graphics, &control, 1., change_brightness(&base, light_factor));
-    }
     control
 }

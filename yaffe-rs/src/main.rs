@@ -11,9 +11,7 @@ use crate::assets::AssetPathType;
 
 /* 
  * TODO
- * Add horizontal container and vertical container
- * custom modals for platform and game scraping
- * display more info on info pane
+ * custom modals for platform scraping
 */
 
 const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -50,9 +48,9 @@ use restrictions::RestrictedMode;
 use ui::display_modal;
 use job_system::{JobType, RawDataPointer};
 use input::Actions;
-pub use graphics::Graphics;
-pub use crate::settings::SettingNames;
-pub use utils::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Rect, PhysicalRect, ScaleFactor};
+use graphics::Graphics;
+use settings::SettingNames;
+use utils::{LogicalPosition, LogicalSize, PhysicalSize, Rect, PhysicalRect, ScaleFactor};
 
 pub struct Platform {
     id: Option<i64>,
@@ -122,9 +120,7 @@ impl YaffeState {
         None
     }
 
-    fn is_widget_focused(&self, widget: &impl ui::FocusableWidget) -> bool {
-        self.focused_widget == widget.get_id()
-    }
+
 }
 
 impl windowing::WindowHandler for ui::WidgetTree {
@@ -221,7 +217,6 @@ impl windowing::WindowHandler for ui::WidgetTree {
     }
 
     fn on_resize(&mut self, _: u32, _: u32) { 
-        self.invalidate()
     }
 
     fn is_window_dirty(&self) -> bool {

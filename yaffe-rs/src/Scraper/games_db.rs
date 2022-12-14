@@ -46,7 +46,7 @@ pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<Serv
 
             let name = String::from(game["game_title"].as_str().unwrap());
             let id = game["id"].as_i64().unwrap();
-            let players = game["players"].as_i64().unwrap();
+            let players = game["players"].as_i64().or(Some(1)).unwrap();
             let overview = String::from(get_null_string(game, "overview"));
             let rating = String::from(get_null_string(game, "rating"));
 

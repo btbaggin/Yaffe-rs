@@ -21,7 +21,6 @@ pub struct WidgetTree {
     pub focus: Vec<WidgetId>,
     pub data: YaffeState,
     animations: Rc<RefCell<AnimationManager>>,
-    layout_valid: bool,
     last_focus: (Option<WidgetId>, Instant),
 }
 impl WidgetTree {
@@ -31,19 +30,13 @@ impl WidgetTree {
             focus: vec!(),
             data,
             animations,
-            layout_valid: false,
             last_focus: (None, Instant::now()),
         }
     }
 
     pub fn render_all(&mut self, graphics: &mut crate::Graphics) {
-        if !self.layout_valid { self.root.widget.set_layout(graphics.bounds); }
-        self.root.render(&self.data, graphics, !self.layout_valid);
-        self.layout_valid = true;
-    }
-
-    pub fn invalidate(&mut self) {
-        self.layout_valid = false;
+        self.root.widget.set_layout(graphics.bounds);
+        self.root.render(&self.data, graphics);
     }
 
     pub fn needs_new_frame(&self) -> bool {
@@ -56,23 +49,23 @@ impl WidgetTree {
         animator.process(&mut self.root, delta_time)
     }
 
-    fn current_focus(&mut self) -> Option<&mut WidgetContainer> {
-        if let Some(last) = self.focus.last() {
-            return self.root.find_widget_mut(*last);
+    fn current_focus<'a>(focus: &'a Vec<WidgetId>, root: &'a mut WidgetContainer) -> Option<&'a mut WidgetContainer> {
+        if let Some(last) = focus.last() {
+            return root.find_widget_mut(*last);
         }
         None
     }
 
     pub fn focus(&mut self, widget: WidgetId) {
         //Find current focus so we can notify it is about to lose
-        if let Some(lost) = self.current_focus() {
-            lost.widget.lost_focus(lost.original_layout.clone());
+        if let Some(lost) = Self::current_focus(&self.focus, &mut self.root) {
+            lost.widget.lost_focus(&self.data);
             self.last_focus = (Some(lost.widget.get_id()), Instant::now());
         }
     
         //Find new focus
         if let Some(got) = self.root.find_widget_mut(widget) {
-            got.widget.got_focus(got.original_layout.clone());
+            got.widget.got_focus(&self.data);
             self.focus.push(widget);
         }
     }
@@ -96,13 +89,13 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(last) = last {
             if let Some(lost) = self.root.find_widget_mut(last) {
-                lost.widget.lost_focus(lost.original_layout.clone());
+                lost.widget.lost_focus(&self.data);
             }
         }
 
         //Revert to previous focus
-        if let Some(got) = self.current_focus() {
-            got.widget.got_focus(got.original_layout.clone());
+        if let Some(got) = Self::current_focus(&self.focus, &mut self.root) {
+            got.widget.got_focus(&self.data);
         }
 
         if !different {

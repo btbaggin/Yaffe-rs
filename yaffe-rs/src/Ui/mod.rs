@@ -41,10 +41,10 @@ pub trait Widget: FocusableWidget {
     fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: Rect) {}
+    fn got_focus(&mut self, _: &YaffeState) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: Rect) {}
+    fn lost_focus(&mut self, _: &YaffeState) {}
 }
 
 #[macro_export]
@@ -105,7 +105,6 @@ pub struct WidgetContainer {
     children: Vec<WidgetContainer>,
     widget: Box<dyn Widget>,
     ratio: LogicalSize,
-    original_layout: Rect,
     alignment: ContainerAlignment,
 }
 impl WidgetContainer {
@@ -117,7 +116,6 @@ impl WidgetContainer {
             children: vec!(),
             widget: Box::new(widget),
             ratio,
-            original_layout: Rect::from_tuples((0., 0.), (0., 0.)),
             alignment,
          }
     }
@@ -146,7 +144,7 @@ impl WidgetContainer {
         false
     }
 
-    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics, invalidate: bool) {
+    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics) {
         //These measure the offset from the edges to begin or end rendering
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
@@ -158,36 +156,34 @@ impl WidgetContainer {
         self.widget.render(graphics, state);
 
         for i in self.children.iter_mut() {
-            if invalidate {
-                let size = LogicalSize::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
+            let size = LogicalSize::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
 
-                let origin;
-                match i.alignment {
-                    ContainerAlignment::Left => {
-                        origin = LogicalPosition::new(rect.left() + left_stack, rect.top());
-                        left_stack += size.x;
-                    },
-                    ContainerAlignment::Right => {
-                        origin = LogicalPosition::new(rect.right() - (size.x + right_stack), rect.top());
-                        right_stack += size.x;
-                    },
-                    ContainerAlignment::Top => {
-                        origin = LogicalPosition::new(rect.left(), rect.top() + top_stack);
-                        top_stack += size.y;
-                    },
-                    ContainerAlignment::Bottom => {
-                        origin = LogicalPosition::new(rect.left(), rect.bottom() - (size.y + bottom_stack));
-                        bottom_stack += size.y;
-                    },
-                };
+            let origin;
+            match i.alignment {
+                ContainerAlignment::Left => {
+                    origin = LogicalPosition::new(rect.left() + left_stack, rect.top());
+                    left_stack += size.x;
+                },
+                ContainerAlignment::Right => {
+                    origin = LogicalPosition::new(rect.right() - (size.x + right_stack), rect.top());
+                    right_stack += size.x;
+                },
+                ContainerAlignment::Top => {
+                    origin = LogicalPosition::new(rect.left(), rect.top() + top_stack);
+                    top_stack += size.y;
+                },
+                ContainerAlignment::Bottom => {
+                    origin = LogicalPosition::new(rect.left(), rect.bottom() - (size.y + bottom_stack));
+                    bottom_stack += size.y;
+                },
+            };
 
-                let offset = i.widget.offset();
-                let origin = LogicalPosition::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
-                let r = Rect::new(origin.into(), (origin + size).into());
-                i.original_layout = r.clone();
-                i.widget.set_layout(r);
-            }
-            i.render(state, graphics, invalidate);
+            let offset = i.widget.offset();
+            let origin = LogicalPosition::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
+            let r = Rect::new(origin.into(), (origin + size).into());
+            i.widget.set_layout(r);
+
+            i.render(state, graphics);
         }
     }
 

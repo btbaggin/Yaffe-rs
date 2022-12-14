@@ -10,8 +10,8 @@ crate::table_struct! (
         pub name: String,
         pub overview: String,
         pub players: i64,
+        pub rating: i64,
         filename: String,
-        rating: i64,
         platform: i64,
         lastrun: i64,
     }

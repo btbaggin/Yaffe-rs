@@ -4,14 +4,14 @@ use super::{YaffeConnection, execute_update, execute_select, execute_select_once
 crate::table_struct! (
     pub struct PlatformInfo {
         pub id: i64,
-        pub name: String,
+        pub platform: String,
         pub path: String,
         pub args: String,
     }
 );
 impl PlatformInfo {
-    pub fn new(id: i64, name: String, path: String, args: String) -> PlatformInfo {
-        PlatformInfo { id, name, path, args, }
+    pub fn new(id: i64, platform: String, path: String, args: String) -> PlatformInfo {
+        PlatformInfo { id, platform, path, args, }
     }
 
     /// Adds a new platform
@@ -22,10 +22,10 @@ impl PlatformInfo {
         VALUES
         ( @PlatformId, @Platform, @Path, @Args, '' )
         ";
-        crate::logger::info!("Inserting new platform into database {}", platform.name);
+        crate::logger::info!("Inserting new platform into database {}", platform.platform);
 
         let con = YaffeConnection::new();
-        let stmt = create_statement!(con, QS_ADD_PLATFORM, platform.id, &*platform.name, &*platform.path, &*platform.args);
+        let stmt = create_statement!(con, QS_ADD_PLATFORM, platform.id, &*platform.platform, &*platform.path, &*platform.args);
 
         execute_update(stmt)
     }
@@ -73,12 +73,12 @@ impl PlatformInfo {
 
         execute_select(stmt, |r| {
             let id = r.read::<i64>(0).unwrap();
-            let name = r.read::<String>(1).unwrap();
+            let platform = r.read::<String>(1).unwrap();
             let path = r.read::<String>(2).unwrap();
             let args = r.read::<String>(3).unwrap();
             result.push(PlatformInfo {
                 id,
-                name,
+                platform,
                 path,
                 args,
             });
@@ -89,6 +89,6 @@ impl PlatformInfo {
 }
 impl crate::ui::ListItem for PlatformInfo {
     fn to_display(&self) -> String {
-        self.name.clone()
+        self.platform.clone()
     }
 }
