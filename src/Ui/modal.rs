@@ -20,7 +20,7 @@ pub enum ModalSize {
     Full,
 }
 
-pub type ModalOnClose = fn(&mut YaffeState, ModalResult, &Box<dyn ModalContent>, &mut DeferredAction);
+pub type ModalOnClose = fn(&mut YaffeState, ModalResult, &dyn ModalContent, &mut DeferredAction);
 pub struct Modal {
     title: String,
     confirmation_button: Option<String>,
@@ -68,7 +68,7 @@ pub fn display_modal(state: &mut YaffeState,
                      confirmation_button: Option<&str>,
                      content: Box<dyn ModalContent>, 
                      on_close: Option<ModalOnClose>) {
-    let confirm = if let Some(s) = confirmation_button { Some(String::from(s)) } else { None };
+    let confirm = confirmation_button.map(String::from);
 
     let m = Modal { 
         title: String::from(title), 
@@ -88,13 +88,13 @@ pub fn update_modal(state: &mut YaffeState, helper: &mut WindowHelper, action: &
     //That allows us to call display_modal in close() below
     let modals = state.modals.get_mut().unwrap();
     if let Some(modal) = modals.last_mut() {
-        let result = modal.content.action(&action, helper);
+        let result = modal.content.action(action, helper);
 
         match result {
             ModalResult::Ok | ModalResult::Cancel => {
                 let modal = modals.pop().unwrap();
                 if let Some(close) = modal.on_close {
-                    close(state, result, &modal.content, handler);
+                    close(state, result, &*modal.content, handler);
                 }
                 
             }
@@ -120,7 +120,7 @@ pub fn render_modal(settings: &SettingsFile, modal: &Modal, graphics: &mut crate
 
     //Calulate size
     let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + TITLEBAR_SIZE + content_size.y);
-    if let Some(_) = modal.confirmation_button {
+    if modal.confirmation_button.is_some() {
         size.y += TOOLBAR_SIZE;
     }
 

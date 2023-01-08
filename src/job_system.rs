@@ -25,7 +25,7 @@ impl RawDataPointer {
         }
     }
     pub fn get_inner<'a, T>(&self) -> &'a mut T {
-        unsafe { &mut *(self.0 as *mut &mut T) }
+        unsafe { *(self.0 as *mut &mut T) }
     }
 }
 
@@ -70,7 +70,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Se
                 if let Some(result) = search_platform(&name, path, args).display_failure("Unable to send message for platform search", state) {
 
                     if let Some(platform) = result.get_exact() {
-                        crate::platform::insert_platform(state, &platform);
+                        crate::platform::insert_platform(state, &platform.info);
 
                     } else if result.count > 0 {
                         let mut items = vec!();

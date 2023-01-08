@@ -1,13 +1,13 @@
 use serde_json::Value;
 use reqwest::blocking::{Response, RequestBuilder, Client};
 use std::collections::HashMap;
-use std::path::Path;
-use crate::data::GameInfo;
+use std::path::{Path, PathBuf};
+use crate::data::{GameInfo, PlatformInfo};
 
 type ServiceResult<T> = Result<T, ServiceError>;
 
 //https://api.thegamesdb.net/
-const GOOGLE_API_KEY: &'static str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../google_api_key.txt")) };
+const GOOGLE_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../google_api_key.txt")) };
 
 mod games_db;
 pub use games_db::{search_game, search_platform};
@@ -15,11 +15,22 @@ pub use games_db::{search_game, search_platform};
 
 pub struct GameScrapeResult {
     pub info: GameInfo,
-    pub boxart: String,
+    pub boxart: PathBuf,
 }
 impl crate::ui::ListItem for GameScrapeResult {
     fn to_display(&self) -> String {
         self.info.name.clone()
+    }
+}
+
+pub struct PlatformScrapeResult {
+    pub info: PlatformInfo,
+    pub overview: String,
+    pub boxart: PathBuf,
+}
+impl crate::ui::ListItem for PlatformScrapeResult {
+    fn to_display(&self) -> String {
+        self.info.platform.clone()
     }
 }
 
@@ -71,14 +82,14 @@ fn get_null_string<'a>(value: &'a Value, element: &'a str) -> &'a str {
 #[macro_export]
 macro_rules! json_request {
     ($url:expr, $parms:expr) => {
-        serde_json::from_str::<serde_json::Value>(&crate::scraper::send_request($url, Some($parms))?.text()?)?
+        serde_json::from_str::<serde_json::Value>(&$crate::scraper::send_request($url, Some($parms))?.text()?)?
     };
 }
 
 #[macro_export]
 macro_rules! data_request {
     ($url:expr, $parms:expr) => {
-        crate::scraper::send_request($url, Some($parms))?.bytes()?
+        $crate::scraper::send_request($url, Some($parms))?.bytes()?
     };
 }
 
@@ -98,9 +109,9 @@ fn send_and_return(builder: RequestBuilder) -> Result<Response, ServiceError> {
             if resp.status().is_success() { 
                 return Ok(resp);
             }
-            return Err(ServiceError::BadStatus(resp.status()))
+            Err(ServiceError::BadStatus(resp.status()))
         }
-        Err(e) => { return Err(ServiceError::NetworkError(e)); }
+        Err(e) => { Err(ServiceError::NetworkError(e)) }
     }
 }
 
@@ -110,7 +121,7 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
     crate::logger::info!("Checking for updates");
 
     //For some reason this doesnt work when putting q as a query parameter
-    let url = format!("https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents&key={}", GOOGLE_API_KEY);
+    let url = format!("https://www.googleapis.com/drive/v3/files?q='1F7zqYtoUa4AyrBvN02N0QNuabiYCOrhk'+in+parents&key={GOOGLE_API_KEY}");
     let resp = serde_json::from_str::<serde_json::Value>(&send_request::<()>(&url, None)?.text()?)?;
 
     let mut files = HashMap::new();
@@ -141,14 +152,14 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
             return Err(ServiceError::Other("yaffe-rs.exe not found in remote repository"));
         }
 
-        let url = Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join(format!("?alt=media&key={}", GOOGLE_API_KEY));
+        let url = Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join(format!("?alt=media&key={GOOGLE_API_KEY}"));
         let file = Path::new(crate::UPDATE_FILE_PATH);
-        queue.send(crate::job_system::JobType::DownloadUrl((url.to_owned(), file.to_owned()))).unwrap();
+        queue.send(crate::job_system::JobType::DownloadUrl((url, file.to_owned()))).unwrap();
 
         return Ok(true)
     }
 
-    return Ok(false)
+    Ok(false)
 }
 
 fn needs_updating(current: &str, updated: &str) -> bool {
@@ -163,5 +174,5 @@ fn needs_updating(current: &str, updated: &str) -> bool {
         v
     }
 
-    return parse(current) < parse(updated);
+    parse(current) < parse(updated)
 }

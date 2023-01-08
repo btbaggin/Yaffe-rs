@@ -1,4 +1,4 @@
-use crate::create_statement;
+use crate::{create_statement, get_column};
 use super::{YaffeConnection, execute_update, execute_select, execute_select_once, QueryResult};
 
 crate::table_struct! (
@@ -45,7 +45,7 @@ impl PlatformInfo {
         let con = YaffeConnection::new();
         let mut stmt = create_statement!(con, QS_GET_PLATFORM_NAME, platform);
         execute_select_once(&mut stmt)?;
-        Ok(stmt.read::<String>(0).unwrap())
+        Ok(get_column!(stmt, String, "Platform"))
     }
 
     /// Gets Path, and Args of a Platform
@@ -57,7 +57,7 @@ impl PlatformInfo {
         let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);
         execute_select_once(&mut stmt)?;
 
-        Ok((stmt.read::<String>(0).unwrap(), stmt.read::<String>(1).unwrap()))
+        Ok((get_column!(stmt, String, "Path"), get_column!(stmt, String, "Args")))
     }
 
     /// Gets all saved platforms
@@ -69,13 +69,11 @@ impl PlatformInfo {
         let stmt = create_statement!(con, QS_GET_ALL_PLATFORMS, );
 
         let mut result = vec!();
-        // result.push(Platform::recents(String::from("Recent")));
-
         execute_select(stmt, |r| {
-            let id = r.read::<i64>(0).unwrap();
-            let platform = r.read::<String>(1).unwrap();
-            let path = r.read::<String>(2).unwrap();
-            let args = r.read::<String>(3).unwrap();
+            let id = get_column!(r, i64, "ID");
+            let platform = get_column!(r, String, "Platform");
+            let path = get_column!(r, String, "Path");
+            let args = get_column!(r, String, "Args");
             result.push(PlatformInfo {
                 id,
                 platform,
@@ -85,10 +83,5 @@ impl PlatformInfo {
         });
 
         result
-    }
-}
-impl crate::ui::ListItem for PlatformInfo {
-    fn to_display(&self) -> String {
-        self.platform.clone()
     }
 }

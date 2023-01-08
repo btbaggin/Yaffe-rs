@@ -224,7 +224,7 @@ pub(super) fn update() -> std::io::Result<std::process::Child> {
 	if std::path::Path::new("./yaffe-updater.exe").exists() {
 		return std::process::Command::new("./yaffe-updater.exe").arg("./yaffe-rs.exe").spawn();
 	}
-	return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
+	Err(std::io::Error::from(std::io::ErrorKind::NotFound))
 }
 
 pub(super) fn shutdown() -> ShutdownResult {
@@ -343,7 +343,7 @@ impl crate::input::PlatformGamepad for WindowsInput {
             } 
         }
 
-		return Ok(());
+		Ok(())
     }
 
     fn get_gamepad(&mut self) -> Vec<super::ControllerInput> {
@@ -367,15 +367,14 @@ impl crate::input::PlatformGamepad for WindowsInput {
 
 		let x = self.current_state.s_thumb_lx as i32;
 		let y = self.current_state.s_thumb_ly as i32;
-		if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 { 
-			if (now - self.last_stick_time).as_millis() > 100 {
-				let count = result.len();
-				if x < 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionLeft); }
-				if y > 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionUp); }
-				if y < 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionDown); }
-				if x > 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionRight); }
-				if result.len() > count { self.last_stick_time = now; }
-			}
+		if (x * x) + (y * y) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 * XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE as i32 &&
+		   (now - self.last_stick_time).as_millis() > 100 {
+			let count = result.len();
+			if x < 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionLeft); }
+			if y > 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionUp); }
+			if y < 0 && i32::abs(y) > i32::abs(x) { result.push(super::ControllerInput::DirectionDown); }
+			if x > 0 && i32::abs(x) > i32::abs(y) { result.push(super::ControllerInput::DirectionRight); }
+			if result.len() > count { self.last_stick_time = now; }
 		}
 
         result
@@ -429,7 +428,7 @@ pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
 	safe_com_call!(p_endpoint.GetMasterVolumeLevelScalar(&mut volume as *mut f32))?;
 
 	if delta != 0. {
-		volume = f32::min(1., f32::max(0., volume + delta));
+		volume = (volume + delta).clamp(0., 1.);
 		safe_com_call!(p_endpoint.SetMasterVolumeLevelScalar(volume, std::ptr::null_mut()))?;
 	}
 	unsafe { winapi::um::combaseapi::CoUninitialize() };
@@ -438,5 +437,5 @@ pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
 }
 
 pub fn sanitize_file(file: &str) -> String {
-	file.replace("\"", "").replace("*", "").replace("<", "").replace(">", "").replace("?", "").replace("\\", "").replace("/", "").replace(":", "")
+	file.replace(['\"', '*', '<', '>', '?', '\\', '/', ':'], "")
 }

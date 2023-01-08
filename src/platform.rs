@@ -2,11 +2,12 @@ use crate::YaffeState;
 use crate::plugins::Plugin;
 use crate::logger::PanicLogEntry;
 use crate::assets::AssetPathType;
+use crate::data::GameInfo;
 use super::{Platform, Executable};
 use yaffe_plugin::{PathType, YaffePluginItem};
 use std::convert::{TryFrom, TryInto};
 use std::cell::RefCell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -36,7 +37,7 @@ impl std::fmt::Display for Rating {
             Rating::AdultOnly => "AO - Adult Only 18+",
             Rating::NotRated => "Not Rated",
         };
-        write!(f, "{}", text)
+        write!(f, "{text}")
     }
 }
 impl TryFrom<i64> for Rating {
@@ -117,12 +118,11 @@ impl Executable {
     pub fn plugin_item(platform_index: usize, item: YaffePluginItem) -> Self {
         let boxart = match item.thumbnail {
             PathType::Url(s) => {
-                AssetPathType::Url(s.clone())
+                AssetPathType::Url(s)
             },
             PathType::File(s) => {
-                let canon = std::fs::canonicalize(format!("./plugins/{}", s)).unwrap();
-                let path = canon.to_string_lossy();
-                AssetPathType::File(path.to_string())
+                let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
+                AssetPathType::File(canon)
             },
         };
 
@@ -130,6 +130,7 @@ impl Executable {
             file: item.path,
             name: item.name,
             description: item.description,
+            released: String::new(),
             platform_index,
             boxart,
             players: 1,
@@ -137,21 +138,16 @@ impl Executable {
         }
     }
 
-    pub fn new_game(file: String, 
-                    name: String, 
-                    description: String,
-                    platform_index: usize, 
-                    players: u8,
-                    rating: Rating,
-                    boxart: String) -> Self {
+    pub fn new_game(info: &GameInfo, index: usize, boxart: PathBuf) -> Self {
         Self {
-            file,
-            name,
-            description,
-            platform_index,
+            file: info.filename.clone(),
+            name: info.name.clone(),
+            description: info.overview.clone(),
+            platform_index: index,
             boxart: AssetPathType::File(boxart),
-            players,
-            rating,
+            released: info.released.clone(),
+            players: info.players as u8,
+            rating: info.rating.try_into().unwrap(),
         }
     }
 }
@@ -207,20 +203,13 @@ pub fn scan_new_files(state: &mut YaffeState) {
     }
 }
 
-fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, index: usize) {
+fn refresh_executable(state: &mut YaffeState, platforms: &mut [Platform], index: usize) {
     match platforms[index].kind {
         PlatformType::Emulator => {
             let platform = platforms.get_mut(index).unwrap();
             for g in crate::data::GameInfo::get_all(platform.id.unwrap()) {
-                let name = g.0;
-                let boxart = crate::assets::get_asset_path(&platform.name, &name);
-                platform.apps.push(Executable::new_game(g.4, 
-                            name, 
-                            g.1, 
-                            index, 
-                            g.2 as u8, 
-                            g.3.try_into().expect("Something went very wrong"), 
-                            boxart.to_string_lossy().to_string()));
+                let boxart = crate::assets::get_asset_path(&platform.name, &g.name);
+                platform.apps.push(Executable::new_game(&g, index, boxart));
 
             }
             
@@ -228,7 +217,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
         }
         PlatformType::Plugin => {
             //These are not stored from the database, but loaded at runtime
-            assert!(false);
+            unreachable!();
         }
         PlatformType::Recents => {
             crate::logger::info!("Getting recent games");
@@ -244,10 +233,7 @@ fn refresh_executable(state: &mut YaffeState, platforms: &mut Vec<Platform>, ind
 fn is_allowed_file_type(path: &std::path::Path) -> bool {
     if let Some(ext) = path.extension() {
         let ext = ext.to_str().unwrap();
-        return match ext { 
-            "ini" | "srm" => false,
-            _ => true
-        };
+        return !matches!(ext, "ini" | "srm");
     }
     false
 }
@@ -255,17 +241,17 @@ fn is_allowed_file_type(path: &std::path::Path) -> bool {
 fn clean_file_name(file: &str) -> &str {
     for (i, c) in file.chars().enumerate() {
         if c == '(' || c == '[' {
-            return &file[0..i - 1].trim_end();
+            return file[0..i - 1].trim_end();
         }
     }
 
-    &file[..].trim_end()
+    file[..].trim_end()
 }
 
 pub fn insert_platform(state: &mut YaffeState, data: &crate::data::PlatformInfo) {
     crate::logger::info!("Inserting new platform into database {}", data.platform);
 
-    crate::data::PlatformInfo::insert(&data).log_and_panic();
+    crate::data::PlatformInfo::insert(data).log_and_panic();
     if !Path::new("./Roms").exists() {
         std::fs::create_dir("./Roms").unwrap();
     }
@@ -277,10 +263,10 @@ pub fn insert_platform(state: &mut YaffeState, data: &crate::data::PlatformInfo)
     state.refresh_list = true;
 }
 
-pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart: String) {
+pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart: PathBuf) {
     crate::logger::info!("Inserting new game into database {}", info.name);
 
-    crate::data::GameInfo::insert(&info).log_and_panic();
+    crate::data::GameInfo::insert(info).log_and_panic();
     
     let plat_name = crate::data::PlatformInfo::get_name(info.platform()).unwrap();
 
@@ -288,8 +274,7 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
     let lock = state.queue.lock().log_and_panic();
     let mut queue = lock.borrow_mut();
 
-    let boxart_url = Path::new("https://cdn.thegamesdb.net/images/medium/").join(boxart.clone());
-    queue.send(crate::JobType::DownloadUrl((boxart_url.to_owned(), boxart_file))).unwrap();
+    queue.send(crate::JobType::DownloadUrl((boxart, boxart_file))).unwrap();
 
     state.refresh_list = true;
 }

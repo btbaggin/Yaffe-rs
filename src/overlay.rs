@@ -20,7 +20,7 @@ impl OverlayWindow {
             modal: ui::Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
             process: None,
             showing: false,
-            settings: settings,
+            settings,
         };
   
         Rc::new(RefCell::new(overlay))
@@ -75,7 +75,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, _: f32, size: PhysicalSize, scale_factor: f32) -> bool {
         let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
 
-            let mut graphics = crate::Graphics { graphics, queue: None, scale_factor, bounds: window_rect.clone(), delta_time: 0. };
+            let mut graphics = crate::Graphics { graphics, queue: None, scale_factor, bounds: window_rect, delta_time: 0. };
             crate::ui::render_modal(&self.settings, &self.modal, &mut graphics);
 
         true
@@ -86,11 +86,11 @@ impl crate::windowing::WindowHandler for OverlayWindow {
     }
 
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool {
-        if let None = self.process { return false; }
+        if self.process.is_none() { return false; }
         match action {
             crate::Actions::ToggleOverlay => {
                 self.toggle_visibility(helper);
-                return true;
+                true
             }
             _ => {
                 if self.showing { 
@@ -104,7 +104,7 @@ impl crate::windowing::WindowHandler for OverlayWindow {
                         return true;
                     }
                 }
-                return false;
+                false
             }
         }
     }

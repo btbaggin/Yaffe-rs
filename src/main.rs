@@ -14,8 +14,8 @@ use crate::assets::AssetPathType;
  * custom modals for platform scraping
 */
 
-const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const UPDATE_FILE_PATH: &'static str = "./yaffe-rs.update";
+const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+const UPDATE_FILE_PATH: &str = "./yaffe-rs.update";
 const UPDATE_TIMER: f32 = 60. * 60.;
 
 #[macro_use]
@@ -66,6 +66,7 @@ pub struct Executable {
     name: String,
     description: String,
     rating: platform::Rating,
+    released: String,
     players: u8,
     platform_index: usize,
     boxart: AssetPathType,
@@ -158,7 +159,7 @@ impl windowing::WindowHandler for ui::WidgetTree {
                 self.data.refresh_list = false;
             }
 
-            let mut graphics = Graphics { graphics, queue: Some(self.data.queue.clone()), scale_factor, bounds: window_rect.clone(), delta_time };
+            let mut graphics = Graphics { graphics, queue: Some(self.data.queue.clone()), scale_factor, bounds: window_rect, delta_time };
             self.data.focused_widget = *self.focus.last().unwrap();
             self.render_all(&mut graphics);
 
@@ -203,9 +204,9 @@ impl windowing::WindowHandler for ui::WidgetTree {
                 let result = if !ui::is_modal_open(&self.data) {
                     let focus = self.focus.last().log_and_panic();
         
-                    self.root.action(&mut self.data, &action, focus, &mut handler)
+                    self.root.action(&mut self.data, action, focus, &mut handler)
                 } else {
-                    ui::update_modal(&mut self.data, helper, &action, &mut handler);
+                    ui::update_modal(&mut self.data, helper, action, &mut handler);
                     true
                 };
                 handler.resolve(self);
@@ -253,7 +254,7 @@ fn main() {
     let q = Arc::new(Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree(animation.clone());
     let overlay = overlay::OverlayWindow::new(settings.clone());
-    let state = YaffeState::new(overlay.clone(), settings, q.clone());
+    let state = YaffeState::new(overlay.clone(), settings, q);
 
     assets::initialize_asset_cache();
 
@@ -275,12 +276,12 @@ fn build_ui_tree(animation: Rc<RefCell<ui::AnimationManager>>) -> ui::WidgetCont
         .with_child(AppList::new(animation.clone()), LogicalSize::new(0.75, 1.))
             .add_child(SearchBar::new(animation.clone()), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
             .add_child(Toolbar::new(animation.clone()), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
-            .add_child(InfoPane::new(animation.clone()), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
+            .add_child(InfoPane::new(animation), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
             
     root
 }
 
-fn on_menu_close(state: &mut YaffeState, result: ui::ModalResult, content: &Box<dyn ui::ModalContent>, _: &mut crate::DeferredAction) {
+fn on_menu_close(state: &mut YaffeState, result: ui::ModalResult, content: &dyn ui::ModalContent, _: &mut crate::DeferredAction) {
     if let ui::ModalResult::Ok = result {
         let list_content = content.as_any().downcast_ref::<modals::ListModal<String>>().unwrap();
         
@@ -304,7 +305,7 @@ fn on_menu_close(state: &mut YaffeState, result: ui::ModalResult, content: &Box<
             "Scan For New Roms" => scan_new_files(state),
             "Exit Yaffe" => state.running = false, 
             "Shut Down" => { 
-                if let Some(_) = crate::platform_layer::shutdown().display_failure("Failed to shut down", state) {
+                if crate::platform_layer::shutdown().display_failure("Failed to shut down", state).is_some() {
                     state.running = false;
                 }
             },

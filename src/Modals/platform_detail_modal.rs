@@ -48,7 +48,7 @@ impl ModalContent for PlatformDetailModal {
     }
 }
 
-pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
+pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
 
@@ -63,14 +63,14 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
     }
 }
 
-pub fn on_update_platform_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
+pub fn on_update_platform_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
         state.refresh_list = true;
 
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-		crate::data::PlatformInfo::update(content.id, &exe.value(), &args.value())
+		crate::data::PlatformInfo::update(content.id, exe.value(), args.value())
             .display_failure("Unable to update platform", state);
     }
 }

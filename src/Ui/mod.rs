@@ -61,36 +61,36 @@ macro_rules! widget {
     }) => {
         #[allow(unused_variables)]
         pub struct $name { 
-            position: crate::LogicalPosition,
-            size: crate::LogicalSize,
-            animator: std::rc::Rc<std::cell::RefCell<crate::ui::AnimationManager>>,
+            position: $crate::LogicalPosition,
+            size: $crate::LogicalSize,
+            animator: std::rc::Rc<std::cell::RefCell<$crate::ui::AnimationManager>>,
             $($element: $ty),* 
         }
-        impl crate::ui::UiElement for $name {
-            fn position(&self) -> crate::LogicalPosition { self.position }
-            fn size(&self) -> crate::LogicalSize { self.size }
-            fn layout(&self) -> crate::Rect { crate::Rect::new(self.position, self.position + self.size) }
-            fn set_layout(&mut self, layout: crate::Rect) { 
+        impl $crate::ui::UiElement for $name {
+            fn position(&self) -> $crate::LogicalPosition { self.position }
+            fn size(&self) -> $crate::LogicalSize { self.size }
+            fn layout(&self) -> $crate::Rect { $crate::Rect::new(self.position, self.position + self.size) }
+            fn set_layout(&mut self, layout: $crate::Rect) { 
                 self.position = *layout.top_left(); 
                 self.size = layout.size();
             }
         }
-        impl crate::ui::FocusableWidget for $name {
-            fn get_id(&self) -> crate::ui::WidgetId { std::any::TypeId::of::<$name>() }
+        impl $crate::ui::FocusableWidget for $name {
+            fn get_id(&self) -> $crate::ui::WidgetId { std::any::TypeId::of::<$name>() }
         }
         impl $name {
-            pub fn new(animator: std::rc::Rc<std::cell::RefCell<crate::ui::AnimationManager>>) -> $name {
+            pub fn new(animator: std::rc::Rc<std::cell::RefCell<$crate::ui::AnimationManager>>) -> $name {
                 $name { 
-                    position: crate::LogicalPosition::new(0., 0.),
-                    size: crate::LogicalSize::new(0., 0.),
+                    position: $crate::LogicalPosition::new(0., 0.),
+                    size: $crate::LogicalSize::new(0., 0.),
                     animator,
                     $($element: $value),*
                 }
             }
 
             #[allow(dead_code)]
-            pub fn animate(&mut self, field: crate::ui::FieldOffset, target: f32, duration: f32) {
-                use crate::ui::AnimationTarget;
+            pub fn animate(&mut self, field: $crate::ui::FieldOffset, target: f32, duration: f32) {
+                use $crate::ui::AnimationTarget;
 
                 let mut animator = self.animator.borrow_mut();
                 animator.animate(self, field, AnimationTarget::F32(target), duration);
@@ -180,7 +180,7 @@ impl WidgetContainer {
 
             let offset = i.widget.offset();
             let origin = LogicalPosition::new(origin.x + offset.x * size.x, origin.y + offset.y * size.y);
-            let r = Rect::new(origin.into(), (origin + size).into());
+            let r = Rect::new(origin, origin + size);
             i.widget.set_layout(r);
 
             i.render(state, graphics);

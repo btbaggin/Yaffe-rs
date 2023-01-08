@@ -71,7 +71,7 @@ pub fn image_fill(graphics: &mut crate::Graphics, slot: &mut AssetSlot, size: &L
 #[macro_export]
 macro_rules! is_widget_focused {
     ($state:ident, $widget:ty) => {
-        $state.focused_widget == crate::get_widget_id!($widget)
+        $state.focused_widget == $crate::get_widget_id!($widget)
     }
 }
 

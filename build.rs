@@ -10,7 +10,7 @@ fn main() {
     use std::io::Write;
     
     //Write version.txt for updating
-    const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+    const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
     let mut file = std::fs::OpenOptions::new().create(true).write(true).open("./version.txt").unwrap();
     file.write_all(CARGO_PKG_VERSION.as_bytes()).unwrap();
 }

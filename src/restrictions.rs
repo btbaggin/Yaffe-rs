@@ -31,7 +31,7 @@ fn passcodes_equal(source: &RestrictedPasscode, target: &RestrictedPasscode) -> 
     true
 }
 
-pub fn on_restricted_modal_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
+pub fn on_restricted_modal_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SetRestrictedModal>().unwrap();
         let pass = content.get_passcode();
@@ -53,5 +53,5 @@ pub fn verify_restricted_action(state: &mut YaffeState) -> bool {
         return false;
     } 
 
-    return true;
+    true
 }

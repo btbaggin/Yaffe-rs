@@ -49,7 +49,7 @@ impl WidgetTree {
         animator.process(&mut self.root, delta_time)
     }
 
-    fn current_focus<'a>(focus: &'a Vec<WidgetId>, root: &'a mut WidgetContainer) -> Option<&'a mut WidgetContainer> {
+    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer) -> Option<&'a mut WidgetContainer> {
         if let Some(last) = focus.last() {
             return root.find_widget_mut(*last);
         }

@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 use speedy2d::color::Color;
 
 #[derive(Debug, Clone)]
 pub enum PathType {
-    File(String),
-    Url(String),
+    File(PathBuf),
+    Url(PathBuf),
 }
 pub type SettingsResult<T> = Result<T, SettingLoadError>;
 #[derive(Debug)]
@@ -128,33 +128,27 @@ pub trait YaffePlugin {
     fn name(&self) -> &'static str;
     fn initialize(&mut self, settings: &HashMap<String, SettingValue>) -> InitializeResult;
     fn settings(&self) -> Vec<(&'static str, SettingValue)>;
-    fn load_items(&mut self, size: u32, navigation_state: &Vec<String>, page: &str) -> LoadResult;
+    fn load_items(&mut self, size: u32, navigation_state: &[String], page: &str) -> LoadResult;
     fn on_selected(&mut self, name: &str, path: &str) -> SelectedAction;
 }
 
 pub fn try_get_str(settings: &HashMap<String, SettingValue>, name: &str) -> Option<String> {
-    if let Some(value) = settings.get(name) {
-        if let SettingValue::String(s) = value {
-            return Some(s.clone());
-        }
+    if let Some(SettingValue::String(s)) = settings.get(name) {
+        return Some(s.clone());
     }
     None
 }
 
 pub fn try_get_i32(settings: &HashMap<String, SettingValue>, name: &str) -> Option<i32> {
-    if let Some(value) = settings.get(name) {
-        if let SettingValue::I32(s) = value {
-            return Some(*s);
-        }
+    if let Some(SettingValue::I32(s)) = settings.get(name) {
+        return Some(*s);
     }
     None
 }
 
 pub fn try_get_f32(settings: &HashMap<String, SettingValue>, name: &str) -> Option<f32> {
-    if let Some(value) = settings.get(name) {
-        if let SettingValue::F32(s) = value {
-            return Some(*s);
-        }
+    if let Some(SettingValue::F32(s)) = settings.get(name) {
+        return Some(*s);
     }
     None
 }

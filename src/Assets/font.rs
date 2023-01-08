@@ -17,7 +17,7 @@ pub fn request_font(font: Fonts) -> &'static Font {
     assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested font, but font is not loaded");
 
     if let AssetData::Raw((data, _)) = &slot.data {
-        let font = speedy2d::font::Font::new(&data).log_and_panic();
+        let font = speedy2d::font::Font::new(data).log_and_panic();
         slot.data_length = data.len();
         slot.data = AssetData::Font(font);
     }

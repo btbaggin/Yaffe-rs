@@ -35,18 +35,12 @@ impl<T: ListItem> List<T> {
 impl<T: ListItem> List<T> {
     pub fn update(&mut self, action: &Actions) -> bool {
         match action {
-            Actions::Down => if self.index < self.items.len() - 1 {
-                self.index += 1; 
-                return true;
-            }
-            Actions::Up => if self.index > 0 {
-                self.index -= 1;
-                return true;
-            }
-            _ => {},
+            Actions::Down => if self.index < self.items.len() - 1 { self.index += 1; } else { self.index = 0; }
+            Actions::Up => if self.index > 0 { self.index -= 1; } else { self.index = self.items.len() - 1; }
+            _ => return false,
         }
 
-        return false;
+        true
     }
 
     pub fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {

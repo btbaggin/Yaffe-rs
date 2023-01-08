@@ -15,18 +15,18 @@ pub enum QueryError {
 }
 
 pub struct YaffeConnection {
-    con: sqlite3::Connection,
+    con: sqlite::Connection,
 }
 impl YaffeConnection {
     pub fn new() -> YaffeConnection {
-        let connection = sqlite3::open("./Yaffe.db").log_and_panic();
+        let connection = sqlite::open("./Yaffe.db").log_and_panic();
         YaffeConnection { con:  connection }
     }
 }
 impl Deref for YaffeConnection {
-    type Target = sqlite3::Connection;
+    type Target = sqlite::Connection;
 
-    fn deref(&self) -> &sqlite3::Connection {
+    fn deref(&self) -> &sqlite::Connection {
         &self.con
     }
 }
@@ -34,29 +34,40 @@ impl Deref for YaffeConnection {
 #[macro_export]
 macro_rules! create_statement {
     ($con:ident, $statement:expr, $($x:expr),*) => {{
-        use crate::logger::PanicLogEntry;
+        use $crate::logger::PanicLogEntry;
         #[allow(unused_mut)]
         let mut statement = $con.prepare($statement).log_message_and_panic("Unable to prepare statement");
         let mut _i = 1usize;
     $(
-        statement.bind(_i, $x).log_and_panic();
-        _i = _i + 1;
+        statement.bind((_i, $x)).log_and_panic();
+        _i +=1;
     )*
     statement
     }};
 }
 
+#[macro_export]
+macro_rules! get_column {
+    ($row:expr, $ty:ty, $column:expr) => {
+        match $row.read::<$ty, _>($column) {
+            Ok(v) => v,
+            Err(_) => <$ty>::default(),
+        }
+
+    }
+}
+
 /// Runs the provided function for each row returned from the statement
-fn execute_select<F>(mut stmt: sqlite3::Statement, mut f: F)
-    where F: FnMut(&sqlite3::Statement) {
-    while let sqlite3::State::Row = stmt.next().unwrap() {
+fn execute_select<F>(mut stmt: sqlite::Statement, mut f: F)
+    where F: FnMut(&sqlite::Statement) {
+    while let Ok(sqlite::State::Row) = stmt.next() {
         f(&stmt)
     }
 }
 
 /// Expect one row to be returned from the statement, otherwise errors
-fn execute_select_once(stmt: &mut sqlite3::Statement) -> QueryResult<()> {
-    if let sqlite3::State::Row = stmt.next().unwrap() {
+fn execute_select_once(stmt: &mut sqlite::Statement) -> QueryResult<()> {
+    if let sqlite::State::Row = stmt.next().unwrap() {
         return Ok(());
     }
 
@@ -64,8 +75,8 @@ fn execute_select_once(stmt: &mut sqlite3::Statement) -> QueryResult<()> {
 }
 
 /// Runs an update statement
-fn execute_update(mut stmt: sqlite3::Statement) -> QueryResult<()> {
-    if let sqlite3::State::Done = stmt.next().unwrap() {
+fn execute_update(mut stmt: sqlite::Statement) -> QueryResult<()> {
+    if let sqlite::State::Done = stmt.next().unwrap() {
         return Ok(());
     }
 

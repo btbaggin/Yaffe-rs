@@ -55,7 +55,7 @@ impl ModalContent for SettingsModal {
     }
 }
 
-pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
+pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
 
@@ -70,9 +70,9 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
                 },
                 "logging_level" => {
                     crate::logger::set_log_level(control.value());
-                    state.settings.set_setting(&name, control.value()).display_failure("Unable to save settings", state)
+                    state.settings.set_setting(name, control.value()).display_failure("Unable to save settings", state)
                 },
-                _ => state.settings.set_setting(&name, control.value()).display_failure("Unable to save settings", state),
+                _ => state.settings.set_setting(name, control.value()).display_failure("Unable to save settings", state),
             };
         }
 

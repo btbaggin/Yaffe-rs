@@ -39,7 +39,7 @@ pub fn get_font_size(settings: &crate::settings::SettingsFile, graphics: &crate:
 }
 
 pub fn get_font_color(settings: &crate::settings::SettingsFile) -> Color {
-    settings.get_color(crate::SettingNames::FontColor).clone()
+    settings.get_color(crate::SettingNames::FontColor)
 }
 pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
     let color = settings.get_color(crate::SettingNames::FontColor);
@@ -71,7 +71,7 @@ pub fn change_brightness(color: &Color, factor: f32) -> Color {
         b  = (1. - b) * factor + b;
     }
 
-    return Color::from_rgba(r, g, b, a);
+    Color::from_rgba(r, g, b, a)
 }
 
 pub fn rgba_string(c: &Color) -> String {

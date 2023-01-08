@@ -22,13 +22,13 @@ macro_rules! table_struct {
     }) => {
         #[derive(Default)]
         $sv struct $name { $($v $field_name: $field_type),+ }
-        impl crate::data::schema::Schema for $name {
-            fn get_columns(&self) -> Vec<crate::data::schema::ColumnInfo> {
+        impl $crate::data::schema::Schema for $name {
+            fn get_columns(&self) -> Vec<$crate::data::schema::ColumnInfo> {
                 let mut results = vec!();
             $(
                 let name = stringify!($field_name).to_owned();
                 let data_type = stringify!($field_type).to_owned();
-                results.push(crate::data::schema::ColumnInfo::new(name, data_type));
+                results.push($crate::data::schema::ColumnInfo::new(name, data_type));
             )*
                 results
             }
@@ -52,7 +52,7 @@ pub fn update_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     let con = YaffeConnection::new();
     for c in &columns {
         let t = TYPE_MAPPING.get(&c.data_type[..]).unwrap();
-        if let None = table_columns.iter().position(|t| t.name == c.name) {
+        if !table_columns.iter().any(|t| t.name == c.name) {
            let stmt = crate::create_statement!(con, format!("ALTER TABLE {} ADD COLUMN {} {}", table, c.name, t), );
            execute_update(stmt)?;
         }
@@ -60,7 +60,7 @@ pub fn update_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     }
 
     for t in &table_columns {
-        if let None = columns.iter().position(|c| c.name == t.name) {
+        if !columns.iter().any(|c| c.name == t.name) {
            let stmt = crate::create_statement!(con, format!("ALTER TABLE {} DROP COLUMN {}", table, t.name), );
            execute_update(stmt)?;
         }
@@ -75,8 +75,8 @@ fn get_table_columns(table: &str) -> Vec<ColumnInfo> {
 
     let mut table = vec!();
     execute_select(stmt, |r| {
-        let name = r.read::<String>(1).unwrap();
-        let data_type = r.read::<String>(2).unwrap();
+        let name = r.read::<String, _>(1).unwrap();
+        let data_type = r.read::<String, _>(2).unwrap();
         table.push(ColumnInfo::new(name, data_type));
     });
     table

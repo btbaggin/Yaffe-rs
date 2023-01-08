@@ -149,11 +149,11 @@ impl crate::ui::Widget for SearchBar {
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
         let font_size = get_font_size(&state.settings, graphics);
 
-        graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
+        graphics.draw_rectangle(rect, MENU_BACKGROUND);
         let focused_color = if crate::is_widget_focused!(state, SearchBar) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
-        let filter_rect = Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()).into());
+        let filter_rect = Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
 
         //Highlight
         let mut highlight_position = rect.left() + self.highlight_offset;
@@ -168,7 +168,7 @@ impl crate::ui::Widget for SearchBar {
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
 
-        let name_label = crate::ui::get_drawable_text(font_size, &name);
+        let name_label = crate::ui::get_drawable_text(font_size, name);
         let half = name_label.width().to_logical(graphics) / 2.;
         graphics.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - name_label.height().to_logical(graphics) / 2.), focused_color, &name_label);
 
@@ -192,7 +192,7 @@ impl crate::ui::Widget for SearchBar {
             //Filter item
             //If there are no items that match a certain filter we will draw it unfocused
             let bit = i - start;
-            let color = if mask & 1 << bit != 0 { focused_color.clone() } else { get_font_unfocused_color(&state.settings) };
+            let color = if mask & 1 << bit != 0 { focused_color } else { get_font_unfocused_color(&state.settings) };
             let item_label = crate::ui::get_drawable_text(font_size, &String::from(i as char));
             
             let label_half = LogicalSize::new(item_label.width().to_logical(graphics) / 2., item_label.height().to_logical(graphics) / 2.);
@@ -202,7 +202,7 @@ impl crate::ui::Widget for SearchBar {
 }
 
 /// Gets a bitmask of filter options that have items we can filter
-fn get_exists_mask(option: i32, apps: &Vec<crate::Executable>) -> u64 {
+fn get_exists_mask(option: i32, apps: &[crate::Executable]) -> u64 {
     let mut mask = 0u64;
     match option {
         SEARCH_OPTION_NONE => { /*do nothing, everything is valid*/ }
@@ -210,14 +210,14 @@ fn get_exists_mask(option: i32, apps: &Vec<crate::Executable>) -> u64 {
             for exe in apps.iter() {
                 if let Some(c) = exe.name.chars().next() {
                     let c = c.to_uppercase().next().unwrap();
-                    mask = mask | (1 << (c as u8 - 'A' as u8));
+                    mask |= 1 << (c as u8 - b'A');
                 }
             }
         }
         SEARCH_OPTION_PLAYERS => {
             for exe in apps.iter() {
                 if exe.players > 0 {
-                    mask = mask | (1 << exe.players - 1);
+                    mask |= 1 << (exe.players - 1);
                 }
             }
         }
@@ -230,8 +230,8 @@ fn get_exists_mask(option: i32, apps: &Vec<crate::Executable>) -> u64 {
 fn set_search_base(filter: &mut SearchInfo) {
     match filter.option {
         SEARCH_OPTION_NONE =>  { filter.start = 0; filter.end = 0; },
-        SEARCH_OPTION_NAME => { filter.start = 'A' as u8; filter.end = 'Z' as u8 },
-        SEARCH_OPTION_PLAYERS => { filter.start = '1' as u8; filter.end = '4' as u8 },
+        SEARCH_OPTION_NAME => { filter.start = b'A'; filter.end = b'Z' },
+        SEARCH_OPTION_PLAYERS => { filter.start = b'1'; filter.end = b'4' },
         _ => panic!("Unable filter option"),
     }
 }

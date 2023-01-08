@@ -17,7 +17,7 @@ impl CheckBox {
 }
 impl Control for CheckBox {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> crate::LogicalSize {
-        let control = draw_label_and_box(graphics, settings, &container.top_left(), get_font_size(settings, graphics), &self.label);
+        let control = draw_label_and_box(graphics, settings, container.top_left(), get_font_size(settings, graphics), &self.label);
 
         if self.checked {
             let base = get_accent_color(settings);

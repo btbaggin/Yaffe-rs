@@ -4,7 +4,7 @@ use speedy2d::dimen::Vector2;
 pub type LogicalSize  = LogicalPosition;
 pub type PhysicalSize = PhysicalPosition;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct LogicalPosition {
     pub x: f32,
     pub y: f32,
@@ -18,7 +18,7 @@ impl LogicalPosition {
 }
 impl LogicalPosition {
     #[inline]
-    pub fn to_physical(&self, scale_factor: f32) -> PhysicalPosition {
+    pub fn to_physical(self, scale_factor: f32) -> PhysicalPosition {
         let x = self.x * scale_factor;
         let y = self.y * scale_factor;
         PhysicalPosition::new(x, y)
@@ -72,7 +72,7 @@ impl PhysicalPosition {
     }
     
     #[inline]
-    pub fn to_logical(&self, scale_factor: f32) -> LogicalPosition {
+    pub fn to_logical(self, scale_factor: f32) -> LogicalPosition {
         let x = self.x / scale_factor;
         let y = self.y / scale_factor;
         LogicalPosition::new(x, y)
@@ -84,7 +84,7 @@ impl From<PhysicalPosition> for Vector2<f32> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Rect {
     top_left: LogicalPosition,
     bottom_right: LogicalPosition,

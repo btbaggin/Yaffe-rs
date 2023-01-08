@@ -72,7 +72,7 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, slot: &'a mut Ass
 
     if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
         if let AssetData::Raw((data, dimensions)) = &slot.data {
-            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, &data).log_and_panic();
+            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
             slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
         }
     }
@@ -95,14 +95,14 @@ pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
     info!("Loading image asynchronously {:?}", path);
 
     let data = match &path {
-        AssetPathType::File(path) => std::fs::read(&path).log_and_panic(),
+        AssetPathType::File(path) => std::fs::read(path).log_and_panic(),
         AssetPathType::Url(path) =>  {
-            let image = reqwest::blocking::get(path).unwrap().bytes().log_and_panic();
+            let image = reqwest::blocking::get(path.to_str().unwrap()).unwrap().bytes().log_and_panic();
             image.to_vec()
         },
     };
 
-    let mut reader = image::io::Reader::new(std::io::Cursor::new(data.clone()));
+    let mut reader = image::io::Reader::new(std::io::Cursor::new(data));
     reader = reader.with_guessed_format().log_and_panic();
 
     match reader.decode() {
@@ -122,6 +122,6 @@ pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
 pub fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, AssetTypes, AssetSlot>) {
     let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear, path).log_and_panic();
     let image = Rc::new(data);
-    let texture = YaffeTexture { image: image.clone(), bounds: None };
+    let texture = YaffeTexture { image, bounds: None };
     map.insert(AssetTypes::Image(image_name), AssetSlot::preloaded(path, texture));
 }

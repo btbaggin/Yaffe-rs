@@ -26,12 +26,9 @@ impl crate::ui::Widget for PlatformList {
             }
             Actions::Info => {
                 let platform = state.get_platform();
-                match platform.kind {
-                    PlatformType::Emulator => {
-                        let modal = Box::new(PlatformDetailModal::from_existing(platform));
-                        display_modal(state, "Platform Info", Some("Save"), modal, Some(on_update_platform_close));
-                    },
-                    _ => {},
+                if platform.kind == PlatformType::Emulator {
+                    let modal = Box::new(PlatformDetailModal::from_existing(platform));
+                    display_modal(state, "Platform Info", Some("Save"), modal, Some(on_update_platform_close));
                 }
                 true
             }
@@ -42,7 +39,7 @@ impl crate::ui::Widget for PlatformList {
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
         //Background
         let rect = graphics.bounds;
-        graphics.draw_rectangle(rect.clone(), MENU_BACKGROUND);
+        graphics.draw_rectangle(rect, MENU_BACKGROUND);
 
         //Title
         let title = crate::ui::get_drawable_text(32. * graphics.scale_factor, "Yaffe");

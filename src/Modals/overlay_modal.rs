@@ -13,10 +13,7 @@ pub struct OverlayModal {
 
 impl OverlayModal {
     pub fn new() -> OverlayModal {
-        let volume = match crate::platform_layer::get_and_update_volume(0.) {
-            Ok(volume) => volume,
-            Err(_) => 0.,
-        };
+        let volume = crate::platform_layer::get_and_update_volume(0.).unwrap_or(0.);
         OverlayModal { volume }
     }
 }

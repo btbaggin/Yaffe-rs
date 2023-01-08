@@ -42,7 +42,7 @@ impl Plugin {
 			NavigationAction::Back => {
 				info!("Plugin requested back action");
 				self.navigation_state.pop();
-				self.needs_load = self.navigation_state.len() > 0;
+				self.needs_load = !self.navigation_state.is_empty();
 			}
 		}
 
@@ -53,7 +53,7 @@ impl Plugin {
 				Ok(results) => {
 					self.next_page = results.next_page;
 					self.needs_load = !self.next_page.is_empty();
-					return Ok(results.results)
+					Ok(results.results)
 				}
 				Err(s) => Err(s)
 			}
@@ -112,7 +112,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 			if ok && path.is_file() {
 				
 				let file = path.file_stem().unwrap().to_string_lossy();
-				let message = format!("Failed to load plugin {:?}", file);
+				let message = format!("Failed to load plugin {file:?}");
 				
 				info!("Found plugin {}", file);
 

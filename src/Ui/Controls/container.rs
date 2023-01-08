@@ -58,11 +58,11 @@ impl Container {
     }
 
     /// Retrieves a field from the group based on the tag
-    pub fn by_tag(&self, tag: &str) -> Option<&Box<dyn InputControl>> {
+    pub fn by_tag(&self, tag: &str) -> Option<&dyn InputControl> {
         if let Some(i) = self.tags.get(tag) {
             match &self.controls[*i] {
-                ContainerType::Input(i) => return Some(i),
-                ContainerType::Control(_) => panic!("This shouldn't happen"),
+                ContainerType::Input(i) => return Some(&**i),
+                ContainerType::Control(_) => unreachable!(),
             }
         } 
         //TODO check child containers
@@ -78,10 +78,8 @@ impl Container {
             Some(index) => {
                 self.set_focus(index, false);
                 if next { index + 1 } 
-                else { 
-                    if index == 0 { self.child_count() - 1}
-                    else { index - 1 }
-                }
+                else if index == 0 { self.child_count() - 1}
+                else { index - 1 }
             }
         };
 
@@ -100,26 +98,24 @@ impl Container {
     fn set_focus(&mut self, index: usize, value: bool) {
         match &mut self.controls[index] {
             ContainerType::Input(i) => i.set_focused(value),
-            ContainerType::Control(_) => panic!("This should not have happened"),
+            ContainerType::Control(_) => unreachable!(),
         }
     }
 }
 impl Control for Container {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> LogicalSize {
-        //TODO this causes double margins. Can i fix that? thats like... nice? Because there are hacky approaces
+        //TODO this causes double margins. Can i fix that in a way thats like... nice? Because there are hacky approaches
         let top_left = *container.top_left() + crate::LogicalPosition::new(MARGIN, MARGIN);
         match self.direction {
             ContainerDirection::Vertical => {
                 let container_size = container.width() * self.size;
                 let mut rect = Rect::point_and_size(top_left, LogicalSize::new(container_size, container.height()));
-                let mut y = container.top();
+                let mut y = top_left.y;
 
                 for (i, v) in self.controls.iter().enumerate() {
                     let size = render_control(graphics, settings, rect, self.focus_index, v, i);
-        
                     y += size.y + MARGIN;
                     rect = Rect::from_tuples((top_left.x, y), (rect.right(), rect.bottom()));
-                    
                 }
 
                 LogicalSize::new(container_size, y - container.top())
@@ -127,11 +123,10 @@ impl Control for Container {
             ContainerDirection::Horizontal => {
                 let container_size = container.height() * self.size;
                 let mut rect = Rect::point_and_size(top_left, LogicalSize::new(container.width(), container_size));
-                let mut x = container.left();
+                let mut x = top_left.x;
 
                 for (i, v) in self.controls.iter().enumerate() {
                     let size = render_control(graphics, settings, rect, self.focus_index, v, i);
-        
                     x += size.x + MARGIN;
                     rect = Rect::from_tuples((x, top_left.y), (rect.right(), rect.bottom()));
                 }

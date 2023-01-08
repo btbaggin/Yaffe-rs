@@ -29,8 +29,8 @@ impl<'a> Graphics<'a> {
     }
     pub fn set_clip(&mut self, rect: Option<Rect>) {
         use speedy2d::shape::Rectangle;
-        if rect.is_some() {
-            let rect = rect.unwrap().to_physical(self.scale_factor);
+        if let Some(rect) = rect {
+            let rect = rect.to_physical(self.scale_factor);
             let clip = Rectangle::from_tuples((rect.top_left().x as i32, rect.top_left().y as i32), (rect.bottom_right().x as i32, rect.bottom_right().y as i32));
             self.graphics.set_clip(Some(clip));
         } else {
@@ -41,11 +41,11 @@ impl<'a> Graphics<'a> {
 impl<'a> Deref for Graphics<'a> {
     type Target = speedy2d::Graphics2D;
     fn deref(&self) -> &Self::Target {
-        &self.graphics
+        self.graphics
     }
 }
 impl<'a> DerefMut for Graphics<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.graphics
+        self.graphics
     }
 }

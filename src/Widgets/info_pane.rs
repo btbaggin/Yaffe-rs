@@ -21,6 +21,7 @@ fn build_container(exe: Option<&crate::Executable>) -> Container {
         top.add(Image::new(exe.boxart.clone()));
         details.add(Label::simple(format!("Players: {}", exe.players)));
         details.add(Label::simple(format!("Rating: {}", exe.rating)));
+        details.add(Label::simple(format!("Released: {}", exe.released)));
         top.add(details);
         main.add(top);
     }
@@ -47,7 +48,7 @@ impl Widget for InfoPane {
 
     fn render(&mut self, graphics: &mut Graphics, state: &YaffeState) { 
         let bounds = graphics.bounds;
-        graphics.draw_rectangle(bounds.clone(), MODAL_BACKGROUND);
+        graphics.draw_rectangle(bounds, MODAL_BACKGROUND);
 
         let size = self.container.render(graphics, &state.settings, &bounds);
         if let Some(app) = state.get_executable() {

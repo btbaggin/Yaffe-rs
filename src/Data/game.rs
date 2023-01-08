@@ -1,8 +1,7 @@
 use std::convert::TryInto;
 use crate::create_statement;
-use crate::logger::PanicLogEntry;
 use super::{YaffeConnection, QueryResult, QueryError, execute_select, execute_select_once, execute_update};
-use crate::{Executable, Platform};
+use crate::{Executable, Platform, get_column};
 
 crate::table_struct! (
     pub struct GameInfo {
@@ -11,34 +10,44 @@ crate::table_struct! (
         pub overview: String,
         pub players: i64,
         pub rating: i64,
-        filename: String,
-        platform: i64,
-        lastrun: i64,
+        pub released: String,
+        pub filename: String,
+        pub platform: i64,
+        pub lastrun: i64,
     }
 );
 impl GameInfo {
-    pub fn new(id: i64, name: String, overview: String, players: i64, rating: String, filename: String, platform: i64) -> GameInfo {
-        let rating: crate::platform::Rating = rating.clone().try_into().unwrap();
-        GameInfo { id, name, overview, players, filename, rating: rating as i64, platform, lastrun: 0 }
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(id: i64, name: String, overview: String, players: i64,
+               rating: String, released: String,
+               filename: String, platform: i64) -> GameInfo {
+        let rating: crate::platform::Rating = rating.try_into().unwrap();
+        GameInfo { id, name, overview, players, filename, rating: rating as i64, released, platform, lastrun: 0 }
+    }
+
+    fn from_row(row: &sqlite::Statement, platform: i64) -> GameInfo {
+        let id = get_column!(row, i64, "ID");
+        let name = get_column!(row, String, "Name");
+        let overview = get_column!(row, String, "Overview");
+        let players = get_column!(row, i64, "Players");
+        let rating = get_column!(row, i64, "Rating");
+        let released = get_column!(row, String, "released");
+        let filename = get_column!(row, String, "FileName");
+
+        GameInfo { id, name, overview, players, filename, rating, released, platform, lastrun: 0 }
     }
 
     pub fn platform(&self) -> i64 { self.platform }
 
-    pub fn get_all(platform: i64) -> Vec<(String, String, i64, i64, String)> {
-        const QS_GET_ALL_GAMES: &str = "SELECT ID, Name, Overview, Players, Rating, FileName FROM Games WHERE Platform = @Platform";
+    pub fn get_all(platform: i64) -> Vec<GameInfo> {
+        const QS_GET_ALL_GAMES: &str = "SELECT ID, Name, Overview, Players, Rating, Released, FileName FROM Games WHERE Platform = @Platform";
 
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_ALL_GAMES, platform);
     
         let mut result = vec!();
         execute_select(stmt, |r| {
-            let name = r.read::<String>(1).unwrap();
-            let overview = r.read::<String>(2).unwrap();
-            let players = r.read::<i64>(3).unwrap();
-            let rating = r.read::<i64>(4).unwrap();
-            let filename = r.read::<String>(5).unwrap();
-    
-            result.push((name, overview, players, rating, filename))
+            result.push(GameInfo::from_row(r, platform))
         });
     
         result
@@ -52,41 +61,32 @@ impl GameInfo {
         let con = YaffeConnection::new();
         let mut stmt = create_statement!(con, QS_GET_GAME_EXISTS, id, file);
 
-        if let Ok(_) = execute_select_once(&mut stmt) {
-            let count = stmt.read::<i64>(0).unwrap();
-            return Ok(count > 0);
+        if execute_select_once(&mut stmt).is_ok() {
+            let count = get_column!(stmt, i64, 0);
+            Ok(count > 0)
         } else {
             Err(QueryError::NoResults)
         }
     }
 
     /// Gets the most recent games launched from Yaffe
-    pub fn get_recent(max: i64, map: &Vec<Platform>) -> Vec<Executable> {
+    pub fn get_recent(max: i64, map: &[Platform]) -> Vec<Executable> {
         //TODO could we use lastrun field?
-        const QS_GET_RECENT_GAMES: &str = "SELECT g.Name, g.Overview, g.Players, g.Rating, g.FileName, p.ID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT @Max";
+        const QS_GET_RECENT_GAMES: &str = "SELECT g.ID, g.Name, g.Overview, g.Players, g.Rating, g.FileName, g.Released, p.ID as PlatformID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT @Max";
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_RECENT_GAMES, max);
 
         let mut result = vec!();
         execute_select(stmt, |r| {
-            let name = r.read::<String>(0).unwrap();
-            let overview = r.read::<String>(1).unwrap();
-            let players = i64::max(1, r.read::<i64>(2).unwrap());
-            let rating = r.read::<i64>(3).unwrap();
-            let file = r.read::<String>(4).unwrap();
-            let platform_id = r.read::<i64>(5).unwrap();
-            let platform_name = r.read::<String>(6).unwrap();
+            let name = get_column!(r, String, "Name");
+            let platform_name = get_column!(r, String, "Platform");
+            let platform_id = get_column!(r, i64, "PlatformID");
 
+            let info = GameInfo::from_row(r, platform_id);
             let boxart = crate::assets::get_asset_path(&platform_name, &name);
             let index = map.iter().position(|s| s.id == Some(platform_id));
             if let Some(index) = index {
-                result.push(Executable::new_game(file, 
-                    name, 
-                    overview, 
-                    index,
-                    players as u8, 
-                    rating.try_into().log_message_and_panic("Unknown rating value"), 
-                    boxart.to_string_lossy().to_string()));
+                result.push(Executable::new_game(&info, index, boxart));
             }
         });
 
@@ -104,7 +104,7 @@ impl GameInfo {
         crate::logger::info!("Inserting new game into database {}", game.name);
 
         let con = YaffeConnection::new();
-        let stmt = create_statement!(con, QS_ADD_GAME, game.id, game.platform, &*game.name, &*game.overview, game.players, game.rating as i64, &*game.filename);
+        let stmt = create_statement!(con, QS_ADD_GAME, game.id, game.platform, &*game.name, &*game.overview, game.players, game.rating, &*game.filename);
 
         execute_update(stmt)
     }

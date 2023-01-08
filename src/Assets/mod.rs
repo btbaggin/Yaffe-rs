@@ -55,7 +55,7 @@ impl AssetSlot {
         let size = image.size();
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
-            path: AssetPathType::File(String::from(path)),
+            path: AssetPathType::File(std::path::Path::new(path).to_path_buf()),
             data: AssetData::Image(image),
             data_length: (size.x * size.y * 4.) as usize,
             last_request: Instant::now(),
@@ -68,7 +68,7 @@ impl AssetSlot {
 
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
-            path: AssetPathType::File(String::from(path)),
+            path: AssetPathType::File(std::path::Path::new(path).to_path_buf()),
             data: AssetData::Font(font),
             data_length: data.len(),
             last_request: Instant::now(),
@@ -85,7 +85,7 @@ static mut FILE_ASSET_MAP: Option<PooledCache<32, String, RefCell<AssetSlot>>> =
 
 pub fn initialize_asset_cache() {
     let mut map = PooledCache::new();
-    map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(AssetPathType::File(String::from(r"./Assets/background.jpg"))));
+    map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(AssetPathType::File(std::path::Path::new(r"./Assets/background.jpg").to_path_buf())));
 
     map.insert(AssetTypes::Font(Fonts::Regular), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
     
@@ -95,7 +95,7 @@ pub fn initialize_asset_cache() {
 
 pub fn preload_assets(graphics: &mut Graphics2D) {
     let map = unsafe { STATIC_ASSET_MAP.as_mut().unwrap() };
-    if let None = map.get_mut(&AssetTypes::Image(Images::Error)) {
+    if map.get_mut(&AssetTypes::Image(Images::Error)).is_none() {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
 
@@ -124,7 +124,7 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
         }); 
     }
 
-    if let None = map.get_mut(&AssetTypes::Image(Images::Placeholder)) {
+    if map.get_mut(&AssetTypes::Image(Images::Placeholder)).is_none() {
         preload_image(graphics, "./Assets/placeholder.jpg", Images::Placeholder, map);
     }
 }
@@ -145,10 +145,8 @@ pub fn get_asset_path(platform: &str, name: &str) -> std::path::PathBuf {
 
     let platform = Path::new("./Assets").join(crate::platform_layer::sanitize_file(platform));
     let name = crate::platform_layer::sanitize_file(name);
-    let name = format!("{}.jpg", name);
-    let boxart = platform.join(&name);
-
-    boxart.to_owned()
+    let name = format!("{name}.jpg");
+    platform.join(name)
 }
 
 pub fn get_cached_file<'a>(file: &AssetPathType) -> &'a RefCell<AssetSlot> {
@@ -160,8 +158,9 @@ pub fn get_cached_file<'a>(file: &AssetPathType) -> &'a RefCell<AssetSlot> {
         AssetPathType::File(path) => path,
         AssetPathType::Url(url) => url,
     };
+    let key = key.to_string_lossy().to_string();
     map.insert(key.clone(), RefCell::new(AssetSlot::new(file.clone())));
-    map.get_mut(key).unwrap()
+    map.get_mut(&key).unwrap()
 }
 
 pub fn clear_old_cache(state: &crate::YaffeState) {
@@ -191,11 +190,12 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
     }
     //Remove oldest asset if we are over our memory threshold
     //This will happen once per frame until we are under the threshold
-    if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize &&
-       last_used_index.is_some() {
-        let slot = map.get_index_mut(last_used_index.unwrap()).unwrap();
-        let mut slot = slot.borrow_mut();
-        slot.data = AssetData::None;
-        slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
+    if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize {
+       if let Some(index) = last_used_index {
+            let slot = map.get_index_mut(index).unwrap();
+            let mut slot = slot.borrow_mut();
+            slot.data = AssetData::None;
+            slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
+       }
     }
 }

@@ -84,7 +84,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> PhysicalSize {
 
     use crate::logger::PanicLogEntry;
-    let windowed_context = create_best_context(&builder, &event_loop).log_and_panic();
+    let windowed_context = create_best_context(&builder, event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
     let id = windowed_context.window().id();
@@ -119,7 +119,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
     let fullscreen = Some(Fullscreen::Borderless(monitor));
     let builder = WindowBuilder::new()
         .with_title("Yaffe")  
-        .with_fullscreen(fullscreen.clone())
+        .with_fullscreen(fullscreen)
         .with_visible(true);
     let size = create_window(&mut windows, &el, &mut ct, builder, handler);
 
@@ -196,7 +196,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let glutin::event::ElementState::Released = input.state { return; }
-                    if let None = input.virtual_keycode { return; }
+                    if input.virtual_keycode.is_none() { return; }
 
                     let action = if let Some(action) = input_map.get(input.virtual_keycode, None) {
                         action.clone()
@@ -237,7 +237,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     let context = ct.get_current(window.context_id).unwrap();
 
                     let scale = context.windowed().window().scale_factor() as f32;
-                    let size = PhysicalSize::new(window.size.x as f32, window.size.y as f32);
+                    let size = PhysicalSize::new(window.size.x, window.size.y);
                     let mut handle = window.handler.borrow_mut();
                     window.renderer.draw_frame(|graphics| {
                         if !handle.on_frame(graphics, delta_time, size, scale) {
@@ -279,7 +279,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                     
                     let mut helper = WindowHelper { visible: None, };
                     let fixed_update = handle.on_fixed_update(&mut helper, delta_time);
-                    helper.resolve(&context.windowed().window());
+                    helper.resolve(context.windowed().window());
 
                     if fixed_update || asset_loaded || handle.is_window_dirty() {
                         context.windowed().window().request_redraw();
@@ -305,7 +305,7 @@ fn send_action_to_window(window: &mut YaffeWindow,
         //If the window responded to the action, set it to redraw
         context.windowed().window().request_redraw();
     } 
-    helper.resolve(&context.windowed().window());
+    helper.resolve(context.windowed().window());
 
     result
 }
@@ -343,10 +343,8 @@ mod context_tracker {
             }
         }
 
-        fn map<T2: ContextCurrentState, FW>(
-            self,
-            fw: FW,
-        ) -> Result<ContextWrapper<T2>, (Self, ContextError)>
+    #[allow(clippy::result_large_err)]
+    fn map<T2: ContextCurrentState, FW>(self, fw: FW) -> Result<ContextWrapper<T2>, (Self, ContextError)>
         where
             FW: FnOnce(WindowedContext<T>) -> Result<WindowedContext<T2>, (WindowedContext<T>, ContextError)>,
         {
@@ -364,6 +362,7 @@ mod context_tracker {
         NotCurrent(ContextWrapper<NotCurrent>),
     }
 
+    #[allow(clippy::result_large_err)]
     impl ContextCurrentWrapper {
         fn map_possibly<F>(self, f: F) -> Result<Self, (Self, ContextError)>
         where

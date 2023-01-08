@@ -18,7 +18,7 @@ impl Log for YaffeLogger {
 
             let time_string = chrono::Local::now().format("%x %X");
             let level = record.level();
-            let mut message = format!("{}: {} [{}]: {}", record.metadata().target(), level.to_string(), time_string, record.args());
+            let mut message = format!("{}: {} [{}]: {}", record.metadata().target(), level, time_string, record.args());
             if let Level::Error = level {
                 message.push_str(&format!("{:?}", std::backtrace::Backtrace::force_capture()));
             };
@@ -99,7 +99,7 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
     fn display_failure(self, message: &str, state: &mut crate::YaffeState) -> Option<T> {
         match self {
             Err(e) => {
-                let message = format!("{}: {:?}", message, e);
+                let message = format!("{message}: {e:?}");
                 let message = Box::new(crate::modals::MessageModalContent::new(&message));
                 crate::ui::display_modal(state, "Error", None, message, None);
                 None
@@ -113,7 +113,7 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
     fn display_failure_deferred(self, message: &str, handle: &mut crate::DeferredAction) -> Option<T> {
         match self {
             Err(e) => {
-                let message = format!("{}: {:?}", message, e);
+                let message = format!("{message}: {e:?}");
                 handle.display_message(message);
                 None
             }

@@ -26,7 +26,7 @@ impl Control for TextBox {
         const MAX_SIZE: f32 = 250.;
 
         let size = f32::min(container.width() - LABEL_SIZE, MAX_SIZE);
-        let control = draw_label_and_box(graphics, settings, &container.top_left(), size, &self.label);
+        let control = draw_label_and_box(graphics, settings, container.top_left(), size, &self.label);
 
         let height = control.height();
         let text = get_drawable_text(height, &self.text);

@@ -25,7 +25,7 @@ impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
         } else if let Some(b) = button {
             return self.cont.get(&b);
         }
-        return None;
+        None
     }
 }
 

@@ -86,7 +86,7 @@ impl SettingsFile {
     }
 
     pub fn plugin(&self, name: &str) -> HashMap<String, SettingValue> {
-        let settings = Path::new("./plugins").join(format!("{}.settings", name));
+        let settings = Path::new("./plugins").join(format!("{name}.settings"));
         match load_settings(settings) {
             Ok(settings) => settings.settings,
             Err(_) => HashMap::new()
@@ -107,7 +107,7 @@ impl SettingsFile {
     }
 
     pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
-        assert!(SETTINGS.iter().position(|&n| n == name).is_some());
+        assert!(SETTINGS.iter().any(|&n| n == name));
 
         let setting = SettingNames::get_default(name);
         let value = setting.from_string(value, true)?;

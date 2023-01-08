@@ -52,9 +52,10 @@ fn build_container(item: &GameScrapeResult) -> Container {
     let mut top = Container::horizontal(0.25);
     let mut details = Container::vertical(1.);
 
-    top.add(Image::new(AssetPathType::Url(format!("https://cdn.thegamesdb.net/images/medium/{}", item.boxart))));
+    top.add(Image::new(AssetPathType::Url(item.boxart.clone())));
     details.add(Label::simple(format!("Players: {}", item.info.players)));
     details.add(Label::simple(format!("Rating: {}", TryInto::<Rating>::try_into(item.info.rating).unwrap_or(Rating::NotRated))));
+    details.add(Label::simple(format!("Released: {}", item.info.released)));
     top.add(details);
     main.add(top);
     main.add(Label::wrapping(item.info.overview.clone(), None));
@@ -62,7 +63,7 @@ fn build_container(item: &GameScrapeResult) -> Container {
     main
 }
 
-pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &Box<dyn ModalContent>, _: &mut crate::DeferredAction) {
+pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<GameScraperModal>().unwrap();
 

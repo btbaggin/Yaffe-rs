@@ -19,7 +19,7 @@ pub struct AppTile {
 impl AppTile {
     pub fn new(index: usize) -> AppTile {
         AppTile { 
-            index: index,
+            index,
             flags: VISIBLE_FLAG,
             position: LogicalPosition::new(0., 0.),
             size: LogicalSize::new(0., 0.),
@@ -42,7 +42,7 @@ impl AppTile {
         (self.flags & VISIBLE_FLAG) != 0
     }
 
-    pub fn apply_filter(&mut self, filter: &crate::widgets::SearchInfo, apps: &Vec<crate::Executable>) {
+    pub fn apply_filter(&mut self, filter: &crate::widgets::SearchInfo, apps: &[crate::Executable]) {
         fn set_visible(flags: u8, visible: bool) -> u8 {
             if visible { flags | VISIBLE_FLAG } else { flags & !VISIBLE_FLAG }
         }
@@ -77,9 +77,8 @@ impl AppTile {
             let mut height = 0.;
 
             let lines: Vec<&std::rc::Rc<speedy2d::font::FormattedTextLine>> = name.iter_lines().collect();
-            let mut line_number = 0;
             let line_count = lines.len();
-            for line in lines {
+            for (line_number, line) in lines.into_iter().enumerate() {
                 let line_height = line.height().to_logical(graphics);
                 //We need to move the menu down while it isnt the last line
                 //or the line is big enough where the menu won't fit
@@ -90,7 +89,6 @@ impl AppTile {
                     height += line_height;
                 }
                 height += line_height;
-                line_number += 1
             }
 
             //Outline background

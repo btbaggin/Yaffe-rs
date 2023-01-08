@@ -150,7 +150,7 @@ impl AppList {
         let mut tiles_x = 1;
         let mut tiles_y = 1;
         let mut bitmap_size = PhysicalSize::new(0., 0.);
-        if self.tiles.len() > 0 {
+        if !self.tiles.is_empty() {
             //Get widest boxart image
             let mut max_width = 0.;
             for exe in self.tiles.iter() {
@@ -238,8 +238,8 @@ impl AppList {
         }
 
         //Adjust first_visible index until our index is inside it
-        while index < first_visible as isize { first_visible -= self.tiles_x; }
-        while index > (first_visible + (self.tiles_x * self.tiles_y) - 1) as isize { first_visible += self.tiles_x; }
+        while index < first_visible { first_visible -= self.tiles_x; }
+        while index > (first_visible + (self.tiles_x * self.tiles_y) - 1) { first_visible += self.tiles_x; }
         assert!(first_visible >= 0);
         assert!(index >= 0);
 

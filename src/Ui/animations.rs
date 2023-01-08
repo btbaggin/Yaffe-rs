@@ -36,7 +36,7 @@ impl AnimationManager {
         AnimationManager { animations: vec!() }
     }
 
-    pub fn is_dirty(&self) -> bool { self.animations.len() > 0 }
+    pub fn is_dirty(&self) -> bool { !self.animations.is_empty() }
 
     pub fn animate(&mut self, widget: &impl crate::ui::FocusableWidget, field: FieldOffset, target: AnimationTarget, duration: f32) {
         let data = match target {
@@ -84,7 +84,7 @@ impl AnimationManager {
 
 //Inspired, but greatly simplified from https://github.com/Diggsey/rust-field-offset
 #[inline]
-fn apply_mut<'a, T: ?Sized, U>(offset: FieldOffset, x: &'a mut T) -> &'a mut U {
+fn apply_mut<T: ?Sized, U>(offset: FieldOffset, x: &mut T) -> &mut U {
     unsafe { &mut *apply_ptr_mut(offset, x) }
 }
 
@@ -99,7 +99,7 @@ fn apply_ptr<T, U>(offset: FieldOffset, x: *const T) -> *const U {
 }
 
 #[inline]
-fn apply<'a, T, U>(offset: FieldOffset, x: &'a T) -> &'a U {
+fn apply<T, U>(offset: FieldOffset, x: &T) -> &U {
     unsafe { &*apply_ptr(offset, x) }
 }
 
@@ -112,7 +112,7 @@ macro_rules! offset_of {
             let uninit = std::mem::MaybeUninit::<$t>::uninit();
             let base_ptr = uninit.as_ptr();
             let field_ptr = memoffset::raw_field!(base_ptr, $t, $f);
-            (field_ptr as usize).wrapping_sub(base_ptr as usize) as crate::ui::FieldOffset
+            (field_ptr as usize).wrapping_sub(base_ptr as usize) as $crate::ui::FieldOffset
         }
     }};
     ($t: path => $f: ident: $($rest: tt)*) => {
