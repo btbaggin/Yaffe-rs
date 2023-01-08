@@ -69,9 +69,8 @@ impl Widget for InfoPane {
                 }
                 
                 //Clip text so when it scrolls it wont render above the banner
-                graphics.set_clip(Some(Rect::point_and_size(LogicalPosition::new(bounds.left(), top), bounds.size())));
-                graphics.draw_text(LogicalPosition::new(left, bounds.top_left().y + self.y_offset + top), get_font_color(&state.settings), &name_label);
-                graphics.set_clip(None);
+                let clip = Rect::point_and_size(LogicalPosition::new(bounds.left(), top), bounds.size());
+                graphics.draw_text_cropped(LogicalPosition::new(left, bounds.top_left().y + self.y_offset + top), clip, get_font_color(&state.settings), &name_label);
             }
         }
     }

@@ -27,15 +27,9 @@ impl<'a> Graphics<'a> {
     pub fn draw_line(&mut self, pos1: LogicalPosition, pos2: LogicalPosition, width: f32, color: Color) {
         self.graphics.draw_line(pos1.to_physical(self.scale_factor), pos2.to_physical(self.scale_factor), width, color);
     }
-    pub fn set_clip(&mut self, rect: Option<Rect>) {
-        use speedy2d::shape::Rectangle;
-        if let Some(rect) = rect {
-            let rect = rect.to_physical(self.scale_factor);
-            let clip = Rectangle::from_tuples((rect.top_left().x as i32, rect.top_left().y as i32), (rect.bottom_right().x as i32, rect.bottom_right().y as i32));
-            self.graphics.set_clip(Some(clip));
-        } else {
-            self.graphics.set_clip(None);
-        }
+    pub fn draw_text_cropped(&mut self, position: LogicalPosition, rect: Rect, color: Color, text: &Rc<speedy2d::font::FormattedTextBlock>) {
+        self.graphics.draw_text_cropped(position.to_physical(self.scale_factor), rect.to_physical(self.scale_factor), color, text);
+
     }
 }
 impl<'a> Deref for Graphics<'a> {

@@ -47,9 +47,7 @@ impl Control for TextBox {
 
         //Clip text so it doesnt render outside box
         let clip = Rect::new(LogicalPosition::new(box_left, container.top()), LogicalPosition::new(container.right(), container.top() + height));
-        graphics.set_clip(Some(clip));
-        graphics.draw_text(LogicalPosition::new(origin_x, control.top()), get_font_color(settings), &text);
-        graphics.set_clip(None);
+        graphics.draw_text_cropped(LogicalPosition::new(origin_x, control.top()), clip, get_font_color(settings), &text);
 
         if self.focused {
             graphics.draw_line(LogicalPosition::new(cursor_x, control.top() + 2.), LogicalPosition::new(cursor_x, control.bottom() - 2.), 2., get_font_color(settings));
