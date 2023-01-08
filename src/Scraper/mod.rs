@@ -7,7 +7,7 @@ use crate::data::GameInfo;
 type ServiceResult<T> = Result<T, ServiceError>;
 
 //https://api.thegamesdb.net/
-const GOOGLE_API_KEY: &'static str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../../google_api_key.txt")) };
+const GOOGLE_API_KEY: &'static str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../google_api_key.txt")) };
 
 mod games_db;
 pub use games_db::{search_game, search_platform};

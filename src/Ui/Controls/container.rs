@@ -1,9 +1,8 @@
-use crate::ui::{Control, InputControl};
+use crate::ui::{Control, InputControl, MARGIN};
 use crate::input::Actions;
 use crate::{Rect, LogicalSize};
 use crate::settings::SettingsFile;
 use std::collections::HashMap;
-use crate::ui::MARGIN;
 
 enum ContainerDirection {
     Horizontal,

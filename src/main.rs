@@ -16,6 +16,7 @@ use crate::assets::AssetPathType;
 
 const CARGO_PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const UPDATE_FILE_PATH: &'static str = "./yaffe-rs.update";
+const UPDATE_TIMER: f32 = 60. * 60.;
 
 #[macro_use]
 extern crate dlopen_derive;
@@ -129,15 +130,15 @@ impl windowing::WindowHandler for ui::WidgetTree {
         crate::assets::clear_old_cache(&self.data);
 
         //Check for updates once every hour if it hasnt been applied already
-        if self.data.update_timer != f32::NAN {
+        if self.data.update_timer != f32::MIN {
             self.data.update_timer -= delta_time;
             if self.data.update_timer < 0. {
                 let lock = self.data.queue.lock().log_and_panic();
                 let mut queue = lock.borrow_mut();
 
                 let applied = scraper::check_for_updates(&mut queue).log("Error checking for updates");
-                if applied { self.data.update_timer = f32::NAN; }
-                else { self.data.update_timer = 60. * 60.; }
+                if applied { self.data.update_timer = f32::MIN; }
+                else { self.data.update_timer = UPDATE_TIMER; }
             }
         }
 
@@ -166,6 +167,7 @@ impl windowing::WindowHandler for ui::WidgetTree {
             //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
+                // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
                 ui::render_modal(&self.data.settings, m, &mut graphics);
             }
@@ -299,9 +301,7 @@ fn on_menu_close(state: &mut YaffeState, result: ui::ModalResult, content: &Box<
                 let content = Box::new(modals::SetRestrictedModal::new());
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(restrictions::on_restricted_modal_close))
             },
-            "Scan For New Roms" => {
-                scan_new_files(state);
-            },
+            "Scan For New Roms" => scan_new_files(state),
             "Exit Yaffe" => state.running = false, 
             "Shut Down" => { 
                 if let Some(_) = crate::platform_layer::shutdown().display_failure("Failed to shut down", state) {

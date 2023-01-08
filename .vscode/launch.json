@@ -11,16 +11,16 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=yaffe-rs",
+                    "--bin=yaffe",
                     "--package=yaffe-rs"
                 ],
                 "filter": {
-                    "name": "yaffe-rs",
+                    "name": "yaffe",
                     "kind": "bin"
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}/yaffe-rs/"
+            "cwd": "${workspaceFolder}"
         },
     ]
 }

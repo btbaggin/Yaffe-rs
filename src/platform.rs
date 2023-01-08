@@ -1,8 +1,9 @@
-use crate::assets::AssetPathType;
-use crate::{YaffeState};
+use crate::YaffeState;
 use crate::plugins::Plugin;
 use crate::logger::PanicLogEntry;
+use crate::assets::AssetPathType;
 use super::{Platform, Executable};
+use yaffe_plugin::{PathType, YaffePluginItem};
 use std::convert::{TryFrom, TryInto};
 use std::cell::RefCell;
 use std::path::Path;
@@ -72,7 +73,7 @@ impl Platform {
     pub fn new(id: i64, name: String) -> Platform {
         super::Platform {
             id: Some(id),
-            name: name,
+            name,
             apps: vec!(),
             kind: PlatformType::Emulator,
             plugin_index: 0,
@@ -82,20 +83,20 @@ impl Platform {
     pub fn recents(name: String) -> Platform {
         super::Platform {
             id: None,
-            name: name,
+            name,
             apps: vec!(),
             kind: PlatformType::Recents,
             plugin_index: 0,
         }
     }
 
-    pub fn plugin(index: usize, name: String) -> Platform {
+    pub fn plugin(plugin_index: usize, name: String) -> Platform {
         super::Platform {
             id: None,
-            name: name,
+            name,
             apps: vec!(),
             kind: PlatformType::Plugin,
-            plugin_index: index,
+            plugin_index,
         }
     }
 
@@ -113,12 +114,12 @@ impl Platform {
 }
 
 impl Executable {
-    pub fn plugin_item(platform_index: usize, item: yaffe_plugin::YaffePluginItem) -> Self {
+    pub fn plugin_item(platform_index: usize, item: YaffePluginItem) -> Self {
         let boxart = match item.thumbnail {
-            yaffe_plugin::PathType::Url(s) => {
+            PathType::Url(s) => {
                 AssetPathType::Url(s.clone())
             },
-            yaffe_plugin::PathType::File(s) => {
+            PathType::File(s) => {
                 let canon = std::fs::canonicalize(format!("./plugins/{}", s)).unwrap();
                 let path = canon.to_string_lossy();
                 AssetPathType::File(path.to_string())
@@ -189,7 +190,7 @@ pub fn scan_new_files(state: &mut YaffeState) {
                     let file = path.file_name().unwrap().to_string_lossy();
                     let name = path.file_stem().unwrap().to_string_lossy();
                     let name = clean_file_name(&name);
-                    crate::logger::info!("Found local game {}", name);
+                    crate::logger::info!("Found local game {name}");
                     
                     let lock = state.queue.lock().log_and_panic();
                     let mut queue = lock.borrow_mut();
@@ -197,7 +198,7 @@ pub fn scan_new_files(state: &mut YaffeState) {
                     let id = p.id.unwrap();
                     let exists = crate::data::GameInfo::exists(id, &file).log_and_panic();
                     if !exists {
-                        crate::logger::info!("{} not found in database, performing search", name);
+                        crate::logger::info!("{name} not found in database, performing search");
                         queue.send(crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), id))).unwrap();
                     }
                 }

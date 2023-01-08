@@ -1,7 +1,7 @@
 use super::{ServiceResult, ServiceResponse, GameScrapeResult, get_null_string};
 use crate::data::{PlatformInfo, GameInfo};
 
-const GAMESDB_API_KEY: &'static str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../../api_key.txt")) };
+const GAMESDB_API_KEY: &'static str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../api_key.txt")) };
 
 pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
     crate::logger::info!("Searching for game {}", name);
@@ -27,7 +27,7 @@ pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<Serv
 
         //Get the image data for the games
         let resp = crate::json_request!("https://api.thegamesdb.net/v1/Games/Images", 
-                        &[("games_id", &*ids), ("filter[type]", "boxart"), ("apikey", GAMESDB_API_KEY)]);
+                                        &[("games_id", &*ids), ("filter[type]", "boxart"), ("apikey", GAMESDB_API_KEY)]);
 
         let images = &resp["data"]["images"];
         for game in array {

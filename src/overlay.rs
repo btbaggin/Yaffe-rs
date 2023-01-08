@@ -1,6 +1,9 @@
 use crate::{Rect, PhysicalSize, LogicalPosition};
 use crate::logger::LogEntry;
 use crate::ui;
+use crate::windowing::WindowHelper;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
@@ -12,7 +15,7 @@ pub struct OverlayWindow {
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
-    pub fn new(settings: crate::settings::SettingsFile) -> std::rc::Rc<std::cell::RefCell<OverlayWindow>> {
+    pub fn new(settings: crate::settings::SettingsFile) -> Rc<RefCell<OverlayWindow>> {
         let overlay = OverlayWindow {
             modal: ui::Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
             process: None,
@@ -20,7 +23,7 @@ impl OverlayWindow {
             settings: settings,
         };
   
-        std::rc::Rc::new(std::cell::RefCell::new(overlay))
+        Rc::new(RefCell::new(overlay))
     }
 
     pub fn is_active(&self) -> bool {
@@ -35,7 +38,7 @@ impl OverlayWindow {
     /// Checks if a process is currently running
     /// If if has been killed in the background it will set
     /// process = None and hide the overlay
-    pub fn process_is_running(&mut self, helper: &mut crate::windowing::WindowHelper) -> bool {
+    pub fn process_is_running(&mut self, helper: &mut WindowHelper) -> bool {
         if let Some(process) = &mut self.process {
             match process.try_wait() { 
                 Ok(None) => true,
@@ -57,12 +60,12 @@ impl OverlayWindow {
     }
 
     /// Shows the overlay if possible
-    pub fn toggle_visibility(&mut self, helper: &mut crate::windowing::WindowHelper) {
+    pub fn toggle_visibility(&mut self, helper: &mut WindowHelper) {
         self.showing = !self.showing;
         helper.set_visibility(self.showing);
     }
 
-    fn hide(&mut self, helper: &mut crate::windowing::WindowHelper) {
+    fn hide(&mut self, helper: &mut WindowHelper) {
         helper.set_visibility(false);
         self.showing = false;
     }
@@ -78,11 +81,11 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         true
     }
 
-    fn on_fixed_update(&mut self, helper: &mut crate::windowing::WindowHelper, _: f32) -> bool {
+    fn on_fixed_update(&mut self, helper: &mut WindowHelper, _: f32) -> bool {
         !self.process_is_running(helper)
     }
 
-    fn on_input(&mut self, helper: &mut crate::windowing::WindowHelper, action: &crate::Actions) -> bool {
+    fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool {
         if let None = self.process { return false; }
         match action {
             crate::Actions::ToggleOverlay => {

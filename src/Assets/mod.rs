@@ -11,6 +11,7 @@ mod image;
 mod atlas;
 pub use font::{request_font, Fonts};
 pub use self::image::{request_asset_image, request_image, load_image_async, Images, YaffeTexture};
+pub use yaffe_plugin::PathType as AssetPathType;
 use self::image::preload_image;
 use atlas::load_texture_atlas;
 
@@ -24,11 +25,6 @@ pub enum AssetTypes {
     Font(Fonts),
 }
 
-#[derive(Debug, Clone)]
-pub enum AssetPathType {
-    File(String),
-    Url(String),
-}
 
 pub enum AssetData {
     Image(YaffeTexture),

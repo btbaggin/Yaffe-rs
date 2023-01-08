@@ -1,7 +1,6 @@
-use yaffe_plugin::YaffePlugin;
+use yaffe_plugin::{YaffePlugin, YaffePluginItem, SelectedAction};
 use dlopen::wrapper::{Container, WrapperApi};
 use crate::logger::{PanicLogEntry, UserMessage, info};
-pub use yaffe_plugin::*;
 use std::ops::{DerefMut, Deref};
 
 #[derive(Copy, Clone)]
@@ -25,7 +24,7 @@ pub struct Plugin {
 	navigation_state: Vec<String>
 }
 impl Plugin {
-	pub fn load(&mut self, kind: NavigationAction, size: u32) -> Result<Vec<yaffe_plugin::YaffePluginItem>, String> {
+	pub fn load(&mut self, kind: NavigationAction, size: u32) -> Result<Vec<YaffePluginItem>, String> {
 		match kind {
 			NavigationAction::Initialize => {
 				info!("Plugin requested initial load");
@@ -66,11 +65,11 @@ impl Plugin {
 	pub fn select(&mut self, name: &str, path: &str) -> Option<std::io::Result<std::process::Child>> {
 		let action = self.data.on_selected(name, path);
 		match action {
-			yaffe_plugin::SelectedAction::Load(state) => {
+			SelectedAction::Load(state) => {
 				self.navigation_state.push(state);
 				None
 			},
-			yaffe_plugin::SelectedAction::Start(mut p) => Some(p.spawn()),
+			SelectedAction::Start(mut p) => Some(p.spawn()),
 		}
 	}
 }
@@ -90,7 +89,7 @@ impl DerefMut for Plugin {
 
 #[derive(WrapperApi)]
 struct PluginWrapper {
-	initialize: fn() -> Box<dyn yaffe_plugin::YaffePlugin>,
+	initialize: fn() -> Box<dyn YaffePlugin>,
 }
 
 pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
