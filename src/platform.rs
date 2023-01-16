@@ -18,7 +18,7 @@ pub enum PlatformType {
 }
 
 #[repr(u8)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Rating {
     Everyone,
     Everyone10,

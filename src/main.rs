@@ -11,7 +11,6 @@ use crate::assets::AssetPathType;
 
 /* 
  * TODO
- * custom modals for platform scraping
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

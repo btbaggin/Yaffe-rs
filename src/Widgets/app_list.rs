@@ -36,8 +36,11 @@ impl crate::ui::Widget for AppList {
                 true 
             }
             Actions::Accept => {
-                if crate::restrictions::verify_restricted_action(state) {
-                    start_game(state, handler)
+                if let Some(exe) = state.get_executable() {
+                   if exe.rating < crate::platform::Rating::Mature ||
+                      crate::restrictions::verify_restricted_action(state) {
+                        start_game(state, handler)
+                   }
                 }
                 true
             },
@@ -204,7 +207,6 @@ impl AppList {
             //If an aspect is wider than it is tall, it is > 1
             //If the two aspect ratios are on other sides of one, it means we need to scale
             if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
-                //TODO this doesn't work
                 tile_size.x = tile_size.y * real_aspect;
             }
         

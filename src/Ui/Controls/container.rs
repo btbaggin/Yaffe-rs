@@ -104,7 +104,6 @@ impl Container {
 }
 impl Control for Container {
     fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> LogicalSize {
-        //TODO this causes double margins. Can i fix that in a way thats like... nice? Because there are hacky approaches
         let top_left = *container.top_left() + crate::LogicalPosition::new(MARGIN, MARGIN);
         match self.direction {
             ContainerDirection::Vertical => {

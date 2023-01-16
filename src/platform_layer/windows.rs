@@ -33,8 +33,8 @@ impl ComString {
 	fn new(string: &str) -> ComString {
     	use std::iter::once;
 		let wide: Vec<u16> = std::ffi::OsStr::new(string).encode_wide().chain(once(0)).collect();
-		let root = unsafe { winapi::um::oleauto::SysAllocString(wide.as_ptr()) };
-		ComString { string: root }
+		let string = unsafe { winapi::um::oleauto::SysAllocString(wide.as_ptr()) };
+		ComString { string }
 	}
 }
 impl Drop for ComString {
@@ -106,7 +106,7 @@ pub(super) fn get_run_at_startup(task: &str) -> StartupResult<bool> {
 									&ITaskService::uuidof(), 
 									p_service.as_mut() as *mut *mut std::os::raw::c_void))?;
 
-	// //  Connect to the task service.
+	// Connect to the task service.
 	safe_com_call!(p_service.Connect(Default::default(), Default::default(), Default::default(), Default::default()))?;
 
 	let mut p_folder: ComPtr<ITaskFolder> = ComPtr::default();
@@ -135,7 +135,7 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 									&ITaskService::uuidof(), 
 									p_service.as_mut() as *mut *mut std::os::raw::c_void))?;
 
-	// //  Connect to the task service.
+	// Connect to the task service.
 	safe_com_call!(p_service.Connect(Default::default(), Default::default(), Default::default(), Default::default()))?;
 
 	let mut p_folder: ComPtr<ITaskFolder> = ComPtr::default();
@@ -157,21 +157,21 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 		safe_com_call!(p_task_definition.get_Principal(p_principal.as_mut()))?;
 		safe_com_call!(p_principal.put_RunLevel(TASK_RUNLEVEL_HIGHEST))?;
 
-		// //  Create the settings for the task
+		// Create the settings for the task
 		let mut p_settings: ComPtr<ITaskSettings> = ComPtr::default();
 		safe_com_call!(p_task_definition.get_Settings(p_settings.as_mut()))?;
 
-		// //  Set setting values for the task. 
+		// Set setting values for the task. 
 		safe_com_call!(p_settings.put_StartWhenAvailable(VARIANT_TRUE))?;
 
-		// //  Add the logon trigger to the task.
+		// Add the logon trigger to the task.
 		let mut p_trig_collection: ComPtr<ITriggerCollection> = ComPtr::default();
 		safe_com_call!(p_task_definition.get_Triggers(p_trig_collection.as_mut()))?;
 
 		let mut p_trigger: ComPtr<ITrigger> = ComPtr::default();
 		safe_com_call!(p_trig_collection.Create(TASK_TRIGGER_LOGON, p_trigger.as_mut()))?;
 
-		// //  Add an Action to the task.
+		// Add an Action to the task.
 		let mut p_action_collection: ComPtr<IActionCollection> = ComPtr::default();
 		safe_com_call!(p_task_definition.get_Actions(p_action_collection.as_mut()))?;
 
