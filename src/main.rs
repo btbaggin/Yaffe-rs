@@ -11,6 +11,7 @@ use crate::assets::AssetPathType;
 
 /* 
  * TODO
+ * Fix selected_app when moving between large things
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -25,7 +26,7 @@ mod assets;
 mod data;
 mod modals;
 mod platform;
-mod platform_layer;
+mod os;
 mod overlay;
 mod restrictions;
 mod scraper;
@@ -120,8 +121,6 @@ impl YaffeState {
         }
         None
     }
-
-
 }
 
 impl windowing::WindowHandler for ui::WidgetTree {
@@ -193,8 +192,8 @@ impl windowing::WindowHandler for ui::WidgetTree {
                 items.push(String::from("Exit Yaffe"));
                 items.push(String::from("Shut Down"));
     
-                let l = Box::new(modals::ListModal::new(items));
-                display_modal(&mut self.data, "Menu", None, l, Some(on_menu_close));
+                let list = Box::new(modals::ListModal::new(items));
+                display_modal(&mut self.data, "Menu", None, list, Some(on_menu_close));
                 true
             },
             Actions::ToggleOverlay => { false /* Overlay handles this */ }
@@ -218,9 +217,6 @@ impl windowing::WindowHandler for ui::WidgetTree {
         plugins::unload(&mut self.data.plugins);
     }
 
-    fn on_resize(&mut self, _: u32, _: u32) { 
-    }
-
     fn is_window_dirty(&self) -> bool {
         self.needs_new_frame()
     }
@@ -231,7 +227,7 @@ fn main() {
     
     //Check for and apply updates on startup
     if std::path::Path::new(UPDATE_FILE_PATH).exists() {
-        match platform_layer::update() { 
+        match os::update() { 
             Ok(_) => return,
             Err(e) => error!("Updated file found, but unable to run updater {:?}", e),
         }
@@ -261,7 +257,7 @@ fn main() {
     ui.focus(std::any::TypeId::of::<PlatformList>());
  
     let input_map = input::get_input_map();
-    let gamepad = platform_layer::initialize_gamepad().log_message_and_panic("Unable to initialize input");
+    let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
 
     plugins::load_plugins(&mut ui.data, "./plugins");
     windowing::create_yaffe_windows(notify, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
@@ -304,7 +300,7 @@ fn on_menu_close(state: &mut YaffeState, result: ui::ModalResult, content: &dyn 
             "Scan For New Roms" => scan_new_files(state),
             "Exit Yaffe" => state.running = false, 
             "Shut Down" => { 
-                if crate::platform_layer::shutdown().display_failure("Failed to shut down", state).is_some() {
+                if os::shutdown().display_failure("Failed to shut down", state).is_some() {
                     state.running = false;
                 }
             },

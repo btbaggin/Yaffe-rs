@@ -1,12 +1,14 @@
 use std::{collections::HashMap, path::PathBuf};
 use speedy2d::color::Color;
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub enum PathType {
     File(PathBuf),
     Url(PathBuf),
 }
 pub type SettingsResult<T> = Result<T, SettingLoadError>;
+#[repr(C)]
 #[derive(Debug)]
 pub enum SettingLoadError {
     IncorrectFormat,
@@ -30,6 +32,7 @@ impl From<std::num::ParseFloatError> for SettingLoadError {
     }
 }
 
+#[repr(C)]
 #[derive(Clone)]
 pub enum SettingValue {
     String(String),
@@ -73,11 +76,13 @@ pub fn color_from_string(value: &str) -> SettingsResult<Color> {
                 values[3].trim().parse::<f32>()?))
 }
 
+#[repr(C)]
 pub enum SelectedAction {
     Start(std::process::Command),
     Load(String),
 }
 
+#[repr(C)]
 pub struct YaffePluginItem {
     pub name: String,
     pub path: String,
@@ -100,6 +105,7 @@ impl YaffePluginItem {
 pub type InitializeResult = Result<(), String>;
 pub type LoadResult = Result<LoadedItems, String>;
 
+#[repr(C)]
 pub struct LoadedItems {
     pub results: Vec<YaffePluginItem>,
     pub next_page: String,

@@ -2,6 +2,7 @@ use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, Logica
 use crate::widgets::AppTile;
 use crate::Rect;
 use crate::logger::{PanicLogEntry, LogEntry, UserMessage};
+use std::collections::HashMap;
 
 const MARGIN: f32 = 0.1;
 
@@ -10,7 +11,7 @@ widget!(pub struct AppList {
     tiles: Vec<AppTile> = Vec::<AppTile>::new(),
     tiles_x: isize = 0,
     tiles_y: isize = 0,
-    first_visible: isize = 0,
+    first_visible: HashMap<usize, isize> = HashMap::new(),
     tile_animation: f32 = 0.
 });
 
@@ -113,6 +114,7 @@ impl AppList {
         let platform = state.get_platform();
 
         //Calculate total size for inner list
+        let first_visible = *self.first_visible.entry(state.selected_platform).or_insert(0);
         let margin_x = rect.width() * MARGIN;
         let margin_y = rect.height() * MARGIN;
         let list_rect = Rect::from_tuples((rect.left() + margin_x, rect.top() + margin_y), (rect.right() - margin_x, rect.bottom() - margin_y));
@@ -135,7 +137,7 @@ impl AppList {
             AppList::size_individual_tile(state, graphics, tile, &ideal_tile_size);
 
             let x = (effective_i % self.tiles_x) as f32;
-            let y = ((effective_i / self.tiles_x) - (self.first_visible / self.tiles_x)) as f32;
+            let y = ((effective_i / self.tiles_x) - (first_visible / self.tiles_x)) as f32;
 
             let offset = (ideal_tile_size - tile.size) / 2.0;
 
@@ -214,14 +216,14 @@ impl AppList {
         }
     }
 
-    fn increment_index(&self, index: usize, amount: i32, forward: bool) -> (usize, isize) {
+    fn increment_index(&self, index: usize, first_visible: isize, amount: i32, forward: bool) -> (usize, isize) {
         let mut index = index as isize;
         let old_index = index;
         let one = if forward { 1 } else { -1 };
 
         //Since certain roms could be filtered out,
 	    //we will loop until we have incremented the proper amount of times
-        let mut first_visible = self.first_visible;
+        let mut first_visible = first_visible;
         for _ in 0..amount {
 	        //Move until we have found an unfiltered rom
             let mut new_index = index + one;
@@ -250,18 +252,19 @@ impl AppList {
 
     fn update_position(&mut self, state: &mut YaffeState, amount: i32, forward: bool, handler: &mut DeferredAction) {
         let old_index = state.selected_app;
-        let (index, visible) = self.increment_index(state.selected_app, amount, forward);
+        let first_visible = self.first_visible[&state.selected_platform];
+        let (index, visible) = self.increment_index(state.selected_app, first_visible, amount, forward);
         if old_index != index {
             state.selected_app = index;
-            self.first_visible = visible;
+            *self.first_visible.get_mut(&state.selected_platform).unwrap() = visible;
 
             self.tile_animation = 0.;
             let offset = crate::offset_of!(AppList => tile_animation);
             self.animate(offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
 
             if let crate::platform::PlatformType::Plugin = state.get_platform().kind {
-                if self.first_visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {
-                    handler.load_plugin(crate::plugins::NavigationAction::Fetch);
+                if visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {
+                    handler.load_plugin(crate::plugins::NavigationAction::Load);
                 }
             }
         }
@@ -279,7 +282,7 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
 
                     match process {
                         None => {
-                            handler.load_plugin(crate::plugins::NavigationAction::Refresh);
+                            handler.load_plugin(crate::plugins::NavigationAction::Load);
                             handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
                             return;
                         },

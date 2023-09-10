@@ -15,7 +15,7 @@ impl SettingsModal {
     pub fn new(settings: &SettingsFile) -> SettingsModal {
         let mut controls = Container::vertical(1.);
         let mut setting_names = settings.get_full_settings();
-        let set = crate::platform_layer::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
+        let set = crate::os::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
         controls.add_field("run_at_startup", CheckBox::new("run_at_startup".to_string(), set));
 
         let mut names = vec!();
@@ -66,7 +66,7 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
             match &name[..] {
                 "run_at_startup" => {
                     let value = bool::from_str(control.value()).unwrap();
-                    crate::platform_layer::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state)
+                    crate::os::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state)
                 },
                 "logging_level" => {
                     crate::logger::set_log_level(control.value());

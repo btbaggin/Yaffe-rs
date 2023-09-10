@@ -84,16 +84,16 @@ macro_rules! safe_com_call {
 		let hr = unsafe { $method($($parm)*) };
 		match hr {
 			0 => Ok(()),
-			winapi::shared::winerror::E_ACCESSDENIED => Err(crate::platform_layer::StartupError::AccessDenied),
-			_ => Err(crate::platform_layer::StartupError::Other(format!("{}: {}", stringify!($method), hr))),
+			winapi::shared::winerror::E_ACCESSDENIED => Err(crate::os::StartupError::AccessDenied),
+			_ => Err(crate::os::StartupError::Other(format!("{}: {}", stringify!($method), hr))),
 		}
 	}};
 	($object:ident.$method:ident($($parm:tt)*)) => {{
 		let hr = unsafe { $object.$method($($parm)*) };
 		match hr {
 			0 => Ok(()),
-			winapi::shared::winerror::E_ACCESSDENIED => Err(crate::platform_layer::StartupError::AccessDenied),
-			_ => Err(crate::platform_layer::StartupError::Other(format!("{}: {}", stringify!($method), hr))),
+			winapi::shared::winerror::E_ACCESSDENIED => Err(crate::os::StartupError::AccessDenied),
+			_ => Err(crate::os::StartupError::Other(format!("{}: {}", stringify!($method), hr))),
 		}
 	}};
 }

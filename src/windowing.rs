@@ -37,7 +37,6 @@ pub(crate) trait WindowHandler {
     fn on_fixed_update(&mut self, _: &mut WindowHelper, _: f32) -> bool { false }
     fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
-    fn on_resize(&mut self, _: u32, _: u32) { }
     fn on_stop(&mut self) { }
     fn is_window_dirty(&self) -> bool {
         false
@@ -161,8 +160,6 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                         let context = ct.get_current(window.context_id).unwrap();
 
                         window.size = PhysicalSize::new(new_inner_size.width as f32, new_inner_size.height as f32);
-
-                        window.handler.borrow_mut().on_resize(new_inner_size.width, new_inner_size.height);
                         context.windowed().window().request_redraw();
                     }
                 },
@@ -177,8 +174,6 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
 
                         context.windowed().resize(physical_size);
                         window.renderer.set_viewport_size_pixels(Vector2::new(physical_size.width, physical_size.height));
-                        window.handler.borrow_mut().on_resize(physical_size.width, physical_size.height);
-
                         context.windowed().window().request_redraw();
                     }
                 },
@@ -204,7 +199,7 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                             if let Some(window) = windows.get_mut(&window_id) {
                                 let context = ct.get_current(window.context_id).unwrap();
 
-                                match crate::platform_layer::get_clipboard(context.windowed().window()) {
+                                match crate::os::get_clipboard(context.windowed().window()) {
                                     Some(clip) => crate::Actions::KeyPress(InputType::Paste(clip)),
                                     _ => return,
                                 }

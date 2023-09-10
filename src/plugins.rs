@@ -5,9 +5,7 @@ use std::ops::{DerefMut, Deref};
 
 #[derive(Copy, Clone)]
 pub enum NavigationAction {
-	Initialize,
-	Refresh,
-	Fetch,
+	Load,
 	Back,
 }
 
@@ -26,18 +24,9 @@ pub struct Plugin {
 impl Plugin {
 	pub fn load(&mut self, kind: NavigationAction, size: u32) -> Result<Vec<YaffePluginItem>, String> {
 		match kind {
-			NavigationAction::Initialize => {
-				info!("Plugin requested initial load");
-
-				self.navigation_state.clear();
-				self.needs_load = true;
-			},
-			NavigationAction::Refresh => {
-				info!("Plugin requested refresh");
-				self.needs_load = true;
-			},
-			NavigationAction::Fetch => {
+			NavigationAction::Load => {
 				info!("Plugin requested append");
+				self.needs_load = true;
 			},
 			NavigationAction::Back => {
 				info!("Plugin requested back action");
@@ -135,6 +124,7 @@ pub fn load_plugins(state: &mut crate::YaffeState, directory: &str) {
 					let settings = state.settings.plugin(&plugin.file);
 					if plugin.data.initialize(&settings).display_failure(&message, state).is_some() {
 						state.plugins.push(std::cell::RefCell::new(plugin));
+
 					}
 				}
 			}
@@ -150,10 +140,10 @@ pub fn load_plugin_items(kind: NavigationAction, state: &mut crate::YaffeState) 
 		let items = plugin.borrow_mut().load(kind, (x * y) as u32);
 		if let Some(items) = items.display_failure("Error loading plugin", state) {
 			let platform = &mut state.platforms[state.selected_platform];
-			match kind {
-				NavigationAction::Fetch => {}
-				_ => platform.apps.clear(),
-			}
+			// match kind {
+			// 	NavigationAction::Fetch => {}
+			// 	_ => platform.apps.clear(),
+			// }
 			for i in items {
 				platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
 			}

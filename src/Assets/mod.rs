@@ -143,8 +143,8 @@ fn asset_path_is_valid(path: &AssetPathType) -> bool {
 pub fn get_asset_path(platform: &str, name: &str) -> std::path::PathBuf {
     use std::path::Path;
 
-    let platform = Path::new("./Assets").join(crate::platform_layer::sanitize_file(platform));
-    let name = crate::platform_layer::sanitize_file(name);
+    let platform = Path::new("./Assets").join(crate::os::sanitize_file(platform));
+    let name = crate::os::sanitize_file(name);
     let name = format!("{name}.jpg");
     platform.join(name)
 }

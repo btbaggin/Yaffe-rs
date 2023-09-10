@@ -33,14 +33,15 @@ impl GameInfo {
         let rating = get_column!(row, i64, "Rating");
         let released = get_column!(row, String, "released");
         let filename = get_column!(row, String, "FileName");
+        let lastrun = get_column!(row, i64, "LastRun");
 
-        GameInfo { id, name, overview, players, filename, rating, released, platform, lastrun: 0 }
+        GameInfo { id, name, overview, players, filename, rating, released, platform, lastrun }
     }
 
     pub fn platform(&self) -> i64 { self.platform }
 
     pub fn get_all(platform: i64) -> Vec<GameInfo> {
-        const QS_GET_ALL_GAMES: &str = "SELECT ID, Name, Overview, Players, Rating, Released, FileName FROM Games WHERE Platform = @Platform";
+        const QS_GET_ALL_GAMES: &str = "SELECT ID, Name, Overview, Players, Rating, Released, FileName, LastRun FROM Games WHERE Platform = @Platform";
 
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_ALL_GAMES, platform);
@@ -71,7 +72,6 @@ impl GameInfo {
 
     /// Gets the most recent games launched from Yaffe
     pub fn get_recent(max: i64, map: &[Platform]) -> Vec<Executable> {
-        //TODO could we use lastrun field?
         const QS_GET_RECENT_GAMES: &str = "SELECT g.ID, g.Name, g.Overview, g.Players, g.Rating, g.FileName, g.Released, p.ID as PlatformID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT @Max";
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_RECENT_GAMES, max);
@@ -87,7 +87,7 @@ impl GameInfo {
             let index = map.iter().position(|s| s.id == Some(platform_id));
             if let Some(index) = index {
                 result.push(Executable::new_game(&info, index, boxart));
-            }
+        }
         });
 
         result
