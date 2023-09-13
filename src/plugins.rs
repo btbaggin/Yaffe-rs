@@ -140,10 +140,6 @@ pub fn load_plugin_items(kind: NavigationAction, state: &mut crate::YaffeState) 
 		let items = plugin.borrow_mut().load(kind, (x * y) as u32);
 		if let Some(items) = items.display_failure("Error loading plugin", state) {
 			let platform = &mut state.platforms[state.selected_platform];
-			// match kind {
-			// 	NavigationAction::Fetch => {}
-			// 	_ => platform.apps.clear(),
-			// }
 			for i in items {
 				platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
 			}

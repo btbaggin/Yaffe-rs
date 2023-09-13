@@ -4,7 +4,7 @@ use speedy2d::image::ImageHandle;
 use crate::pooled_cache::PooledCache;
 use crate::PhysicalRect;
 use crate::logger::PanicLogEntry;
-use super::{AssetSlot, AssetTypes, YaffeTexture, Images};
+use super::{AssetSlot, AssetTypes, YaffeTexture, PathType, Images};
 
 macro_rules! read_type {
     ($ty:ty, $file:expr, $index:expr) => {{
@@ -15,7 +15,7 @@ macro_rules! read_type {
         }};
 }
 
-pub fn load_texture_atlas<F>(map: &mut PooledCache<32, AssetTypes, AssetSlot>, image: Rc<ImageHandle>, path: &str, image_path: &str, image_map: F)
+pub fn load_texture_atlas<F>(map: &mut PooledCache<32, PathType, AssetSlot>, image: Rc<ImageHandle>, path: &str, image_path: &str, image_map: F)
     where F: Fn(&str) -> Images {
 
     let file = std::fs::read(path).log_and_panic();
@@ -46,6 +46,6 @@ pub fn load_texture_atlas<F>(map: &mut PooledCache<32, AssetTypes, AssetSlot>, i
 
         let image_type = image_map(name.as_str());
         let texture = YaffeTexture { image: image.clone(), bounds };
-        map.insert(AssetTypes::Image(image_type), AssetSlot::preloaded(image_path, texture));
+        map.insert(PathType::Static(AssetTypes::Image(image_type)), AssetSlot::preloaded(image_path, texture));
     }
 }

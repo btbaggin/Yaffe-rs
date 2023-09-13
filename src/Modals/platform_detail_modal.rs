@@ -52,14 +52,14 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
 
-        let state_ptr = crate::RawDataPointer::new(state);
         let lock = state.queue.lock().log_and_panic();
         let mut queue = lock.borrow_mut();
 
         let name = content.controls.by_tag("Name").unwrap();
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-        queue.send(crate::JobType::SearchPlatform((state_ptr, name.value().to_string(), exe.value().to_string(), args.value().to_string()))).unwrap();
+        let job = crate::Job::SearchPlatform { name: name.value().to_string(), path: exe.value().to_string(), args: args.value().to_string() };
+        queue.send(job).unwrap();
     }
 }
 

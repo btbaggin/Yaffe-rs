@@ -1,6 +1,5 @@
-use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, PhysicalSize};
+use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, PhysicalSize, Rect};
 use crate::widgets::AppTile;
-use crate::Rect;
 use crate::logger::{PanicLogEntry, LogEntry, UserMessage};
 use std::collections::HashMap;
 
@@ -190,30 +189,28 @@ impl AppList {
 
     fn size_individual_tile(state: &YaffeState, graphics: &mut crate::Graphics, tile: &mut AppTile, size: &LogicalSize) {
         let image = tile.get_image(state);
-        if let Ok(mut i) = image.try_borrow_mut() {
-            let mut tile_size = *size;
-            
-            let bitmap_size = if let Some(i) = crate::assets::request_asset_image(graphics, &mut i) {
-                    i.size()
-            } else {
-                crate::assets::request_image(graphics, crate::assets::Images::Placeholder).unwrap().size()
-            };
+        let mut tile_size = *size;
         
-            //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
-            //We wouldn't want vertical boxart to stretch to the horizontal dimensions
-            //This will scale boxart that is different aspect to fit within the tile_size.Height
-            let bitmap_size = bitmap_size.to_logical(graphics.scale_factor);
-            let real_aspect = bitmap_size.x / bitmap_size.y;
-            let tile_aspect = tile_size.x / tile_size.y;
-        
-            //If an aspect is wider than it is tall, it is > 1
-            //If the two aspect ratios are on other sides of one, it means we need to scale
-            if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
-                tile_size.x = tile_size.y * real_aspect;
-            }
-        
-            tile.size = tile_size
+        let bitmap_size = if let Some(i) = crate::assets::request_asset_image(graphics, &image) {
+                i.size()
+        } else {
+            crate::assets::request_image(graphics, crate::assets::Images::Placeholder).unwrap().size()
+        };
+    
+        //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)
+        //We wouldn't want vertical boxart to stretch to the horizontal dimensions
+        //This will scale boxart that is different aspect to fit within the tile_size.Height
+        let bitmap_size = bitmap_size.to_logical(graphics.scale_factor);
+        let real_aspect = bitmap_size.x / bitmap_size.y;
+        let tile_aspect = tile_size.x / tile_size.y;
+    
+        //If an aspect is wider than it is tall, it is > 1
+        //If the two aspect ratios are on other sides of one, it means we need to scale
+        if f32::is_sign_positive(real_aspect - 1.) != f32::is_sign_positive(tile_aspect - 1.) {
+            tile_size.x = tile_size.y * real_aspect;
         }
+    
+        tile.size = tile_size
     }
 
     fn increment_index(&self, index: usize, first_visible: isize, amount: i32, forward: bool) -> (usize, isize) {

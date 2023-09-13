@@ -1,7 +1,6 @@
 use super::{InputControl, Control, draw_label_and_box, get_accent_color, get_font_size};
-use crate::Actions;
 use crate::settings::SettingsFile;
-use crate::input::InputType;
+use crate::input::{InputType, Actions};
 use crate::utils::Rect;
 use glutin::event::VirtualKeyCode;
 

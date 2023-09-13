@@ -3,7 +3,7 @@ use crate::scraper::PlatformScrapeResult;
 use crate::input::Actions;
 use crate::settings::SettingsFile;
 use crate::modals::ListModal;
-use crate::assets::AssetPathType;
+use crate::assets::PathType;
 use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
 
 pub struct PlatformScraperModal {
@@ -45,7 +45,7 @@ impl ModalContent for PlatformScraperModal {
 fn build_container(item: &PlatformScrapeResult) -> Container {
     let mut main = Container::vertical(0.5);
     let mut top = Container::horizontal(0.25);
-    top.add(Image::new(AssetPathType::Url(item.boxart.clone())));
+    top.add(Image::new(PathType::Url(item.boxart.clone())));
 
     main.add(Label::new(item.info.platform.clone(), Some(crate::ui::TITLE_SIZE)));
     main.add(top);

@@ -4,7 +4,7 @@ use crate::scraper::GameScrapeResult;
 use crate::settings::SettingsFile;
 use crate::input::Actions;
 use crate::platform::Rating;
-use crate::assets::AssetPathType;
+use crate::assets::PathType;
 use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
 use std::convert::TryInto;
 
@@ -52,7 +52,7 @@ fn build_container(item: &GameScrapeResult) -> Container {
     let mut top = Container::horizontal(0.25);
     let mut details = Container::vertical(1.);
 
-    top.add(Image::new(AssetPathType::Url(item.boxart.clone())));
+    top.add(Image::new(PathType::Url(item.boxart.clone())));
     details.add(Label::simple(format!("Players: {}", item.info.players)));
     details.add(Label::simple(format!("Rating: {}", TryInto::<Rating>::try_into(item.info.rating).unwrap_or(Rating::NotRated))));
     details.add(Label::simple(format!("Released: {}", item.info.released)));

@@ -1,6 +1,4 @@
-use crate::Transparent;
-use crate::{YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize};
-use crate::Rect;
+use crate::{Transparent, YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize, Rect};
 use crate::assets::{request_asset_image, request_image, Images};
 use crate::ui::{get_font_color, get_font_size, MODAL_BACKGROUND};
 
@@ -108,30 +106,25 @@ impl AppTile {
         }
 
 
-        let slot = crate::assets::get_cached_file(&exe.boxart);
-        let slot = &mut slot.borrow_mut();
-
-        if let Some(i) = request_asset_image(graphics, slot) {
+        if let Some(i) = request_asset_image(graphics, &exe.boxart.clone()) {
             i.render(graphics, Rect::point_and_size(position, target_size));
         } else if let Some(i) = request_image(graphics, Images::Placeholder) {
             i.render(graphics, Rect::point_and_size(position, target_size));
         }
     }
 
-    pub fn get_image<'a>(&self, state: &YaffeState) -> &'a std::cell::RefCell<crate::assets::AssetSlot> {
+    pub fn get_image(&self, state: &YaffeState) -> crate::assets::PathType {
         let p = state.get_platform();
         let exe = &p.apps[self.index];
-        crate::assets::get_cached_file(&exe.boxart)
+        exe.boxart.clone()
     }
 
     pub fn get_image_size(&self, state: &YaffeState, graphics: &mut crate::Graphics,) -> PhysicalSize {
         let slot = self.get_image(state);
 
-        if let Ok(mut slot) = slot.try_borrow_mut() {
-            if let Some(i) = request_asset_image(graphics, &mut slot) {
-                return i.size()
-            }
-        } 
+        if let Some(i) = request_asset_image(graphics, &slot) {
+            return i.size()
+        }
 
         request_image(graphics, Images::Placeholder).unwrap().size()
     }

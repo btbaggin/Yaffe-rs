@@ -71,9 +71,11 @@ impl<const C: usize, K: Eq + Hash, T> PooledCache<C, K, T> {
         PooledCacheIter { pools: self.data.iter(), curr: None, pool_index: 0, index: 0 }
     }
 
-    pub fn insert(&mut self, file: K, data: T) {
-        if self.map.get(&file).is_some() { return }
+    pub fn exists(&self, file: &K) -> bool {
+        self.map.get(file).is_some()
+    }
 
+    pub fn insert(&mut self, file: K, data: T) {
         let _lock = self.lock.lock().unwrap();
         for (i, pool) in self.data.iter_mut().enumerate() {
             if pool.count < C {

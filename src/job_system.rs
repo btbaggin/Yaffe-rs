@@ -1,37 +1,18 @@
+use std::path::PathBuf;
 use std::thread;
 use std::cell::RefCell;
 use std::sync::Arc;
+use crate::assets::PathType;
 use crate::scraper::*;
-use crate::modals::{GameScraperModal, PlatformScraperModal, on_platform_found_close};
-use crate::ui::display_modal;
 use crate::logger::*;
 
-pub type JobQueue = spmc::Sender<JobType>;
+pub type JobQueue = spmc::Sender<Job>;
+pub type JobResults = std::sync::mpsc::Receiver<JobResult>;
 pub type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<JobQueue>>>;
-
-//This is used to pass a raw pointer to the assetslot between threads
-//Use very rarely when mutability and lifetimes cause issues
-//Passing YaffeState around is currently safe due to internal structures being threadsafe
-#[derive(Clone, Copy)]
-pub struct RawDataPointer(*mut u8);
-unsafe impl std::marker::Send for RawDataPointer {}
-impl RawDataPointer {
-    pub fn new<T>(item: &mut T) -> RawDataPointer {
-        unsafe {
-            let layout = std::alloc::Layout::new::<usize>();
-            let slot_ptr = std::alloc::alloc(layout);
-            *(slot_ptr as *mut &T) = item;
-            RawDataPointer(slot_ptr)
-        }
-    }
-    pub fn get_inner<'a, T>(&self) -> &'a mut T {
-        unsafe { *(self.0 as *mut &mut T) }
-    }
-}
 
 /// Starts a single producer multiple consumer job threading system
 /// Jobs can be sent to this system using the returned JobQueue
-pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
+pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<JobResult>) {
     const NUM_THREADS: u32 = 8;
 
     let (tx, rx) = spmc::channel();
@@ -47,80 +28,78 @@ pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<u8>) {
     (tx, notify_rx)
 }
 
-fn poll_pending_jobs(queue: spmc::Receiver<JobType>, notify: std::sync::mpsc::Sender<u8>) {
+fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender<JobResult>) {
+    let send_reply = |result| {
+        notify.send(result).log("Unable to notify main loop about finished job");
+    };
+
     while let Ok(msg) = queue.recv() {
+        crate::logger::info!("Processing job {:?}", msg);
         match msg {
-            JobType::LoadImage((path, slot)) => crate::assets::load_image_async(path, slot),
+            Job::LoadImage { key, file } => {
+                if let Some((data, dimensions)) = crate::assets::load_image_async(&key, file) {
+                    send_reply(JobResult::LoadImage { data, dimensions, key });
+                }
+            },
     
-            JobType::DownloadUrl((url, path)) => {
-                crate::logger::info!("Downloading file from {}", url.to_str().unwrap());
+            Job::DownloadUrl { url, file_path } => crate::scraper::download_file(url, file_path),
 
-                match crate::scraper::send_request::<()>(url.to_str().unwrap(), None) {
-                    Err(e) => error!("{:?}", e),
-                    Ok(bytes) => {
-                        //Download and write file to disk
-                        let file = bytes.bytes().unwrap();
-                        std::fs::write(path, file).log_and_panic();
-                    }
+            Job::SearchPlatform { name, path, args } => {
+                match search_platform(&name, path, args) {
+                    Ok(result) => send_reply(JobResult::SearchPlatform(result)),
+                    Err(e) => warn!("Error occured while searching platforms {:?}", e),
                 }
-            }
+            },
 
-            JobType::SearchPlatform((state, name, path, args)) => {
-                let state = state.get_inner::<crate::YaffeState>();
-                if let Some(result) = search_platform(&name, path, args).display_failure("Unable to send message for platform search", state) {
-
-                    if let Some(platform) = result.get_exact() {
-                        crate::platform::insert_platform(state, &platform.info);
-
-                    } else if result.count > 0 {
-                        let mut items = vec!();
-                        for i in result.results {
-                            items.push(i);
-                        }
-                        
-                        let content = PlatformScraperModal::new(items);
-                        display_modal(state, "Select Platform", None, Box::new(content), Some(on_platform_found_close));
-                    }
+            Job::SearchGame { exe, name, platform } => {
+                match search_game(&name, exe, platform) {
+                    Ok(result) =>  send_reply(JobResult::SearchGame(result)),
+                    Err(e) => warn!("Error occured while searching games {:?}", e),
                 }
-            }
+            },
 
-            JobType::SearchGame((state, exe, name, plat_id)) => {
-                let state = state.get_inner::<crate::YaffeState>();
-                if let Some(result) = search_game(&name, exe, plat_id).display_failure("Unable to send message for game search", state) {
-
-                    if let Some(game) = result.get_exact() {
-                        crate::platform::insert_game(state, &game.info, game.boxart.clone());
-
-                    } else if result.count > 0 {
-                        let mut items = vec!();
-                        for i in result.results {
-                            items.push(i);
-                        }
-                        
-                        let content = GameScraperModal::new(items);
-                        display_modal(state, "Select Game", None, Box::new(content), Some(crate::modals::on_game_found_close));
-                    }
-                }
+            Job::CheckUpdates => {
+                let applied = crate::scraper::check_for_updates().log("Error checking for updates");
+                send_reply(JobResult::CheckUpdates(applied))
             }
         }
-
-        notify.send(0).log("Unable to notify main loop about finished job");
     }
 }
 
-pub enum JobType {
+#[derive(Debug)]
+pub enum Job {
     /// Loads an image synchronously
-    /// Should only be called through the asset system
-    /// We copy the AssetPathType from the slot so 
-    /// the locks on the slot are shorter
-    LoadImage((crate::assets::AssetPathType, RawDataPointer)),
+    LoadImage { key: PathType, file: PathBuf },
 
     /// Downloads the file at a given url and writes it to the file system
-    DownloadUrl((std::path::PathBuf, std::path::PathBuf)),
+    DownloadUrl { url: std::path::PathBuf, file_path: std::path::PathBuf },
 
     /// Searches TheGamesDb for a given platform
-    SearchPlatform((RawDataPointer, String, String, String)),
+    SearchPlatform { name: String, path: String, args: String },
 
     /// Searches TheGamesDb for a given game
-    SearchGame((RawDataPointer, String, String, i64)),
+    SearchGame { exe: String, name: String, platform: i64 },
+
+    CheckUpdates,
+}
+
+
+pub enum JobResult {
+    None,
+    LoadImage { data: Vec<u8>, dimensions: (u32, u32), key: PathType },
+    SearchPlatform(ServiceResponse<PlatformScrapeResult>),
+    SearchGame(ServiceResponse<GameScrapeResult>),
+    CheckUpdates(bool),
+}
+
+pub fn process_results<F, T>(results: &mut Vec<JobResult>, should_process: F, mut process: T) 
+    where F: Fn(&JobResult) -> bool, T: FnMut(JobResult) {
+    for r in results.iter_mut() {
+        if should_process(r) {
+            let result = std::mem::replace(r, JobResult::None);
+            process(result);
+        }
+    }
+
+    results.retain(|r| !matches!(r, JobResult::None))
 }

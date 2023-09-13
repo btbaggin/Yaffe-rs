@@ -85,3 +85,16 @@ pub trait PlatformGamepad {
     fn update(&mut self, controller_index: u32) -> Result<(), u32>;
     fn get_gamepad(&mut self) -> Vec<ControllerInput>;
 }
+
+pub fn input_to_action(input_map: &InputMap<VirtualKeyCode, ControllerInput, Actions>, input: &mut dyn PlatformGamepad) -> std::collections::HashSet<Actions> {
+    let mut result = std::collections::HashSet::new();
+    for g in input.get_gamepad() {
+        if let Some(action) = input_map.get(None, Some(g)) {
+            result.insert(action.clone());
+        } else {
+            result.insert(Actions::KeyPress(InputType::Char(g as u8 as char)));
+        }
+    }
+
+    result
+}
