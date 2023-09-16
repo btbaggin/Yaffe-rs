@@ -5,7 +5,7 @@ use speedy2d::color::Color;
 use std::convert::AsRef;
 use std::io::Write;
 use crate::ui::rgba_string;
-pub use yaffe_plugin::{SettingValue, SettingsResult, SettingLoadError, color_from_string};
+pub use yaffe_lib::{SettingValue, SettingsResult, SettingLoadError, color_from_string};
 
 
 
@@ -14,7 +14,7 @@ macro_rules! stringy_enum {
     (pub enum $name:ident {
         $($value:ident($display:expr) = $default:expr,)+
     }) => {
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Hash, PartialEq, Eq)]
         pub enum $name {
             $($value,)+
         } 

@@ -1,4 +1,4 @@
-use yaffe_plugin::{YaffePlugin, YaffePluginItem, SelectedAction};
+use yaffe_lib::{YaffePlugin, YaffePluginItem, SelectedAction};
 use dlopen::wrapper::{Container, WrapperApi};
 use crate::logger::{PanicLogEntry, UserMessage, info};
 use std::ops::{DerefMut, Deref};
@@ -76,7 +76,7 @@ impl DerefMut for Plugin {
     }
 }
 
-#[derive(WrapperApi)]
+#[derive(dlopen_derive::WrapperApi)]
 struct PluginWrapper {
 	initialize: fn() -> Box<dyn YaffePlugin>,
 }
@@ -140,10 +140,6 @@ pub fn load_plugin_items(kind: NavigationAction, state: &mut crate::YaffeState) 
 		let items = plugin.borrow_mut().load(kind, (x * y) as u32);
 		if let Some(items) = items.display_failure("Error loading plugin", state) {
 			let platform = &mut state.platforms[state.selected_platform];
-			// match kind {
-			// 	NavigationAction::Fetch => {}
-			// 	_ => platform.apps.clear(),
-			// }
 			for i in items {
 				platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
 			}

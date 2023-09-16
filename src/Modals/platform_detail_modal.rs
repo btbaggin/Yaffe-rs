@@ -33,8 +33,8 @@ impl PlatformDetailModal {
 
 impl ModalContent for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let height = (get_font_size(settings, graphics) + MARGIN) * self.controls.child_count() as f32;
+    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
+        let height = (graphics.font_size() + MARGIN) * self.controls.child_count() as f32;
         LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
@@ -43,8 +43,8 @@ impl ModalContent for PlatformDetailModal {
         Self::default_modal_action(action)
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        self.controls.render(graphics, settings, &rect);
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
+        self.controls.render(graphics, &rect);
     }
 }
 
@@ -52,14 +52,14 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: ModalResult, conten
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
 
-        let state_ptr = crate::RawDataPointer::new(state);
         let lock = state.queue.lock().log_and_panic();
         let mut queue = lock.borrow_mut();
 
         let name = content.controls.by_tag("Name").unwrap();
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-        queue.send(crate::JobType::SearchPlatform((state_ptr, name.value().to_string(), exe.value().to_string(), args.value().to_string()))).unwrap();
+        let job = crate::Job::SearchPlatform { name: name.value().to_string(), path: exe.value().to_string(), args: args.value().to_string() };
+        queue.send(job).unwrap();
     }
 }
 

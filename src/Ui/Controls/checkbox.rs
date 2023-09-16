@@ -1,7 +1,5 @@
-use super::{InputControl, Control, draw_label_and_box, get_accent_color, get_font_size};
-use crate::Actions;
-use crate::settings::SettingsFile;
-use crate::input::InputType;
+use super::{InputControl, Control, draw_label_and_box};
+use crate::input::{InputType, Actions};
 use crate::utils::Rect;
 use glutin::event::VirtualKeyCode;
 
@@ -16,11 +14,11 @@ impl CheckBox {
     }
 }
 impl Control for CheckBox {
-    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> crate::LogicalSize {
-        let control = draw_label_and_box(graphics, settings, container.top_left(), get_font_size(settings, graphics), &self.label);
+    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
+        let control = draw_label_and_box(graphics, container.top_left(), graphics.font_size(), &self.label);
 
         if self.checked {
-            let base = get_accent_color(settings);
+            let base = graphics.accent_color();
             graphics.draw_rectangle(Rect::from_tuples((control.left() + 4., control.top() + 4.), (control.right() - 4., control.bottom() - 4.)), base)
         }
 

@@ -3,10 +3,20 @@ use speedy2d::dimen::Vector2;
 use glutin::event::{Event, WindowEvent, VirtualKeyCode, ModifiersState};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
-use crate::{input::ControllerInput, PhysicalSize, input::InputType, Actions, logger::LogEntry};
+use crate::{
+    input::ControllerInput, PhysicalSize, input::InputType, Actions,
+    logger::{PanicLogEntry, LogEntry},
+    job_system::{JobResults, JobResult, Job, ThreadSafeJobQueue}
+};
 use std::time::Instant;
 use std::rc::Rc;
 use std::cell::RefCell;
+
+mod context_tracker;
+use context_tracker::{ContextTracker, ContextWrapper};
+
+const UPDATE_TIMER: f32 = 60. * 60.;
+
 
 #[repr(u8)]
 enum WindowVisibility {
@@ -34,7 +44,7 @@ impl WindowHelper {
 }
 
 pub(crate) trait WindowHandler {
-    fn on_fixed_update(&mut self, _: &mut WindowHelper, _: f32) -> bool { false }
+    fn on_fixed_update(&mut self, _: &mut WindowHelper, _: &mut Vec<JobResult>) -> bool { false }
     fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_stop(&mut self) { }
@@ -78,11 +88,10 @@ fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()
 
 fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowId, YaffeWindow>,
                  event_loop: &EventLoop<()>, 
-                 tracker: &mut context_tracker::ContextTracker, 
+                 tracker: &mut ContextTracker, 
                  builder: WindowBuilder,
                  handler: Rc<RefCell<impl WindowHandler + 'static>>) -> PhysicalSize {
 
-    use crate::logger::PanicLogEntry;
     let windowed_context = create_best_context(&builder, event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
 
@@ -103,7 +112,19 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
     size
 }
 
-pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
+fn do_and_redraw_window<F>(windows: &mut std::collections::HashMap<glutin::window::WindowId, YaffeWindow>,
+                          window_id: glutin::window::WindowId,
+                          context: &mut ContextTracker,
+                          mut action: F) where F: FnMut(&mut ContextWrapper<glutin::PossiblyCurrent>, &mut YaffeWindow) {
+    if let Some(window) = windows.get_mut(&window_id) {
+        let context = context.get_current(window.context_id).unwrap();
+        action(context, window);       
+        context.windowed().window().request_redraw();
+    }
+}
+
+pub(crate) fn create_yaffe_windows(job_results: JobResults,
+                                   queue: ThreadSafeJobQueue,
                                    mut gamepad: impl crate::input::PlatformGamepad + 'static,
                                    input_map: crate::input::InputMap<VirtualKeyCode, ControllerInput, Actions>,
                                    handler: Rc<RefCell<impl WindowHandler + 'static>>,
@@ -136,17 +157,17 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
     let mut delta_time = 0f32;
     let mut last_time = Instant::now();
     let mut mods = ModifiersState::empty();
+    let mut update_timer = 0f32;
     
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         
+        crate::logger::trace!("Window event {:?}", event);
         match event {
             Event::LoopDestroyed => *control_flow = ControlFlow::Exit,
 
             Event::WindowEvent { event, window_id } => match event {
                 WindowEvent::CloseRequested => {
-                    crate::logger::info!("Closing window");
-
                     if let Some(window) = windows.get_mut(&window_id) {
                         *control_flow = ControlFlow::Exit;
                         window.handler.borrow_mut().on_stop();
@@ -154,44 +175,28 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 },
 
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    crate::logger::info!("Scale factor changed, redrawing");
-
-                    if let Some(window) = windows.get_mut(&window_id) {
-                        let context = ct.get_current(window.context_id).unwrap();
-
+                    do_and_redraw_window(&mut windows, window_id, &mut ct, |_, window| {
                         window.size = PhysicalSize::new(new_inner_size.width as f32, new_inner_size.height as f32);
-                        context.windowed().window().request_redraw();
-                    }
+                    });
                 },
 
                 WindowEvent::Resized(physical_size) => {
-                    crate::logger::info!("Window resized, redrawing");
-
-                    if let Some(window) = windows.get_mut(&window_id) {
-                        let context = ct.get_current(window.context_id).unwrap();
-
+                    do_and_redraw_window(&mut windows, window_id, &mut ct, |context, window| {
                         window.size = PhysicalSize::new(physical_size.width as f32, physical_size.height as f32);
 
                         context.windowed().resize(physical_size);
                         window.renderer.set_viewport_size_pixels(Vector2::new(physical_size.width, physical_size.height));
-                        context.windowed().window().request_redraw();
-                    }
+                    });
                 },
 
                 WindowEvent::Focused(_focused) => {
-                    crate::logger::info!("Focus changed, redrawing");
-
-                    if let Some(window) = windows.get_mut(&window_id) {
-                        let context = ct.get_current(window.context_id).unwrap();
-                        context.windowed().window().request_redraw();
-                    }
+                    do_and_redraw_window(&mut windows, window_id, &mut ct, |_, _| { });
                 },
 
                 WindowEvent::ModifiersChanged(state) => mods = state,
 
                 WindowEvent::KeyboardInput { input, .. } => {
-                    if let glutin::event::ElementState::Released = input.state { return; }
-                    if input.virtual_keycode.is_none() { return; }
+                    if glutin::event::ElementState::Released == input.state || input.virtual_keycode.is_none() { return; }
 
                     let action = if let Some(action) = input_map.get(input.virtual_keycode, None) {
                         action.clone()
@@ -255,28 +260,36 @@ pub(crate) fn create_yaffe_windows(notify: std::sync::mpsc::Receiver<u8>,
                 gamepad.update(0).log("Unable to get controller input");
 
                 //Convert our input to actions we will propogate through the UI
-                let mut actions = input_to_action(&input_map, &mut gamepad);
-                let asset_loaded = notify.try_recv().is_ok();
+                let mut actions = crate::input::input_to_action(&input_map, &mut gamepad);
+
+                check_for_updates(&mut update_timer, delta_time, &queue);
+
+                // Get results from any completed jobs
+                let mut results = vec!();
+                while let Ok(result) = job_results.try_recv() {
+                    results.push(result);
+                }
+                // Process our "system" jobs
+                crate::job_system::process_results(&mut results, |j| matches!(j, JobResult::CheckUpdates(_)), |result| {
+                    if let JobResult::CheckUpdates(applied) = result {
+                        if applied { update_timer = f32::MIN; }
+                    }
+                });
+                let jobs_completed = !results.is_empty();
 
                 for (_, window) in windows.iter_mut() {
                     //Send an action, if its handled remove it so a different window doesnt respond to it
-                    let mut handled_actions = Vec::with_capacity(actions.len());
-                    for action in actions.iter() {
-                        if send_action_to_window(window, &mut ct, action) {
-                            handled_actions.push(action.clone());
-                        }
-                    }
-                    for action in handled_actions { actions.remove(&action); }
+                    actions.retain(|action| !send_action_to_window(window, &mut ct, action));
 
                     //Raise fixed update every frame so we can do things even if redraws arent happening
                     let mut handle = window.handler.borrow_mut();
                     let context = ct.get_current(window.context_id).unwrap();
                     
                     let mut helper = WindowHelper { visible: None, };
-                    let fixed_update = handle.on_fixed_update(&mut helper, delta_time);
+                    let fixed_update = handle.on_fixed_update(&mut helper, &mut results);
                     helper.resolve(context.windowed().window());
 
-                    if fixed_update || asset_loaded || handle.is_window_dirty() {
+                    if fixed_update || jobs_completed || handle.is_window_dirty() {
                         context.windowed().window().request_redraw();
                     }
                 }
@@ -305,196 +318,16 @@ fn send_action_to_window(window: &mut YaffeWindow,
     result
 }
 
-fn input_to_action(input_map: &crate::input::InputMap<VirtualKeyCode, ControllerInput, Actions>, 
-                   input: &mut dyn crate::input::PlatformGamepad) -> std::collections::HashSet<Actions> {
+fn check_for_updates(update_timer: &mut f32, delta_time: f32, queue: &ThreadSafeJobQueue) {
+    //Check for updates once every hour if it hasnt been applied already
+    if *update_timer != f32::MIN {
+        *update_timer -= delta_time;
+        if *update_timer < 0. {
+            *update_timer = UPDATE_TIMER;
 
-    let mut result = std::collections::HashSet::new();
-    for g in input.get_gamepad() {
-        if let Some(action) = input_map.get(None, Some(g)) {
-            result.insert(action.clone());
-        } else {
-            result.insert(Actions::KeyPress(InputType::Char(g as u8 as char)));
-        }
-    }
-
-    result
-}
-
-mod context_tracker {
-    use glutin::{
-        self, ContextCurrentState, ContextError, NotCurrent, PossiblyCurrent,
-        WindowedContext,
-    };
-    use takeable_option::Takeable;
-
-    pub enum ContextWrapper<T: ContextCurrentState> {
-        Windowed(WindowedContext<T>),
-    }
-
-    impl<T: ContextCurrentState> ContextWrapper<T> {
-        pub fn windowed(&mut self) -> &mut WindowedContext<T> {
-            match self {
-                ContextWrapper::Windowed(ref mut ctx) => ctx,
-            }
-        }
-
-    #[allow(clippy::result_large_err)]
-    fn map<T2: ContextCurrentState, FW>(self, fw: FW) -> Result<ContextWrapper<T2>, (Self, ContextError)>
-        where
-            FW: FnOnce(WindowedContext<T>) -> Result<WindowedContext<T2>, (WindowedContext<T>, ContextError)>,
-        {
-            match self {
-                ContextWrapper::Windowed(ctx) => match fw(ctx) {
-                    Ok(ctx) => Ok(ContextWrapper::Windowed(ctx)),
-                    Err((ctx, err)) => Err((ContextWrapper::Windowed(ctx), err)),
-                },
-            }
-        }
-    }
-
-    pub enum ContextCurrentWrapper {
-        PossiblyCurrent(ContextWrapper<PossiblyCurrent>),
-        NotCurrent(ContextWrapper<NotCurrent>),
-    }
-
-    #[allow(clippy::result_large_err)]
-    impl ContextCurrentWrapper {
-        fn map_possibly<F>(self, f: F) -> Result<Self, (Self, ContextError)>
-        where
-            F: FnOnce(
-                ContextWrapper<PossiblyCurrent>,
-            ) -> Result<ContextWrapper<NotCurrent>, (ContextWrapper<PossiblyCurrent>, ContextError)>,
-        {
-            match self {
-                ret @ ContextCurrentWrapper::NotCurrent(_) => Ok(ret),
-                ContextCurrentWrapper::PossiblyCurrent(ctx) => match f(ctx) {
-                    Ok(ctx) => Ok(ContextCurrentWrapper::NotCurrent(ctx)),
-                    Err((ctx, err)) => Err((ContextCurrentWrapper::PossiblyCurrent(ctx), err)),
-                },
-            }
-        }
-
-        fn map_not<F>(self, f: F) -> Result<Self, (Self, ContextError)>
-        where
-            F: FnOnce(
-                ContextWrapper<NotCurrent>,
-            ) -> Result<ContextWrapper<PossiblyCurrent>, (ContextWrapper<NotCurrent>, ContextError)>,
-        {
-            match self {
-                ret @ ContextCurrentWrapper::PossiblyCurrent(_) => Ok(ret),
-                ContextCurrentWrapper::NotCurrent(ctx) => match f(ctx) {
-                    Ok(ctx) => Ok(ContextCurrentWrapper::PossiblyCurrent(ctx)),
-                    Err((ctx, err)) => Err((ContextCurrentWrapper::NotCurrent(ctx), err)),
-                },
-            }
-        }
-    }
-
-    pub type ContextId = usize;
-    #[derive(Default)]
-    pub struct ContextTracker {
-        current: Option<ContextId>,
-        others: Vec<(ContextId, Takeable<ContextCurrentWrapper>)>,
-        next_id: ContextId,
-    }
-
-    impl ContextTracker {
-        pub fn insert(&mut self, ctx: ContextCurrentWrapper) -> ContextId {
-            let id = self.next_id;
-            self.next_id += 1;
-
-            if let ContextCurrentWrapper::PossiblyCurrent(_) = ctx {
-                if let Some(old_current) = self.current {
-                    unsafe {
-                        self.modify(old_current, |ctx| {
-                            ctx.map_possibly(|ctx| {
-                                ctx.map(|ctx| Ok(ctx.treat_as_not_current()), )
-                            })
-                        })
-                        .unwrap()
-                    }
-                }
-                self.current = Some(id);
-            }
-
-            self.others.push((id, Takeable::new(ctx)));
-            id
-        }
-
-        fn modify<F>(&mut self, id: ContextId, f: F) -> Result<(), ContextError>
-        where
-            F: FnOnce(ContextCurrentWrapper) -> Result<ContextCurrentWrapper, (ContextCurrentWrapper, ContextError)>,
-        {
-            let this_index = self.others.binary_search_by(|(sid, _)| sid.cmp(&id)).unwrap();
-
-            let this_context = Takeable::take(&mut self.others[this_index].1);
-
-            match f(this_context) {
-                Err((ctx, err)) => {
-                    self.others[this_index].1 = Takeable::new(ctx);
-                    Err(err)
-                }
-                Ok(ctx) => {
-                    self.others[this_index].1 = Takeable::new(ctx);
-                    Ok(())
-                }
-            }
-        }
-
-        pub fn get_current(
-            &mut self,
-            id: ContextId,
-        ) -> Result<&mut ContextWrapper<PossiblyCurrent>, ContextError> {
-            unsafe {
-                let this_index = self.others.binary_search_by(|(sid, _)| sid.cmp(&id)).unwrap();
-                if Some(id) != self.current {
-                    let old_current = self.current.take();
-
-                    if let Err(err) = self.modify(id, |ctx| {
-                        ctx.map_not(|ctx| {
-                            ctx.map(|ctx| ctx.make_current())
-                        })
-                    }) {
-                        // Oh noes, something went wrong
-                        // Let's at least make sure that no context is current.
-                        if let Some(old_current) = old_current {
-                            if let Err(err2) = self.modify(old_current, |ctx| {
-                                ctx.map_possibly(|ctx| {
-                                    ctx.map(|ctx| ctx.make_not_current(), )
-                                })
-                            }) {
-                                panic!("Could not `make_current` nor `make_not_current`, {:?}, {:?}", err, err2);
-                            }
-                        }
-
-                        if let Err(err2) = self.modify(id, |ctx| {
-                            ctx.map_possibly(|ctx| {
-                                ctx.map(|ctx| ctx.make_not_current())
-                            })
-                        }) {
-                            panic!("Could not `make_current` nor `make_not_current`, {:?}, {:?}", err, err2);
-                        }
-
-                        return Err(err);
-                    }
-
-                    self.current = Some(id);
-
-                    if let Some(old_current) = old_current {
-                        self.modify(old_current, |ctx| {
-                            ctx.map_possibly(|ctx| {
-                                ctx.map(|ctx| Ok(ctx.treat_as_not_current()), )
-                            })
-                        })
-                        .unwrap();
-                    }
-                }
-
-                match *self.others[this_index].1 {
-                    ContextCurrentWrapper::PossiblyCurrent(ref mut ctx) => Ok(ctx),
-                    ContextCurrentWrapper::NotCurrent(_) => panic!(),
-                }
-            }
+            let lock = queue.lock().log_and_panic();
+            let mut queue = lock.borrow_mut();
+            queue.send(Job::CheckUpdates).log("Unable to check for updates");
         }
     }
 }

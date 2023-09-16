@@ -1,7 +1,6 @@
 use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper};
-use crate::settings::{SettingNames, SettingsFile};
 use crate::assets::Images;
-use crate::ui::controls::{MARGIN, get_font_color, get_font_size, MODAL_OVERLAY_COLOR, MODAL_BACKGROUND, get_accent_color, change_brightness};
+use crate::ui::controls::{MARGIN, MODAL_OVERLAY_COLOR, MODAL_BACKGROUND, change_brightness};
 
 
 #[repr(u8)]
@@ -44,8 +43,8 @@ impl Modal {
 
 pub trait ModalContent {
     fn as_any(&self) -> &dyn std::any::Any;
-    fn size(&self, settings: &SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize;
-    fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics);
+    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize;
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics);
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult;
     fn default_modal_action(action: &Actions) -> ModalResult where Self: Sized {
         match action {
@@ -109,14 +108,14 @@ pub fn is_modal_open(state: &YaffeState) -> bool {
 }
 
 /// Renders a modal window along with its contents
-pub fn render_modal(settings: &SettingsFile, modal: &Modal, graphics: &mut crate::Graphics) {
+pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
     const TOOLBAR_SIZE: f32 = 18.;
     const TITLEBAR_SIZE: f32 = 32.;
     const PADDING: f32 = 2.;
 
     let padding = LogicalSize::new(graphics.bounds.width() * 0.1, graphics.bounds.height() * 0.1);
     let rect = Rect::new(*graphics.bounds.top_left() + padding, graphics.bounds.size() - padding);
-    let content_size = modal.content.size(settings, rect, graphics);
+    let content_size = modal.content.size(rect, graphics);
 
     //Calulate size
     let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + TITLEBAR_SIZE + content_size.y);
@@ -132,21 +131,21 @@ pub fn render_modal(settings: &SettingsFile, modal: &Modal, graphics: &mut crate
     graphics.draw_rectangle(window, MODAL_BACKGROUND);
 
     //Titlebar
-    let titlebar_color = get_accent_color(settings);
-    let titlebar_color = change_brightness(&titlebar_color, settings.get_f32(SettingNames::LightShadeFactor));
+    let titlebar_color = graphics.accent_color();
+    let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
     let titlebar_pos = window_position + LogicalSize::new(PADDING, PADDING);
     let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE));
     graphics.draw_rectangle(titlebar, titlebar_color);
 
-    let title_text = crate::ui::get_drawable_text(get_font_size(settings, graphics), &modal.title);
+    let title_text = crate::ui::get_drawable_text(graphics.font_size(), &modal.title);
     let title_pos = LogicalPosition::new(titlebar_pos.x + MARGIN, titlebar_pos.y + (TITLEBAR_SIZE - title_text.height()) / 2.);
-    graphics.draw_text(title_pos, get_font_color(settings), &title_text);
+    graphics.draw_text(title_pos, graphics.font_color(), &title_text);
 
     //Content
     //Window + margin for window + margin for icon
     let content_pos = LogicalPosition::new(window_position.x + MARGIN + PADDING, window_position.y + MARGIN + TITLEBAR_SIZE + PADDING); 
     let content_rect = Rect::new(content_pos, content_pos + content_size);
-    modal.content.render(settings, content_rect, graphics);
+    modal.content.render(content_rect, graphics);
 
     //Action buttons
     if let Some(s) = &modal.confirmation_button {
@@ -154,7 +153,7 @@ pub fn render_modal(settings: &SettingsFile, modal: &Modal, graphics: &mut crate
 
         for t in [("Cancel", Images::ButtonB), (&s[..], Images::ButtonA)] {
             let text = crate::ui::get_drawable_text(TOOLBAR_SIZE, t.0);
-            right = crate::ui::right_aligned_text(graphics, right, Some(t.1), get_font_color(settings), text);
+            right = crate::ui::right_aligned_text(graphics, right, Some(t.1), graphics.font_color(), text);
             right.x -= MARGIN;
         }
     }

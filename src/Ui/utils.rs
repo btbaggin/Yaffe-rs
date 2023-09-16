@@ -1,7 +1,7 @@
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
 use crate::{LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use crate::assets::{AssetSlot, Images, Fonts};
+use crate::assets::{Images, Fonts, AssetKey, request_asset_image, request_font};
 
 //
 // Text helper methods
@@ -25,21 +25,21 @@ pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition
 
 /// Simple helper method to get a text object
 pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
-    let font = crate::assets::request_font(Fonts::Regular);
+    let font = request_font(Fonts::Regular);
     font.layout_text(text, size, TextOptions::new())
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
 pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
-    let font =  crate::assets::request_font(Fonts::Regular);
+    let font = request_font(Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);
     font.layout_text(text, size, option)
 }
 
 /// Scales an image to the largest size that can fit in the smallest dimension
-pub fn image_fill(graphics: &mut crate::Graphics, slot: &mut AssetSlot, size: &LogicalSize) -> LogicalSize {
-    let bitmap_size = if let Some(i) = crate::assets::request_asset_image(graphics, slot) {
+pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &LogicalSize) -> LogicalSize {
+    let bitmap_size = if let Some(i) = request_asset_image(graphics, slot) {
             i.size()
     } else {
         crate::assets::request_image(graphics, Images::Placeholder).unwrap().size()

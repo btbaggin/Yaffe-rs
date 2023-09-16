@@ -100,7 +100,7 @@ fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str
     for i in value {
         assert!(i[element].is_string());
 
-        if i[element].as_str().unwrap() == name { 
+        if i[element].as_str().unwrap() == name && exact_index == -1 { 
             exact_index = count as isize;
         }
         count += 1;

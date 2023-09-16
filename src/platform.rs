@@ -1,10 +1,9 @@
 use crate::YaffeState;
 use crate::plugins::Plugin;
 use crate::logger::PanicLogEntry;
-use crate::assets::AssetPathType;
 use crate::data::GameInfo;
 use super::{Platform, Executable};
-use yaffe_plugin::{PathType, YaffePluginItem};
+use yaffe_lib::YaffePluginItem;
 use std::convert::{TryFrom, TryInto};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -117,12 +116,12 @@ impl Platform {
 impl Executable {
     pub fn plugin_item(platform_index: usize, item: YaffePluginItem) -> Self {
         let boxart = match item.thumbnail {
-            PathType::Url(s) => {
-                AssetPathType::Url(s)
+            yaffe_lib::PathType::Url(s) => {
+                crate::assets::AssetKey::Url(s)
             },
-            PathType::File(s) => {
+            yaffe_lib::PathType::File(s) => {
                 let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
-                AssetPathType::File(canon)
+                crate::assets::AssetKey::File(canon)
             },
         };
 
@@ -144,7 +143,7 @@ impl Executable {
             name: info.name.clone(),
             description: info.overview.clone(),
             platform_index: index,
-            boxart: AssetPathType::File(boxart),
+            boxart: crate::assets::AssetKey::File(boxart),
             released: info.released.clone(),
             players: info.players as u8,
             rating: info.rating.try_into().unwrap(),
@@ -175,7 +174,6 @@ pub fn get_database_info(state: &mut YaffeState) {
 }
 
 pub fn scan_new_files(state: &mut YaffeState) {
-    let state_ptr = crate::RawDataPointer::new(state);
     for p in &state.platforms {
         if let PlatformType::Emulator = p.kind {
             for entry in std::fs::read_dir(p.get_rom_path()).log_and_panic() {
@@ -195,7 +193,8 @@ pub fn scan_new_files(state: &mut YaffeState) {
                     let exists = crate::data::GameInfo::exists(id, &file).log_and_panic();
                     if !exists {
                         crate::logger::info!("{name} not found in database, performing search");
-                        queue.send(crate::JobType::SearchGame((state_ptr, file.to_string(), name.to_string(), id))).unwrap();
+                        let job = crate::Job::SearchGame {exe: file.to_string(), name: name.to_string(), platform: id };
+                        queue.send(job).unwrap();
                     }
                 }
             }
@@ -270,11 +269,11 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
     
     let plat_name = crate::data::PlatformInfo::get_name(info.platform()).unwrap();
 
-    let boxart_file = crate::assets::get_asset_path(&plat_name, &info.name);
+    let file_path = crate::assets::get_asset_path(&plat_name, &info.name);
     let lock = state.queue.lock().log_and_panic();
     let mut queue = lock.borrow_mut();
 
-    queue.send(crate::JobType::DownloadUrl((boxart, boxart_file))).unwrap();
+    queue.send(crate::Job::DownloadUrl { url: boxart, file_path }).unwrap();
 
     state.refresh_list = true;
 }

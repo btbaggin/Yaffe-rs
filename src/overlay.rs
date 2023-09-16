@@ -1,4 +1,5 @@
-use crate::{Rect, PhysicalSize, LogicalPosition};
+use crate::job_system::ThreadSafeJobQueue;
+use crate::{Rect, PhysicalSize, LogicalPosition, Graphics};
 use crate::logger::LogEntry;
 use crate::ui;
 use crate::windowing::WindowHelper;
@@ -12,15 +13,17 @@ pub struct OverlayWindow {
     process: Option<std::process::Child>,
     showing: bool,
     settings: crate::settings::SettingsFile,
+    queue: ThreadSafeJobQueue
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
-    pub fn new(settings: crate::settings::SettingsFile) -> Rc<RefCell<OverlayWindow>> {
+    pub fn new(settings: crate::settings::SettingsFile, queue: ThreadSafeJobQueue) -> Rc<RefCell<OverlayWindow>> {
         let overlay = OverlayWindow {
             modal: ui::Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
             process: None,
             showing: false,
             settings,
+            queue,
         };
   
         Rc::new(RefCell::new(overlay))
@@ -75,13 +78,14 @@ impl crate::windowing::WindowHandler for OverlayWindow {
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, _: f32, size: PhysicalSize, scale_factor: f32) -> bool {
         let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
 
-            let mut graphics = crate::Graphics { graphics, queue: None, scale_factor, bounds: window_rect, delta_time: 0. };
-            crate::ui::render_modal(&self.settings, &self.modal, &mut graphics);
+            let mut graphics = Graphics::new(graphics, self.queue.clone(), scale_factor, window_rect, 0.);
+            graphics.cache_settings(&self.settings);
+            crate::ui::render_modal(&self.modal, &mut graphics);
 
         true
     }
 
-    fn on_fixed_update(&mut self, helper: &mut WindowHelper, _: f32) -> bool {
+    fn on_fixed_update(&mut self, helper: &mut WindowHelper, _: &mut Vec<crate::job_system::JobResult>) -> bool {
         !self.process_is_running(helper)
     }
 

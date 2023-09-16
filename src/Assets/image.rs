@@ -3,12 +3,11 @@ use std::rc::Rc;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 use crate::{PhysicalSize, PhysicalRect};
-use crate::RawDataPointer;
 use crate::logger::{PanicLogEntry, warn, info};
 use crate::pooled_cache::PooledCache;
-use super::{AssetData, ASSET_STATE_LOADED, ASSET_STATE_PENDING, ASSET_STATE_UNLOADED, AssetTypes, get_slot_mut, asset_path_is_valid, AssetPathType, AssetSlot};
+use super::{AssetData, ASSET_STATE_LOADED, AssetKey, AssetSlot};
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum Images {
     Background,
     Placeholder,
@@ -33,10 +32,14 @@ pub enum Images {
 }
 
 pub struct YaffeTexture {
-    pub(super) image: Rc<ImageHandle>,
-    pub(super) bounds: Option<PhysicalRect>,
+    image: Rc<ImageHandle>,
+    bounds: Option<PhysicalRect>,
 }
 impl YaffeTexture {
+    pub fn new(image: Rc<ImageHandle>, bounds: Option<PhysicalRect>) -> YaffeTexture {
+        YaffeTexture { image, bounds }
+    }
+
     pub fn render(&self, graphics: &mut crate::Graphics, rect: crate::Rect) {
         let rect = rect.to_physical(graphics.scale_factor);
         if let Some(b) = &self.bounds {
@@ -57,46 +60,40 @@ impl YaffeTexture {
     }
 }
 
-pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, slot: &'a mut AssetSlot) -> Option<&'a YaffeTexture> {
-    if slot.state.load(Ordering::Acquire) == ASSET_STATE_UNLOADED && asset_path_is_valid(&slot.path) {
-        if let Ok(ASSET_STATE_UNLOADED) = slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed) {
+pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, key: &AssetKey) -> Option<&'a YaffeTexture> {
+    let q = graphics.queue.clone();
+    let queue = q.as_ref();
+    let lock = queue.lock().log_and_panic();
+    let mut queue = lock.borrow_mut();
 
-            if let Some(queue) = &graphics.queue {
-                let lock = queue.lock().log_and_panic();
-                let mut queue = lock.borrow_mut();
-                queue.send(crate::JobType::LoadImage((slot.path.clone(), RawDataPointer::new(slot)))).unwrap();
+    if let Some(slot) = super::ensure_asset_loaded(&mut queue, key) {
+        if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+            if let AssetData::Raw((data, dimensions)) = &slot.data {
+                let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
+                slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
             }
-            return None;
         }
+    
+        return if let AssetData::Image(image) = &slot.data {
+            slot.last_request = Instant::now();
+            Some(image)
+        } else {
+            None
+        };
     }
-
-    if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-        if let AssetData::Raw((data, dimensions)) = &slot.data {
-            let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
-            slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
-        }
-    }
-
-    if let AssetData::Image(image) = &slot.data {
-        slot.last_request = Instant::now();
-        Some(image)
-    } else {
-        None
-    }
+    None
 }
 
-pub fn request_image<'a>(piet: &mut crate::Graphics, image: Images) -> Option<&'a YaffeTexture> {
-    let slot = get_slot_mut(AssetTypes::Image(image));
-
-    request_asset_image(piet, slot)
+pub fn request_image<'a>(graphics: &mut crate::Graphics, image: Images) -> Option<&'a YaffeTexture> {
+    request_asset_image(graphics, &AssetKey::image(image))
 }
 
-pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
+pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec<u8>, (u32, u32))> {
     info!("Loading image asynchronously {:?}", path);
 
-    let data = match &path {
-        AssetPathType::File(path) => std::fs::read(path).log_and_panic(),
-        AssetPathType::Url(path) =>  {
+    let data = match &key {
+        AssetKey::File(_) | AssetKey::Static(_) => std::fs::read(path).log_and_panic(),
+        AssetKey::Url(_) =>  {
             let image = reqwest::blocking::get(path.to_str().unwrap()).unwrap().bytes().log_and_panic();
             image.to_vec()
         },
@@ -107,21 +104,19 @@ pub fn load_image_async(path: AssetPathType, slot: RawDataPointer) {
 
     match reader.decode() {
         Ok(image) => {
-            let asset_slot = slot.get_inner::<AssetSlot>();
             let buffer = image.into_rgba8();
             let dimensions = buffer.dimensions();
             let data = buffer.into_vec();
-            asset_slot.data_length = data.len();
-            asset_slot.data = AssetData::Raw((data, dimensions));
-            asset_slot.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
+            return Some((data, dimensions))
         },
-        Err(e) => warn!("Error loading {:?}: {:?}", path, e),
+        Err(e) => warn!("Error loading {:?}: {:?}", key, e),
     }
+    None
 }
 
-pub fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, AssetTypes, AssetSlot>) {
+pub fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, AssetKey, AssetSlot>) {
     let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear, path).log_and_panic();
     let image = Rc::new(data);
-    let texture = YaffeTexture { image, bounds: None };
-    map.insert(AssetTypes::Image(image_name), AssetSlot::preloaded(path, texture));
+    let texture = YaffeTexture::new(image, None);
+    map.insert(AssetKey::image(image_name), AssetSlot::preloaded(path, texture));
 }

@@ -1,17 +1,21 @@
 [package]
 name = "yaffe-rs"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["allex"]
 edition = "2018"
 
 [lib]
-name = "yaffe_plugin"
+name = "yaffe_lib"
 crate-type = ["dylib", "rlib"]
-path = "src/yaffe_plugin/lib.rs"
+path = "src/yaffe_lib/lib.rs"
 
 [[bin]]
 name = "yaffe"
 path = "src/main.rs"
+
+[[bin]]
+name = "yaffe-updater"
+path = "src/updater.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

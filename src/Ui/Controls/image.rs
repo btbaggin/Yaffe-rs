@@ -1,24 +1,20 @@
 use super::Control;
 use crate::Actions;
-use crate::settings::SettingsFile;
 use crate::utils::Rect;
-use crate::assets::AssetPathType;
+use crate::assets::AssetKey;
 
 pub struct Image {
-    image: AssetPathType
+    image: AssetKey
 }
 impl Image {
-    pub fn new(image: AssetPathType) -> Image {
+    pub fn new(image: AssetKey) -> Image {
         Image { image }
     }
 }
 impl Control for Image {
-    fn render(&self, graphics: &mut crate::Graphics, _: &SettingsFile, container: &Rect) -> crate::LogicalSize {
-        let slot = crate::assets::get_cached_file(&self.image);
-        let slot = &mut slot.borrow_mut();
-        
-        let image_size = crate::ui::image_fill(graphics, slot, &container.size());
-        let image = crate::assets::request_asset_image(graphics, slot);
+    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {  
+        let image_size = crate::ui::image_fill(graphics, &self.image, &container.size());
+        let image = crate::assets::request_asset_image(graphics, &self.image);
         if let Some(i) = image {
             i.render(graphics, Rect::point_and_size(*container.top_left(), image_size));
         }

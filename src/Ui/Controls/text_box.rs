@@ -1,7 +1,6 @@
-use super::{Control, InputControl, draw_label_and_box, get_font_color, LABEL_SIZE};
+use super::{Control, InputControl, draw_label_and_box, LABEL_SIZE};
 use crate::{Actions, LogicalPosition};
 use crate::ui::get_drawable_text;
-use crate::settings::SettingsFile;
 use crate::input::InputType;
 use crate::utils::Rect;
 use glutin::event::VirtualKeyCode;
@@ -22,11 +21,11 @@ impl TextBox {
 }
 
 impl Control for TextBox {
-    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> crate::LogicalSize {
+    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
         const MAX_SIZE: f32 = 250.;
 
         let size = f32::min(container.width() - LABEL_SIZE, MAX_SIZE);
-        let control = draw_label_and_box(graphics, settings, container.top_left(), size, &self.label);
+        let control = draw_label_and_box(graphics, container.top_left(), size, &self.label);
 
         let height = control.height();
         let text = get_drawable_text(height, &self.text);
@@ -47,10 +46,10 @@ impl Control for TextBox {
 
         //Clip text so it doesnt render outside box
         let clip = Rect::new(LogicalPosition::new(box_left, container.top()), LogicalPosition::new(container.right(), container.top() + height));
-        graphics.draw_text_cropped(LogicalPosition::new(origin_x, control.top()), clip, get_font_color(settings), &text);
+        graphics.draw_text_cropped(LogicalPosition::new(origin_x, control.top()), clip, graphics.font_color(), &text);
 
         if self.focused {
-            graphics.draw_line(LogicalPosition::new(cursor_x, control.top() + 2.), LogicalPosition::new(cursor_x, control.bottom() - 2.), 2., get_font_color(settings));
+            graphics.draw_line(LogicalPosition::new(cursor_x, control.top() + 2.), LogicalPosition::new(cursor_x, control.bottom() - 2.), 2., graphics.font_color());
         }
 
         crate::LogicalSize::new(control.width() + LABEL_SIZE, control.height())

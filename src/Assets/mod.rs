@@ -1,17 +1,16 @@
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::rc::Rc;
-use std::cell::RefCell;
 use crate::logger::PanicLogEntry;
 use speedy2d::{Graphics2D, font::*, image::*};
 use std::time::Instant;
 use crate::pooled_cache::PooledCache;
+use std::path::{Path, PathBuf};
 
 mod font;
 mod image;
 mod atlas;
 pub use font::{request_font, Fonts};
 pub use self::image::{request_asset_image, request_image, load_image_async, Images, YaffeTexture};
-pub use yaffe_plugin::PathType as AssetPathType;
 use self::image::preload_image;
 use atlas::load_texture_atlas;
 
@@ -19,12 +18,28 @@ const ASSET_STATE_UNLOADED: u8 = 0;
 const ASSET_STATE_PENDING: u8 = 1;
 const ASSET_STATE_LOADED: u8 = 2;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum AssetKey {
+    File(PathBuf),
+    Url(PathBuf),
+    Static(AssetTypes)
+}
+impl AssetKey {
+    fn get_path(self) -> PathBuf {
+        match self {
+            AssetKey::File(p) => p,
+            AssetKey::Url(p) => p,
+            AssetKey::Static(_) => unimplemented!(),
+        }
+    }
+    fn image(image: Images) -> AssetKey { AssetKey::Static(AssetTypes::Image(image)) }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum AssetTypes {
     Image(Images),
     Font(Fonts),
 }
-
 
 pub enum AssetData {
     Image(YaffeTexture),
@@ -35,13 +50,13 @@ pub enum AssetData {
 
 pub struct AssetSlot {
     state: AtomicU8,
-    path: AssetPathType,
+    path: PathBuf,
     data: AssetData,
     data_length: usize,
     last_request: Instant,
 }
 impl AssetSlot {
-    pub fn new(path: AssetPathType) -> AssetSlot {
+    pub fn new(path: PathBuf) -> AssetSlot {
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_UNLOADED),
             path,
@@ -55,7 +70,7 @@ impl AssetSlot {
         let size = image.size();
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
-            path: AssetPathType::File(std::path::Path::new(path).to_path_buf()),
+            path: Path::new(path).to_path_buf(),
             data: AssetData::Image(image),
             data_length: (size.x * size.y * 4.) as usize,
             last_request: Instant::now(),
@@ -68,34 +83,35 @@ impl AssetSlot {
 
         AssetSlot {
             state: AtomicU8::new(ASSET_STATE_LOADED),
-            path: AssetPathType::File(std::path::Path::new(path).to_path_buf()),
+            path: Path::new(path).to_path_buf(),
             data: AssetData::Font(font),
             data_length: data.len(),
             last_request: Instant::now(),
         }
     }
+
+    pub fn set_data(&mut self, data: Vec<u8>, dimensions: (u32, u32)) {
+        self.data_length = data.len();
+        self.data = AssetData::Raw((data, dimensions));
+        self.state.swap(ASSET_STATE_LOADED, Ordering::AcqRel);
+    }
 }
 
 
-//Stores static assets (something from AssetTypes)
-static mut STATIC_ASSET_MAP: Option<PooledCache<32, AssetTypes, AssetSlot>> = None;
-
-//Stores dyanmic assets (something loaded from a path)
-static mut FILE_ASSET_MAP: Option<PooledCache<32, String, RefCell<AssetSlot>>> = None;
+static mut ASSET_MAP: Option<PooledCache<32, AssetKey, AssetSlot>> = None;
 
 pub fn initialize_asset_cache() {
     let mut map = PooledCache::new();
-    map.insert(AssetTypes::Image(Images::Background), AssetSlot::new(AssetPathType::File(std::path::Path::new(r"./Assets/background.jpg").to_path_buf())));
+    map.insert(AssetKey::image(Images::Background), AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()));
 
-    map.insert(AssetTypes::Font(Fonts::Regular), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
+    map.insert(AssetKey::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
     
-    unsafe { STATIC_ASSET_MAP = Some(map); }
-    unsafe { FILE_ASSET_MAP = Some(PooledCache::new()); }
+    unsafe { ASSET_MAP = Some(map); }
 }
 
 pub fn preload_assets(graphics: &mut Graphics2D) {
-    let map = unsafe { STATIC_ASSET_MAP.as_mut().unwrap() };
-    if map.get_mut(&AssetTypes::Image(Images::Error)).is_none() {
+    let map = unsafe { ASSET_MAP.as_mut().unwrap() };
+    if map.get_mut(&AssetKey::image(Images::Error)).is_none() {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
 
@@ -124,56 +140,59 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
         }); 
     }
 
-    if map.get_mut(&AssetTypes::Image(Images::Placeholder)).is_none() {
+    if map.get_mut(&AssetKey::image(Images::Placeholder)).is_none() {
         preload_image(graphics, "./Assets/placeholder.jpg", Images::Placeholder, map);
     }
 }
 
-fn get_slot_mut(t: AssetTypes) -> &'static mut AssetSlot {
-    unsafe { STATIC_ASSET_MAP.as_mut().unwrap().get_mut(&t).log_message_and_panic("Invalid asset slot request") }
+pub fn get_asset_slot(asset: &AssetKey) -> &'static mut AssetSlot {
+    let map = unsafe { ASSET_MAP.as_mut().unwrap() };
+    if !map.exists(asset) {
+        map.insert(asset.clone(), AssetSlot::new(asset.clone().get_path()));
+    }
+    map.get_mut(asset).log_message_and_panic("Invalid asset slot request")
 }
 
-fn asset_path_is_valid(path: &AssetPathType) -> bool {
-    match path {
-        AssetPathType::File(p) => std::path::Path::new(&p).exists(),
-        AssetPathType::Url(_) => true,
+fn asset_path_is_valid(asset: &AssetKey, path: &Path) -> bool {
+    match asset {
+        AssetKey::File(_) | AssetKey::Static(_)  => path.exists(),
+        AssetKey::Url(_)  => true,
     }
 }
 
-pub fn get_asset_path(platform: &str, name: &str) -> std::path::PathBuf {
-    use std::path::Path;
-
+pub fn get_asset_path(platform: &str, name: &str) -> PathBuf {
     let platform = Path::new("./Assets").join(crate::os::sanitize_file(platform));
     let name = crate::os::sanitize_file(name);
     let name = format!("{name}.jpg");
     platform.join(name)
 }
 
-pub fn get_cached_file<'a>(file: &AssetPathType) -> &'a RefCell<AssetSlot> {
-    //This acts as a cache of exe images
-    //If our list ever reloads or we reqeust the same image (recent vs emulator)
-    //We will grab the cached image so we dont need to reload the image data
-    let map = unsafe { FILE_ASSET_MAP.as_mut().unwrap() };
-    let key = match file {
-        AssetPathType::File(path) => path,
-        AssetPathType::Url(url) => url,
-    };
-    let key = key.to_string_lossy().to_string();
-    map.insert(key.clone(), RefCell::new(AssetSlot::new(file.clone())));
-    map.get_mut(&key).unwrap()
+pub fn ensure_asset_loaded<'a>(queue: &mut crate::job_system::JobQueue, asset: &AssetKey) -> Option<&'a mut AssetSlot> {
+    let slot = get_asset_slot(asset);
+
+    if slot.state.load(Ordering::Acquire) == ASSET_STATE_UNLOADED && asset_path_is_valid(asset, &slot.path) {
+        if let Ok(ASSET_STATE_UNLOADED) = slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed) {
+            queue.send(crate::Job::LoadImage { key: asset.clone(), file: slot.path.clone() }).unwrap();
+            return None;
+        }
+    }
+    if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+        Some(slot)
+    } else {
+        None
+    }
 }
 
 pub fn clear_old_cache(state: &crate::YaffeState) {
     use crate::pooled_cache::PooledCacheIndex;
-    let map = unsafe { FILE_ASSET_MAP.as_mut().unwrap() };
+    let map = unsafe { ASSET_MAP.as_mut().unwrap() };
 
     let mut total_memory = 0;
     let mut last_used_index: Option<PooledCacheIndex> = None;
     let mut last_request = Instant::now();
     let indices = map.indexes().collect::<Vec<PooledCacheIndex>>();
     for index in indices {
-        let slot = map.get_index_mut(index).unwrap();
-        let mut slot = slot.borrow_mut();
+        let mut slot = map.get_index_mut(index).unwrap();
         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
             total_memory += slot.data_length;
 
@@ -192,8 +211,7 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
     //This will happen once per frame until we are under the threshold
     if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize {
        if let Some(index) = last_used_index {
-            let slot = map.get_index_mut(index).unwrap();
-            let mut slot = slot.borrow_mut();
+            let mut slot = map.get_index_mut(index).unwrap();
             slot.data = AssetData::None;
             slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
        }

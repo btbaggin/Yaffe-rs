@@ -1,19 +1,18 @@
 use speedy2d::font::*;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
-use std::assert_matches::assert_matches;
 use crate::logger::PanicLogEntry;
-use super::{AssetData, ASSET_STATE_LOADED, AssetTypes, get_slot_mut, AssetPathType};
+use super::{AssetData, ASSET_STATE_LOADED, AssetTypes, get_asset_slot, AssetKey};
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum Fonts {
     Regular,
 }
 
 pub fn request_font(font: Fonts) -> &'static Font {
-    let slot = get_slot_mut(AssetTypes::Font(font));
+    let slot = get_asset_slot(&AssetKey::Static(AssetTypes::Font(font)));
 
-    assert_matches!(&slot.path, AssetPathType::File(path) if std::path::Path::new(&path).exists());
+    assert!(slot.path.exists());
     assert_eq!(slot.state.load(Ordering::Acquire), ASSET_STATE_LOADED, "requested font, but font is not loaded");
 
     if let AssetData::Raw((data, _)) = &slot.data {

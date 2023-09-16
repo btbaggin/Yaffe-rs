@@ -1,7 +1,6 @@
 use crate::ui::{Control, InputControl, MARGIN};
 use crate::input::Actions;
 use crate::{Rect, LogicalSize};
-use crate::settings::SettingsFile;
 use std::collections::HashMap;
 
 enum ContainerDirection {
@@ -103,7 +102,7 @@ impl Container {
     }
 }
 impl Control for Container {
-    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> LogicalSize {
+    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> LogicalSize {
         let top_left = *container.top_left() + crate::LogicalPosition::new(MARGIN, MARGIN);
         match self.direction {
             ContainerDirection::Vertical => {
@@ -112,7 +111,7 @@ impl Control for Container {
                 let mut y = top_left.y;
 
                 for (i, v) in self.controls.iter().enumerate() {
-                    let size = render_control(graphics, settings, rect, self.focus_index, v, i);
+                    let size = render_control(graphics, rect, self.focus_index, v, i);
                     y += size.y + MARGIN;
                     rect = Rect::from_tuples((top_left.x, y), (rect.right(), rect.bottom()));
                 }
@@ -125,7 +124,7 @@ impl Control for Container {
                 let mut x = top_left.x;
 
                 for (i, v) in self.controls.iter().enumerate() {
-                    let size = render_control(graphics, settings, rect, self.focus_index, v, i);
+                    let size = render_control(graphics, rect, self.focus_index, v, i);
                     x += size.x + MARGIN;
                     rect = Rect::from_tuples((x, top_left.y), (rect.right(), rect.bottom()));
                 }
@@ -160,14 +159,13 @@ impl Control for Container {
 }
 
 fn render_control(graphics: &mut crate::Graphics,
-                  settings: &SettingsFile,
                   rect: Rect,
                   focus_index: Option<usize>,
                   control: &ContainerType,
                   current_index: usize) -> crate::LogicalSize {
     let size = match control {
-        ContainerType::Input(i) => i.render(graphics, settings, &rect),
-        ContainerType::Control(c) => c.render(graphics, settings, &rect),
+        ContainerType::Input(i) => i.render(graphics, &rect),
+        ContainerType::Control(c) => c.render(graphics, &rect),
     };
 
     if let Some(index) = focus_index {
@@ -176,8 +174,8 @@ fn render_control(graphics: &mut crate::Graphics,
             let max = *rect.top_left() + size;
         
             let control = Rect::new(min, max);
-            let base = crate::ui::get_accent_color(settings);
-            let light_factor = settings.get_f32(crate::SettingNames::LightShadeFactor);
+            let base = graphics.accent_color();
+            let light_factor = graphics.light_shade_factor();
             crate::ui::outline_rectangle(graphics, &control, 1., crate::ui::change_brightness(&base, light_factor));
         }
     }

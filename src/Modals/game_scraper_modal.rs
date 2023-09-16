@@ -1,10 +1,9 @@
 
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
 use crate::scraper::GameScrapeResult;
-use crate::settings::SettingsFile;
 use crate::input::Actions;
 use crate::platform::Rating;
-use crate::assets::AssetPathType;
+use crate::assets::AssetKey;
 use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
 use std::convert::TryInto;
 
@@ -24,7 +23,7 @@ impl GameScraperModal {
 
 impl ModalContent for GameScraperModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, _: &SettingsFile, rect: Rect, _: &crate::Graphics) -> LogicalSize {
+    fn size(&self, rect: Rect, _: &crate::Graphics) -> LogicalSize {
         LogicalSize::new(Self::modal_width(rect, ModalSize::Full), rect.height())
     }
 
@@ -36,12 +35,12 @@ impl ModalContent for GameScraperModal {
         Self::default_modal_action(action)
     }
 
-    fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
         let half_size = LogicalSize::new(rect.width() / 2., rect.height());
 
-        let size = self.details.render(graphics, settings, &rect);
+        let size = self.details.render(graphics, &rect);
         let right = Rect::point_and_size(LogicalPosition::new(rect.left() + size.x, rect.top()), half_size);
-        self.list.render(settings, right, graphics);
+        self.list.render(right, graphics);
     }
 }
 
@@ -52,7 +51,7 @@ fn build_container(item: &GameScrapeResult) -> Container {
     let mut top = Container::horizontal(0.25);
     let mut details = Container::vertical(1.);
 
-    top.add(Image::new(AssetPathType::Url(item.boxart.clone())));
+    top.add(Image::new(AssetKey::Url(item.boxart.clone())));
     details.add(Label::simple(format!("Players: {}", item.info.players)));
     details.add(Label::simple(format!("Rating: {}", TryInto::<Rating>::try_into(item.info.rating).unwrap_or(Rating::NotRated))));
     details.add(Label::simple(format!("Released: {}", item.info.released)));

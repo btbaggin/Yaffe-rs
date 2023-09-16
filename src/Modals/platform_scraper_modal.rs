@@ -1,9 +1,8 @@
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
 use crate::scraper::PlatformScrapeResult;
 use crate::input::Actions;
-use crate::settings::SettingsFile;
 use crate::modals::ListModal;
-use crate::assets::AssetPathType;
+use crate::assets::AssetKey;
 use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
 
 pub struct PlatformScraperModal {
@@ -21,7 +20,7 @@ impl PlatformScraperModal {
 
 impl ModalContent for PlatformScraperModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, _: &SettingsFile, rect: Rect, _: &crate::Graphics) -> LogicalSize {
+    fn size(&self,rect: Rect, _: &crate::Graphics) -> LogicalSize {
         LogicalSize::new(Self::modal_width(rect, ModalSize::Full), rect.height())
     }
 
@@ -33,19 +32,19 @@ impl ModalContent for PlatformScraperModal {
         Self::default_modal_action(action)
     }
 
-    fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
         let half_size = LogicalSize::new(rect.width() / 2., rect.height());
 
-        let size = self.details.render(graphics, settings, &rect);
+        let size = self.details.render(graphics, &rect);
         let right = Rect::point_and_size(LogicalPosition::new(rect.left() + size.x, rect.top()), half_size);
-        self.list.render(settings, right, graphics);
+        self.list.render(right, graphics);
     }
 }
 
 fn build_container(item: &PlatformScrapeResult) -> Container {
     let mut main = Container::vertical(0.5);
     let mut top = Container::horizontal(0.25);
-    top.add(Image::new(AssetPathType::Url(item.boxart.clone())));
+    top.add(Image::new(AssetKey::Url(item.boxart.clone())));
 
     main.add(Label::new(item.info.platform.clone(), Some(crate::ui::TITLE_SIZE)));
     main.add(top);

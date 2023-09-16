@@ -3,6 +3,7 @@ use reqwest::blocking::{Response, RequestBuilder, Client};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use crate::data::{GameInfo, PlatformInfo};
+use crate::logger::{LogEntry, error};
 
 type ServiceResult<T> = Result<T, ServiceError>;
 
@@ -117,7 +118,7 @@ fn send_and_return(builder: RequestBuilder) -> Result<Response, ServiceError> {
 
 
 
-pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResult<bool> {
+pub fn check_for_updates() -> ServiceResult<bool> {
     crate::logger::info!("Checking for updates");
 
     //For some reason this doesnt work when putting q as a query parameter
@@ -154,7 +155,7 @@ pub fn check_for_updates(queue: &mut crate::job_system::JobQueue) -> ServiceResu
 
         let url = Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join(format!("?alt=media&key={GOOGLE_API_KEY}"));
         let file = Path::new(crate::UPDATE_FILE_PATH);
-        queue.send(crate::job_system::JobType::DownloadUrl((url, file.to_owned()))).unwrap();
+        download_file(url, file.to_owned());
 
         return Ok(true)
     }
@@ -175,4 +176,15 @@ fn needs_updating(current: &str, updated: &str) -> bool {
     }
 
     parse(current) < parse(updated)
+}
+
+pub fn download_file(url: PathBuf, file_path: PathBuf) {
+    match send_request::<()>(url.to_str().unwrap(), None) {
+        Ok(bytes) => {
+            //Download and write file to disk
+            let file = bytes.bytes().unwrap();
+            std::fs::write(file_path, file).log("Unable to write downloaded file to disk");
+        }
+        Err(e) => error!("{:?}", e),
+    }
 }
