@@ -5,19 +5,16 @@ use std::sync::{Arc, Mutex};
 use std::cell::RefCell;
 use platform::scan_new_files;
 use crate::logger::{PanicLogEntry, error};
-use crate::assets::PathType;
+use crate::assets::AssetKey;
+use yaffe_lib::UPDATE_FILE_PATH;
 
 /* 
  * TODO
  * Fix selected_app when moving between large things
+ * save settings at beginning of frame so we dont need to pass it everywhere?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
-const UPDATE_FILE_PATH: &str = "./yaffe-rs.update";
-
-
-#[macro_use]
-extern crate dlopen_derive;
 
 mod widgets;
 mod assets;
@@ -67,7 +64,7 @@ pub struct Executable {
     released: String,
     players: u8,
     platform_index: usize,
-    boxart: PathType,
+    boxart: AssetKey,
 }
 
 pub struct YaffeState {
@@ -146,7 +143,7 @@ fn main() {
     let animation = Rc::new(RefCell::new(ui::AnimationManager::new()));
     let q = Arc::new(Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree(animation.clone());
-    let overlay = overlay::OverlayWindow::new(settings.clone());
+    let overlay = overlay::OverlayWindow::new(settings.clone(), q.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
 
     assets::initialize_asset_cache();

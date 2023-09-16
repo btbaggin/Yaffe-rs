@@ -1,6 +1,9 @@
 use std::{collections::HashMap, path::PathBuf};
 use speedy2d::color::Color;
 
+
+pub const UPDATE_FILE_PATH: &str = "./yaffe-rs.update";
+
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub enum PathType {

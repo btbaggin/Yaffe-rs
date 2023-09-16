@@ -32,7 +32,8 @@ impl WindowHandler for WidgetTree {
                 self.data.refresh_list = false;
             }
 
-            let mut graphics = Graphics { graphics, queue: Some(self.data.queue.clone()), scale_factor, bounds: window_rect, delta_time };
+            let mut graphics = Graphics::new(graphics, self.data.queue.clone(), scale_factor, window_rect, delta_time);
+            graphics.cache_settings(&self.data.settings);
             self.data.focused_widget = *self.focus.last().unwrap();
             self.render_all(&mut graphics);
 
@@ -43,7 +44,7 @@ impl WindowHandler for WidgetTree {
             if let Some(m) = modals.last() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_modal(&self.data.settings, m, &mut graphics);
+                crate::ui::render_modal(m, &mut graphics);
             }
         }
 

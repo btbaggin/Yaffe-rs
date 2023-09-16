@@ -1,6 +1,6 @@
 use crate::{Transparent, YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize, Rect};
 use crate::assets::{request_asset_image, request_image, Images};
-use crate::ui::{get_font_color, get_font_size, MODAL_BACKGROUND};
+use crate::ui::MODAL_BACKGROUND;
 
 pub const ANIMATION_TIME: f32 = 0.25;
 const SELECTED_SCALAR: f32 = 0.2;
@@ -50,7 +50,6 @@ impl AppTile {
 
 
     pub fn render(&mut self, 
-                  settings: &crate::settings::SettingsFile, 
                   focused: bool, 
                   animation: f32, 
                   exe: &crate::Executable, 
@@ -63,7 +62,7 @@ impl AppTile {
         if focused {
             //Have alpha fade in as the time grows to full size
             let alpha = f32::powf(animation, 2.);
-            let font_size = get_font_size(settings, graphics);
+            let font_size = graphics.font_size();
 
             target_size = target_size * (1. + animation * SELECTED_SCALAR);
             position = position - (target_size - self.size) / 2.;
@@ -94,15 +93,15 @@ impl AppTile {
             let rect_size = LogicalSize::new(target_size.x + ROM_OUTLINE_SIZE * 2., target_size.y + height + ROM_OUTLINE_SIZE * 2.);
             graphics.draw_rectangle(Rect::point_and_size(rect_start, rect_size), MODAL_BACKGROUND.with_alpha(alpha * 0.94));
 
-            graphics.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), get_font_color(settings).with_alpha(alpha), &name);
+            graphics.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), graphics.font_color().with_alpha(alpha), &name);
 
             //Help
             let text = crate::ui::get_drawable_text(font_size, "Info");
-            menu_position = crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), get_font_color(settings).with_alpha(alpha), text);
+            menu_position = crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), graphics.font_color().with_alpha(alpha), text);
             menu_position = LogicalPosition::new(menu_position.x - 5., menu_position.y);
 
             let text = crate::ui::get_drawable_text(font_size, "Run");
-            crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), get_font_color(settings).with_alpha(alpha), text);
+            crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), graphics.font_color().with_alpha(alpha), text);
         }
 
 
@@ -113,7 +112,7 @@ impl AppTile {
         }
     }
 
-    pub fn get_image(&self, state: &YaffeState) -> crate::assets::PathType {
+    pub fn get_image(&self, state: &YaffeState) -> crate::assets::AssetKey {
         let p = state.get_platform();
         let exe = &p.apps[self.index];
         exe.boxart.clone()

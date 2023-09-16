@@ -79,12 +79,12 @@ impl crate::ui::Widget for AppList {
             let tile = &mut self.tiles[i];
             //Only render tiles inside visible area
             if tile.intersects(&graphics.bounds) {
-                tile.render(&state.settings, false, self.tile_animation, &plat.apps[i], graphics);
+                tile.render(false, self.tile_animation, &plat.apps[i], graphics);
             }
         }
 
         if let Some(tile) = self.tiles.get_mut(state.selected_app) {
-            tile.render(&state.settings, focused, self.tile_animation, &plat.apps[state.selected_app], graphics);
+            tile.render(focused, self.tile_animation, &plat.apps[state.selected_app], graphics);
         }
     }
 }

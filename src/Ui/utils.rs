@@ -1,7 +1,7 @@
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
 use crate::{LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use crate::assets::{Images, Fonts, PathType, request_asset_image, request_font};
+use crate::assets::{Images, Fonts, AssetKey, request_asset_image, request_font};
 
 //
 // Text helper methods
@@ -38,7 +38,7 @@ pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc
 }
 
 /// Scales an image to the largest size that can fit in the smallest dimension
-pub fn image_fill(graphics: &mut crate::Graphics, slot: &PathType, size: &LogicalSize) -> LogicalSize {
+pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &LogicalSize) -> LogicalSize {
     let bitmap_size = if let Some(i) = request_asset_image(graphics, slot) {
             i.size()
     } else {

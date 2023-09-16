@@ -19,19 +19,20 @@ const ASSET_STATE_PENDING: u8 = 1;
 const ASSET_STATE_LOADED: u8 = 2;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum PathType {
+pub enum AssetKey {
     File(PathBuf),
     Url(PathBuf),
     Static(AssetTypes)
 }
-impl PathType {
+impl AssetKey {
     fn get_path(self) -> PathBuf {
         match self {
-            PathType::File(p) => p,
-            PathType::Url(p) => p,
-            PathType::Static(_) => unimplemented!(),
+            AssetKey::File(p) => p,
+            AssetKey::Url(p) => p,
+            AssetKey::Static(_) => unimplemented!(),
         }
     }
+    fn image(image: Images) -> AssetKey { AssetKey::Static(AssetTypes::Image(image)) }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -97,20 +98,20 @@ impl AssetSlot {
 }
 
 
-static mut ASSET_MAP: Option<PooledCache<32, PathType, AssetSlot>> = None;
+static mut ASSET_MAP: Option<PooledCache<32, AssetKey, AssetSlot>> = None;
 
 pub fn initialize_asset_cache() {
     let mut map = PooledCache::new();
-    map.insert(PathType::Static(AssetTypes::Image(Images::Background)), AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()));
+    map.insert(AssetKey::image(Images::Background), AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()));
 
-    map.insert(PathType::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
+    map.insert(AssetKey::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
     
     unsafe { ASSET_MAP = Some(map); }
 }
 
 pub fn preload_assets(graphics: &mut Graphics2D) {
     let map = unsafe { ASSET_MAP.as_mut().unwrap() };
-    if map.get_mut(&PathType::Static(AssetTypes::Image(Images::Error))).is_none() {
+    if map.get_mut(&AssetKey::image(Images::Error)).is_none() {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
 
@@ -139,12 +140,12 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
         }); 
     }
 
-    if map.get_mut(&PathType::Static(AssetTypes::Image(Images::Placeholder))).is_none() {
+    if map.get_mut(&AssetKey::image(Images::Placeholder)).is_none() {
         preload_image(graphics, "./Assets/placeholder.jpg", Images::Placeholder, map);
     }
 }
 
-pub fn get_asset_slot(asset: &PathType) -> &'static mut AssetSlot {
+pub fn get_asset_slot(asset: &AssetKey) -> &'static mut AssetSlot {
     let map = unsafe { ASSET_MAP.as_mut().unwrap() };
     if !map.exists(asset) {
         map.insert(asset.clone(), AssetSlot::new(asset.clone().get_path()));
@@ -152,10 +153,10 @@ pub fn get_asset_slot(asset: &PathType) -> &'static mut AssetSlot {
     map.get_mut(asset).log_message_and_panic("Invalid asset slot request")
 }
 
-fn asset_path_is_valid(asset: &PathType, path: &Path) -> bool {
+fn asset_path_is_valid(asset: &AssetKey, path: &Path) -> bool {
     match asset {
-        PathType::File(_) | PathType::Static(_)  => path.exists(),
-        PathType::Url(_)  => true,
+        AssetKey::File(_) | AssetKey::Static(_)  => path.exists(),
+        AssetKey::Url(_)  => true,
     }
 }
 
@@ -166,7 +167,7 @@ pub fn get_asset_path(platform: &str, name: &str) -> PathBuf {
     platform.join(name)
 }
 
-pub fn ensure_asset_loaded<'a>(queue: &mut crate::job_system::JobQueue, asset: &PathType) -> Option<&'a mut AssetSlot> {
+pub fn ensure_asset_loaded<'a>(queue: &mut crate::job_system::JobQueue, asset: &AssetKey) -> Option<&'a mut AssetSlot> {
     let slot = get_asset_slot(asset);
 
     if slot.state.load(Ordering::Acquire) == ASSET_STATE_UNLOADED && asset_path_is_valid(asset, &slot.path) {

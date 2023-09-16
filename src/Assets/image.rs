@@ -5,7 +5,7 @@ use std::time::Instant;
 use crate::{PhysicalSize, PhysicalRect};
 use crate::logger::{PanicLogEntry, warn, info};
 use crate::pooled_cache::PooledCache;
-use super::{AssetData, ASSET_STATE_LOADED, AssetTypes, PathType, AssetSlot};
+use super::{AssetData, ASSET_STATE_LOADED, AssetKey, AssetSlot};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum Images {
@@ -32,10 +32,14 @@ pub enum Images {
 }
 
 pub struct YaffeTexture {
-    pub(super) image: Rc<ImageHandle>,
-    pub(super) bounds: Option<PhysicalRect>,
+    image: Rc<ImageHandle>,
+    bounds: Option<PhysicalRect>,
 }
 impl YaffeTexture {
+    pub fn new(image: Rc<ImageHandle>, bounds: Option<PhysicalRect>) -> YaffeTexture {
+        YaffeTexture { image, bounds }
+    }
+
     pub fn render(&self, graphics: &mut crate::Graphics, rect: crate::Rect) {
         let rect = rect.to_physical(graphics.scale_factor);
         if let Some(b) = &self.bounds {
@@ -56,9 +60,9 @@ impl YaffeTexture {
     }
 }
 
-pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, key: &PathType) -> Option<&'a YaffeTexture> {
+pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, key: &AssetKey) -> Option<&'a YaffeTexture> {
     let q = graphics.queue.clone();
-    let queue = q.as_ref().unwrap();
+    let queue = q.as_ref();
     let lock = queue.lock().log_and_panic();
     let mut queue = lock.borrow_mut();
 
@@ -80,16 +84,16 @@ pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, key: &PathType) -
     None
 }
 
-pub fn request_image<'a>(piet: &mut crate::Graphics, image: Images) -> Option<&'a YaffeTexture> {
-    request_asset_image(piet, &PathType::Static(AssetTypes::Image(image)))
+pub fn request_image<'a>(graphics: &mut crate::Graphics, image: Images) -> Option<&'a YaffeTexture> {
+    request_asset_image(graphics, &AssetKey::image(image))
 }
 
-pub fn load_image_async(key: &PathType, path: std::path::PathBuf) -> Option<(Vec<u8>, (u32, u32))> {
+pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec<u8>, (u32, u32))> {
     info!("Loading image asynchronously {:?}", path);
 
     let data = match &key {
-        PathType::File(_) | PathType::Static(_) => std::fs::read(path).log_and_panic(),
-        PathType::Url(_) =>  {
+        AssetKey::File(_) | AssetKey::Static(_) => std::fs::read(path).log_and_panic(),
+        AssetKey::Url(_) =>  {
             let image = reqwest::blocking::get(path.to_str().unwrap()).unwrap().bytes().log_and_panic();
             image.to_vec()
         },
@@ -110,9 +114,9 @@ pub fn load_image_async(key: &PathType, path: std::path::PathBuf) -> Option<(Vec
     None
 }
 
-pub fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, PathType, AssetSlot>) {
+pub fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, AssetKey, AssetSlot>) {
     let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear, path).log_and_panic();
     let image = Rc::new(data);
-    let texture = YaffeTexture { image, bounds: None };
-    map.insert(PathType::Static(AssetTypes::Image(image_name)), AssetSlot::preloaded(path, texture));
+    let texture = YaffeTexture::new(image, None);
+    map.insert(AssetKey::image(image_name), AssetSlot::preloaded(path, texture));
 }

@@ -7,8 +7,7 @@ mod platform_scraper_modal;
 mod settings_modal;
 
 use crate::{Rect, LogicalSize};
-use crate::settings::SettingsFile;
-use crate::ui::{MARGIN, get_font_color, get_font_size};
+use crate::ui::MARGIN;
 use crate::ui::{ModalResult, ModalSize, ModalContent};
 
 pub use list_modal::ListModal;
@@ -33,9 +32,9 @@ impl MessageModalContent {
 }
 impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, settings: &SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
+    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
         let width = Self::modal_width(rect, ModalSize::Half);
-        let name_label = crate::ui::get_drawable_text_with_wrap(get_font_size(settings, graphics), &self.message, width);
+        let name_label = crate::ui::get_drawable_text_with_wrap(graphics.font_size(), &self.message, width);
         LogicalSize::new(width, name_label.height())
     }
 
@@ -44,9 +43,9 @@ impl ModalContent for MessageModalContent {
     }
 
 
-    fn render(&self, settings: &SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        let name_label = crate::ui::get_drawable_text_with_wrap(get_font_size(settings, graphics), &self.message, rect.width() * graphics.scale_factor);
-        graphics.draw_text(*rect.top_left(), get_font_color(settings), &name_label);
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
+        let name_label = crate::ui::get_drawable_text_with_wrap(graphics.font_size(), &self.message, rect.width() * graphics.scale_factor);
+        graphics.draw_text(*rect.top_left(), graphics.font_color(), &name_label);
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::{Rect, LogicalSize, Actions};
-use crate::ui::{get_accent_color, get_font_size};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;
@@ -43,9 +42,9 @@ impl<T: ListItem> List<T> {
         true
     }
 
-    pub fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
+    pub fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
         let mut pos = *rect.top_left();
-        let font_size = get_font_size(settings, graphics);
+        let font_size = graphics.font_size();
 
         let mut first_index = self.first_index.borrow_mut();
         if self.index as f32 * font_size > rect.height() {
@@ -60,10 +59,10 @@ impl<T: ListItem> List<T> {
 
             if self.index == i {
                 let rect = Rect::point_and_size(pos, LogicalSize::new(rect.width(), font_size));
-                graphics.draw_rectangle(rect, get_accent_color(settings));
+                graphics.draw_rectangle(rect, graphics.accent_color());
             }
 
-            graphics.simple_text(pos, settings, &display);
+            graphics.simple_text(pos, &display);
             pos.y += font_size;
         }
     }

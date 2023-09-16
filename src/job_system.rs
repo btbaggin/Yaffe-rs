@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::thread;
 use std::cell::RefCell;
 use std::sync::Arc;
-use crate::assets::PathType;
+use crate::assets::AssetKey;
 use crate::scraper::*;
 use crate::logger::*;
 
@@ -69,7 +69,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
 #[derive(Debug)]
 pub enum Job {
     /// Loads an image synchronously
-    LoadImage { key: PathType, file: PathBuf },
+    LoadImage { key: AssetKey, file: PathBuf },
 
     /// Downloads the file at a given url and writes it to the file system
     DownloadUrl { url: std::path::PathBuf, file_path: std::path::PathBuf },
@@ -86,7 +86,7 @@ pub enum Job {
 
 pub enum JobResult {
     None,
-    LoadImage { data: Vec<u8>, dimensions: (u32, u32), key: PathType },
+    LoadImage { data: Vec<u8>, dimensions: (u32, u32), key: AssetKey },
     SearchPlatform(ServiceResponse<PlatformScrapeResult>),
     SearchGame(ServiceResponse<GameScrapeResult>),
     CheckUpdates(bool),

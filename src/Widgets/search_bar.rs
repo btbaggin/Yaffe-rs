@@ -1,5 +1,5 @@
 use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, ScaleFactor};
-use crate::ui::{get_font_unfocused_color, get_font_color, MENU_BACKGROUND, get_accent_color, get_font_size};
+use crate::ui::{get_font_unfocused_color, MENU_BACKGROUND};
 
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
@@ -147,10 +147,10 @@ impl crate::ui::Widget for SearchBar {
         };
         
         let item_size = (rect.right() - filter_start) / (end - start + 1) as f32;
-        let font_size = get_font_size(&state.settings, graphics);
+        let font_size = graphics.font_size();
 
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
-        let focused_color = if crate::is_widget_focused!(state, SearchBar) { get_font_color(&state.settings) } else { get_font_unfocused_color(&state.settings) };
+        let focused_color = if crate::is_widget_focused!(state, SearchBar) { graphics.font_color() } else { get_font_unfocused_color(&state.settings) };
 
         //Filter option name
         let filter_rect = Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
@@ -164,7 +164,7 @@ impl crate::ui::Widget for SearchBar {
         }
 
         let r = Rect::from_tuples((highlight_position, rect.top()), (highlight_position + highlight_width, rect.bottom()));
-        graphics.draw_rectangle(r, get_accent_color(&state.settings));
+        graphics.draw_rectangle(r, graphics.accent_color());
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
 

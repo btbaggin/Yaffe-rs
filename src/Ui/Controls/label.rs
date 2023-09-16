@@ -1,6 +1,5 @@
-use super::{Control, get_font_size, get_font_color};
+use super::Control;
 use crate::Actions;
-use crate::settings::SettingsFile;
 use crate::utils::Rect;
 
 pub struct Label {
@@ -22,15 +21,15 @@ impl Label {
     }
 }
 impl Control for Label {
-    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> crate::LogicalSize {
-        let size = if let Some(size) = self.size { size } else { get_font_size(settings, graphics) };
+    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
+        let size = if let Some(size) = self.size { size } else { graphics.font_size() };
         let text = if self.wrap {
             crate::ui::get_drawable_text_with_wrap(size, &self.text, (container.width() - crate::ui::MARGIN) * graphics.scale_factor)
         } else {
             crate::ui::get_drawable_text(size, &self.text)
         };
 
-        graphics.draw_text(*container.top_left(), get_font_color(settings), &text);
+        graphics.draw_text(*container.top_left(), graphics.font_color(), &text);
         
         let size = text.size();
         crate::LogicalSize::new(size.x, size.y)

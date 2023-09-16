@@ -1,5 +1,4 @@
 use crate::{Actions, LogicalPosition};
-use crate::settings::SettingsFile;
 use crate::utils::Rect;
 use speedy2d::color::Color;
 
@@ -25,7 +24,7 @@ pub const MODAL_BACKGROUND: Color = Color::from_rgba(0.1, 0.1, 0.1, 1.);
 
 /// Provides functionality for a basic UI control (textbox, checkbox, etc...)
 pub trait Control {
-    fn render(&self, graphics: &mut crate::Graphics, settings: &SettingsFile, container: &Rect) -> crate::LogicalSize;
+    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize;
     fn action(&mut self, action: &Actions);
 }
 
@@ -34,21 +33,11 @@ pub trait InputControl: Control {
     fn set_focused(&mut self, value: bool);
 }
 
-pub fn get_font_size(settings: &crate::settings::SettingsFile, graphics: &crate::Graphics) -> f32 {
-    settings.get_f32(crate::SettingNames::InfoFontSize) * graphics.scale_factor
-}
-
-pub fn get_font_color(settings: &crate::settings::SettingsFile) -> Color {
-    settings.get_color(crate::SettingNames::FontColor)
-}
 pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
     let color = settings.get_color(crate::SettingNames::FontColor);
     change_brightness(&color, -0.4)
 }
 
-pub fn get_accent_color(settings: &crate::settings::SettingsFile) -> Color {
-    settings.get_color(crate::SettingNames::AccentColor)
-}
 pub fn get_accent_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
     let color = settings.get_color(crate::SettingNames::AccentColor);
     change_brightness(&color, -0.3)
@@ -78,16 +67,16 @@ pub fn rgba_string(c: &Color) -> String {
     format!("{},{},{},{}", c.r(), c.g(), c.b(), c.a())
 }
 
-fn draw_label_and_box(graphics: &mut crate::Graphics, settings: &SettingsFile, pos: &LogicalPosition, size: f32, label: &str) -> Rect {
-    let font_size = get_font_size(settings, graphics);
-    graphics.simple_text(*pos, settings, label); 
+fn draw_label_and_box(graphics: &mut crate::Graphics, pos: &LogicalPosition, size: f32, label: &str) -> Rect {
+    let font_size = graphics.font_size();
+    graphics.simple_text(*pos, label); 
 
     let min = LogicalPosition::new(pos.x + LABEL_SIZE, pos.y);
     let max = LogicalPosition::new(pos.x + LABEL_SIZE + size, pos.y + font_size);
 
     let control = Rect::new(min, max);
-    let base = get_accent_color(settings);
-    let factor = settings.get_f32(crate::SettingNames::DarkShadeFactor);
+    let base = graphics.accent_color();
+    let factor = graphics.dark_shade_factor();
     graphics.draw_rectangle(control, change_brightness(&base, factor));
     
     control

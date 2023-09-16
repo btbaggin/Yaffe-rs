@@ -1,4 +1,4 @@
-use yaffe_plugin::{YaffePlugin, YaffePluginItem, SelectedAction};
+use yaffe_lib::{YaffePlugin, YaffePluginItem, SelectedAction};
 use dlopen::wrapper::{Container, WrapperApi};
 use crate::logger::{PanicLogEntry, UserMessage, info};
 use std::ops::{DerefMut, Deref};
@@ -76,7 +76,7 @@ impl DerefMut for Plugin {
     }
 }
 
-#[derive(WrapperApi)]
+#[derive(dlopen_derive::WrapperApi)]
 struct PluginWrapper {
 	initialize: fn() -> Box<dyn YaffePlugin>,
 }

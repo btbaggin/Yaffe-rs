@@ -40,13 +40,13 @@ impl SettingsModal {
 
 impl ModalContent for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let height = (get_font_size(settings, graphics) + MARGIN) * self.settings.child_count() as f32;
+    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
+        let height = (graphics.font_size() + MARGIN) * self.settings.child_count() as f32;
         LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
-    fn render(&self, settings: &crate::settings::SettingsFile, rect: Rect, graphics: &mut crate::Graphics) {
-        self.settings.render(graphics, settings, &rect);
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
+        self.settings.render(graphics, &rect);
     }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {

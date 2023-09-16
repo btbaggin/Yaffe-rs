@@ -3,7 +3,7 @@ use crate::plugins::Plugin;
 use crate::logger::PanicLogEntry;
 use crate::data::GameInfo;
 use super::{Platform, Executable};
-use yaffe_plugin::YaffePluginItem;
+use yaffe_lib::YaffePluginItem;
 use std::convert::{TryFrom, TryInto};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -116,12 +116,12 @@ impl Platform {
 impl Executable {
     pub fn plugin_item(platform_index: usize, item: YaffePluginItem) -> Self {
         let boxart = match item.thumbnail {
-            yaffe_plugin::PathType::Url(s) => {
-                crate::assets::PathType::Url(s)
+            yaffe_lib::PathType::Url(s) => {
+                crate::assets::AssetKey::Url(s)
             },
-            yaffe_plugin::PathType::File(s) => {
+            yaffe_lib::PathType::File(s) => {
                 let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
-                crate::assets::PathType::File(canon)
+                crate::assets::AssetKey::File(canon)
             },
         };
 
@@ -143,7 +143,7 @@ impl Executable {
             name: info.name.clone(),
             description: info.overview.clone(),
             platform_index: index,
-            boxart: crate::assets::PathType::File(boxart),
+            boxart: crate::assets::AssetKey::File(boxart),
             released: info.released.clone(),
             players: info.players as u8,
             rating: info.rating.try_into().unwrap(),
