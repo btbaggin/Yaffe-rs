@@ -1,6 +1,6 @@
 use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
 use crate::modals::{PlatformDetailModal, on_update_platform_close};
-use crate::ui::{MARGIN, get_font_unfocused_color, get_accent_unfocused_color, MENU_BACKGROUND, display_modal};
+use crate::ui::{MARGIN, MENU_BACKGROUND, display_modal};
 
 widget!(pub struct PlatformList {});
 impl crate::ui::Widget for PlatformList {
@@ -45,7 +45,7 @@ impl crate::ui::Widget for PlatformList {
         let title = crate::ui::get_drawable_text(32. * graphics.scale_factor, "Yaffe");
         graphics.draw_text(LogicalPosition::new(rect.width() - title.width().to_logical(graphics) - MARGIN, MARGIN), graphics.font_color(), &title);
 
-        let text_color = if crate::is_widget_focused!(state, PlatformList) { graphics.font_color() } else { get_font_unfocused_color(&state.settings) };
+        let text_color = if crate::is_focused!(state) { graphics.font_color() } else { graphics.font_unfocused_color() };
 
         let font_size = graphics.font_size();
 
@@ -59,15 +59,14 @@ impl crate::ui::Widget for PlatformList {
                 y = draw_header(graphics, y, rect.width(), p.kind);
                 plat_kind = p.kind as i32;
             }
-
             
             //Highlight bar
             let height = font_size.to_logical(graphics);
             if i == selected_index {
                 let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
-                if crate::is_widget_focused!(state, PlatformList) { graphics.draw_rectangle(rect, graphics.accent_color()); }
-                else { graphics.draw_rectangle(rect, get_accent_unfocused_color(&state.settings)); }
+                if crate::is_focused!(state) { graphics.draw_rectangle(rect, graphics.accent_color()); }
+                else { graphics.draw_rectangle(rect, graphics.accent_unfocused_color()); }
             }
             
             //Label

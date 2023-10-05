@@ -21,7 +21,7 @@ path = "src/updater.rs"
 
 [dependencies]
 sqlite = "^0.30"
-speedy2d = { version = "^1.9", default-features = false, features = ["image-loading"] }
+speedy2d = { version = "^1.12", default-features = false, features = ["image-loading"] }
 spmc = "^0.3"
 chrono = "^0.4"
 serde_json = "^1"

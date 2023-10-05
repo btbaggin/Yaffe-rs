@@ -11,7 +11,6 @@ use yaffe_lib::UPDATE_FILE_PATH;
 /* 
  * TODO
  * Fix selected_app when moving between large things
- * save settings at beginning of frame so we dont need to pass it everywhere?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -21,7 +21,7 @@ impl crate::ui::Widget for Toolbar {
 
         //Draw buttons
         //What actions we can perform depend on what's focused
-        if crate::is_widget_focused!(state, crate::widgets::AppList) {
+        if state.focused_widget == crate::get_widget_id!(crate::widgets::AppList) {
             let text = crate::ui::get_drawable_text(font_size, "Filter");
             right = crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonY), font_color, text);
             right = LogicalPosition::new(right.x - MARGIN * 2., right.y);
@@ -29,7 +29,7 @@ impl crate::ui::Widget for Toolbar {
             let text = crate::ui::get_drawable_text(font_size, "Back");
             crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonB), font_color, text);
 
-        } else if crate::is_widget_focused!(state, crate::widgets::PlatformList) {
+        } else if state.focused_widget == crate::get_widget_id!(crate::widgets::PlatformList) {
             let platform = state.get_platform();
             if crate::platform::PlatformType::Recents != platform.kind {
                 let text = crate::ui::get_drawable_text(font_size, "Settings");

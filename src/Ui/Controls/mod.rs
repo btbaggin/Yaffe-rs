@@ -1,5 +1,4 @@
-use crate::{Actions, LogicalPosition};
-use crate::utils::Rect;
+use crate::{Actions, LogicalPosition, Rect};
 use speedy2d::color::Color;
 
 mod text_box;
@@ -33,32 +32,18 @@ pub trait InputControl: Control {
     fn set_focused(&mut self, value: bool);
 }
 
-pub fn get_font_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
-    let color = settings.get_color(crate::SettingNames::FontColor);
-    change_brightness(&color, -0.4)
-}
-
-pub fn get_accent_unfocused_color(settings: &crate::settings::SettingsFile) -> Color {
-    let color = settings.get_color(crate::SettingNames::AccentColor);
-    change_brightness(&color, -0.3)
-}
-
 pub fn change_brightness(color: &Color, factor: f32) -> Color {
-    let mut r = color.r();
-    let mut g = color.g();
-    let mut b = color.b();
+    let r = color.r();
+    let g = color.g();
+    let b = color.b();
     let a = color.a();
 
-    if factor < 0. {
+    let (r, g, b) = if factor < 0. {
         let factor = 1. + factor;
-        r *= factor;
-        g *= factor;
-        b *= factor;
+        ((r * factor), (g * factor), (b * factor))
     } else {
-        r = (1. - r) * factor + r;
-        g = (1. - g) * factor + g;
-        b  = (1. - b) * factor + b;
-    }
+        ((1. - r) * factor + r, (1. - g) * factor + g, (1. - b) * factor + b)
+    };
 
     Color::from_rgba(r, g, b, a)
 }

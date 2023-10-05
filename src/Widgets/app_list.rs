@@ -72,7 +72,7 @@ impl crate::ui::Widget for AppList {
         let plat = state.get_platform();
 
         //Height needs to be based on image aspect * width
-        let focused = crate::is_widget_focused!(state, AppList);
+        let focused = crate::is_focused!(state);
         for i in 0..plat.apps.len() {
             if i == state.selected_app && focused { continue; }
 

@@ -1,5 +1,5 @@
 use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, ScaleFactor};
-use crate::ui::{get_font_unfocused_color, MENU_BACKGROUND};
+use crate::ui::MENU_BACKGROUND;
 
 const SEARCH_OPTION_NONE: i32 = 0;
 const SEARCH_OPTION_NAME: i32 = 1;
@@ -150,7 +150,7 @@ impl crate::ui::Widget for SearchBar {
         let font_size = graphics.font_size();
 
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
-        let focused_color = if crate::is_widget_focused!(state, SearchBar) { graphics.font_color() } else { get_font_unfocused_color(&state.settings) };
+        let focused_color = if crate::is_focused!(state) { graphics.font_color() } else { graphics.font_unfocused_color() };
 
         //Filter option name
         let filter_rect = Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
@@ -192,7 +192,7 @@ impl crate::ui::Widget for SearchBar {
             //Filter item
             //If there are no items that match a certain filter we will draw it unfocused
             let bit = i - start;
-            let color = if mask & 1 << bit != 0 { focused_color } else { get_font_unfocused_color(&state.settings) };
+            let color = if mask & 1 << bit != 0 { focused_color } else { graphics.font_unfocused_color() };
             let item_label = crate::ui::get_drawable_text(font_size, &String::from(i as char));
             
             let label_half = LogicalSize::new(item_label.width().to_logical(graphics) / 2., item_label.height().to_logical(graphics) / 2.);
