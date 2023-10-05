@@ -5,7 +5,7 @@
             "label": "Rust: cargo build --release",
             "type": "shell",
             "windows": {
-                "command": "cargo rustc --release --package yaffe-rs -- -C link-args=\"Yaffe.res\" ",
+                "command": "cargo rustc --release --package yaffe-rs --bin yaffe -- -C link-args=\"Yaffe.res\" ",
                 "problemMatcher": [
                     "$rustc"
                 ]
