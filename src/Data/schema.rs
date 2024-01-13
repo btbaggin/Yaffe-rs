@@ -45,6 +45,30 @@ lazy_static::lazy_static! {
     };
 }
 
+pub fn create_schema(table: &str, data: impl Schema) -> QueryResult<()> {
+    let columns = data.get_columns();
+    let con = YaffeConnection::new();
+
+    let mut create = String::from("CREATE TABLE \"");
+    create.push_str(table);
+    create.push_str("\" (");
+    
+    for c in &columns {
+        let t = TYPE_MAPPING.get(&c.data_type[..]).unwrap();
+        create.push_str("\"");
+        create.push_str(&c.name);
+        create.push_str("\" ");
+        create.push_str(t);
+        create.push_str(",");
+    }
+
+    create.pop();
+    create.push_str(")");
+    let stmt = crate::create_statement!(con, create, );
+    execute_update(stmt)?;
+    Ok(())
+}
+
 pub fn update_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     let columns = data.get_columns();
     let table_columns = get_table_columns(table);

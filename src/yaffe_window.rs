@@ -159,6 +159,12 @@ fn process_jobs(state: &mut YaffeState, job_results: &mut Vec<JobResult>) {
                 use crate::modals::PlatformScraperModal;
                 if let Some(platform) = result.get_exact() {
                     crate::platform::insert_platform(state, &platform.info);
+                    // Create Roms folder
+                    let path = std::path::Path::new("./Roms");
+                    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+
+                    let path = path.join(platform.info.platform.clone());
+                    if !path.exists() { std::fs::create_dir(path).unwrap(); }
 
                 } else if result.count > 0 {
                     let mut items = vec!();

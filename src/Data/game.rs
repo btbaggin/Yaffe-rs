@@ -26,14 +26,14 @@ impl GameInfo {
     }
 
     fn from_row(row: &sqlite::Statement, platform: i64) -> GameInfo {
-        let id = get_column!(row, i64, "ID");
-        let name = get_column!(row, String, "Name");
-        let overview = get_column!(row, String, "Overview");
-        let players = get_column!(row, i64, "Players");
-        let rating = get_column!(row, i64, "Rating");
+        let id = get_column!(row, i64, "id");
+        let name = get_column!(row, String, "name");
+        let overview = get_column!(row, String, "overview");
+        let players = get_column!(row, i64, "players");
+        let rating = get_column!(row, i64, "rating");
         let released = get_column!(row, String, "released");
-        let filename = get_column!(row, String, "FileName");
-        let lastrun = get_column!(row, i64, "LastRun");
+        let filename = get_column!(row, String, "filename");
+        let lastrun = get_column!(row, i64, "lastrun");
 
         GameInfo { id, name, overview, players, filename, rating, released, platform, lastrun }
     }
@@ -41,7 +41,7 @@ impl GameInfo {
     pub fn platform(&self) -> i64 { self.platform }
 
     pub fn get_all(platform: i64) -> Vec<GameInfo> {
-        const QS_GET_ALL_GAMES: &str = "SELECT ID, Name, Overview, Players, Rating, Released, FileName, LastRun FROM Games WHERE Platform = @Platform";
+        const QS_GET_ALL_GAMES: &str = "SELECT id, name, overview, players, rating, released, filename, lastrun FROM Games WHERE platform = @Platform";
 
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_ALL_GAMES, platform);
@@ -56,7 +56,7 @@ impl GameInfo {
 
     /// Gets Name, Overview, Players, and Rating of a game
     pub fn exists(id: i64, file: &str) -> QueryResult<bool> {
-        const QS_GET_GAME_EXISTS: &str = "SELECT COUNT(1) FROM Games WHERE Platform = @Platform AND FileName = @Game";
+        const QS_GET_GAME_EXISTS: &str = "SELECT COUNT(1) FROM Games WHERE platform = @Platform AND filename = @Game";
         crate::logger::info!("Getting all applications for {}", file);
 
         let con = YaffeConnection::new();
@@ -72,15 +72,15 @@ impl GameInfo {
 
     /// Gets the most recent games launched from Yaffe
     pub fn get_recent(max: i64, map: &[Platform]) -> Vec<Executable> {
-        const QS_GET_RECENT_GAMES: &str = "SELECT g.ID, g.Name, g.Overview, g.Players, g.Rating, g.FileName, g.Released, p.ID as PlatformID, p.Platform FROM Games g, Platforms p WHERE g.Platform = p.ID AND LastRun IS NOT NULL ORDER BY LastRun DESC LIMIT @Max";
+        const QS_GET_RECENT_GAMES: &str = "SELECT g.id, g.name, g.overview, g.players, g.rating, g.filename, g.released, p.id as platformid, p.platform FROM Games g, Platforms p WHERE g.platform = p.id AND lastrun IS NOT NULL ORDER BY lastrun DESC LIMIT @Max";
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_RECENT_GAMES, max);
 
         let mut result = vec!();
         execute_select(stmt, |r| {
-            let name = get_column!(r, String, "Name");
-            let platform_name = get_column!(r, String, "Platform");
-            let platform_id = get_column!(r, i64, "PlatformID");
+            let name = get_column!(r, String, "name");
+            let platform_name = get_column!(r, String, "platform");
+            let platform_id = get_column!(r, i64, "platformid");
 
             let info = GameInfo::from_row(r, platform_id);
             let boxart = crate::assets::get_asset_path(&platform_name, &name);
@@ -97,9 +97,9 @@ impl GameInfo {
     pub fn insert(game: &GameInfo) -> QueryResult<()> {
         const QS_ADD_GAME: &str = "
         INSERT INTO Games
-        (ID, Platform, Name, Overview, Players, Rating, FileName)
+        (id, platform, name, overview, players, rating, filename)
         VALUES
-        ( @GameId, @Platform, @Name, @Overview, @Players, @Rating, @FileName )
+        (@GameId, @Platform, @Name, @Overview, @Players, @Rating, @FileName)
         ";
         crate::logger::info!("Inserting new game into database {}", game.name);
 
@@ -113,8 +113,8 @@ impl GameInfo {
     pub fn update_last_run(id: i64, file: &str) -> QueryResult<()> {
         const QS_UPDATE_GAME_LAST_RUN: &str = "
         UPDATE Games
-        SET LastRun = strftime('%s', 'now', 'localtime')
-        WHERE Platform = @Platform AND FileName = @Game
+        SET lastrun = strftime('%s', 'now', 'localtime')
+        WHERE platform = @Platform AND filename = @Game
         ";
         crate::logger::info!("Updating last run for game {}", id);
 

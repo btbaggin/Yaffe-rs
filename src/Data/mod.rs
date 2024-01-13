@@ -86,21 +86,8 @@ fn execute_update(mut stmt: sqlite::Statement) -> QueryResult<()> {
 /// Creates the database if it doesn't exist
 pub fn init_database() -> QueryResult<()> {
     if !std::path::Path::new("./Yaffe.db").exists() {
-        let con = YaffeConnection::new();
-
-        const QS_CREATE_GAMES_TABLE: &str = "
-        CREATE TABLE \"Games\"
-        ( \"ID\" INTEGER, \"Platform\" INTEGER, \"Name\" TEXT, \"Overview\" TEXT, \"Players\" INTEGER, \"Rating\" INTEGER, \"FileName\" TEXT, \"LastRun\" INTEGER )
-        ";
-        let stmt = create_statement!(con, QS_CREATE_GAMES_TABLE, );
-        execute_update(stmt)?;
-
-        const QS_CREATE_PLATFORMS_TABLE: &str = "
-        CREATE TABLE \"Platforms\"
-        ( \"ID\" INTEGER, \"Platform\" TEXT, \"Path\" TEXT, \"Args\" TEXT, \"Roms\" TEXT )
-        ";
-        let stmt = create_statement!(con, QS_CREATE_PLATFORMS_TABLE, );
-        execute_update(stmt)?;
+        schema::create_schema("Games", GameInfo::default())?;
+        schema::create_schema("Platforms", PlatformInfo::default())?;
     }
 
     schema::update_schema("Games", GameInfo::default())?;

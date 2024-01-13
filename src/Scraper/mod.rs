@@ -116,8 +116,6 @@ fn send_and_return(builder: RequestBuilder) -> Result<Response, ServiceError> {
     }
 }
 
-
-
 pub fn check_for_updates() -> ServiceResult<bool> {
     crate::logger::info!("Checking for updates");
 

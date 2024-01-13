@@ -18,9 +18,9 @@ impl PlatformInfo {
     pub fn insert(platform: &PlatformInfo) -> QueryResult<()> {
         const QS_ADD_PLATFORM: &str = "
         INSERT INTO Platforms
-        ( ID, Platform, Path, Args, Roms )
+        (id, platform, path, args)
         VALUES
-        ( @PlatformId, @Platform, @Path, @Args, '' )
+        (@PlatformId, @Platform, @Path, @Args)
         ";
         crate::logger::info!("Inserting new platform into database {}", platform.platform);
 
@@ -32,7 +32,7 @@ impl PlatformInfo {
 
     /// Updates attributes of an existing platform
     pub fn update(platform: i64, exe: &str, args: &str) -> QueryResult<()> {
-        const QS_UPDATE_PLATFORM: &str = "UPDATE Platforms SET Path = @Path, Args = @Args WHERE ID = @ID";
+        const QS_UPDATE_PLATFORM: &str = "UPDATE Platforms SET path = @Path, args = @Args WHERE id = @ID";
         let con = YaffeConnection::new();
 
         let stmt = create_statement!(con, QS_UPDATE_PLATFORM, exe, args, platform);
@@ -41,28 +41,28 @@ impl PlatformInfo {
     
     /// Gets the name of a platform
     pub fn get_name(platform: i64) -> QueryResult<String> {
-        const QS_GET_PLATFORM_NAME: &str = "SELECT Platform FROM Platforms WHERE ID = @ID";
+        const QS_GET_PLATFORM_NAME: &str = "SELECT platform FROM Platforms WHERE id = @ID";
         let con = YaffeConnection::new();
         let mut stmt = create_statement!(con, QS_GET_PLATFORM_NAME, platform);
         execute_select_once(&mut stmt)?;
-        Ok(get_column!(stmt, String, "Platform"))
+        Ok(get_column!(stmt, String, "platform"))
     }
 
     /// Gets Path, and Args of a Platform
     pub fn get_info(platform: i64) -> QueryResult<(String, String)> {
-        const QS_GET_PLATFORM: &str = "SELECT Path, Args FROM Platforms WHERE ID = @ID";
+        const QS_GET_PLATFORM: &str = "SELECT path, args FROM Platforms WHERE id = @ID";
         crate::logger::info!("Getting information for platform {}", platform);
 
         let con = YaffeConnection::new();
         let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);
         execute_select_once(&mut stmt)?;
 
-        Ok((get_column!(stmt, String, "Path"), get_column!(stmt, String, "Args")))
+        Ok((get_column!(stmt, String, "path"), get_column!(stmt, String, "args")))
     }
 
     /// Gets all saved platforms
     pub fn get_all() -> Vec<PlatformInfo> {
-        const QS_GET_ALL_PLATFORMS: &str = "SELECT ID, Platform, Path, Args FROM Platforms ORDER BY Platform";
+        const QS_GET_ALL_PLATFORMS: &str = "SELECT id, platform, path, args FROM Platforms ORDER BY platform";
         crate::logger::info!("Loading all platforms from database");
 
         let con = YaffeConnection::new();
@@ -70,10 +70,10 @@ impl PlatformInfo {
 
         let mut result = vec!();
         execute_select(stmt, |r| {
-            let id = get_column!(r, i64, "ID");
-            let platform = get_column!(r, String, "Platform");
-            let path = get_column!(r, String, "Path");
-            let args = get_column!(r, String, "Args");
+            let id = get_column!(r, i64, "id");
+            let platform = get_column!(r, String, "platform");
+            let path = get_column!(r, String, "path");
+            let args = get_column!(r, String, "args");
             result.push(PlatformInfo {
                 id,
                 platform,
