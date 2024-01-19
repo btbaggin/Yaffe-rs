@@ -14,7 +14,6 @@ impl Log for YaffeLogger {
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             use std::io::Write;
-            let mut file = FILE.lock().unwrap();
 
             let time_string = chrono::Local::now().format("%x %X");
             let level = record.level();
@@ -22,7 +21,9 @@ impl Log for YaffeLogger {
             if let Level::Error = level {
                 message.push_str(&format!("{:?}", std::backtrace::Backtrace::force_capture()));
             };
+            message.push('\n');
 
+            let mut file = FILE.lock().unwrap();
             file.write_all(message.as_bytes()).unwrap();
         }
     }

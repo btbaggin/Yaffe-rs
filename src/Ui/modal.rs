@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper};
 use crate::assets::Images;
 use crate::ui::controls::{MARGIN, MODAL_OVERLAY_COLOR, MODAL_BACKGROUND, change_brightness};
@@ -156,5 +157,25 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
             right = crate::ui::right_aligned_text(graphics, right, Some(t.1), graphics.font_color(), text);
             right.x -= MARGIN;
         }
+    }
+}
+
+pub fn render_toasts(toasts: &HashMap<u64, String>, graphics: &mut crate::Graphics) {
+    let count = toasts.len();
+    let x = (graphics.bounds.right() + graphics.bounds.left()) / 2.;
+    let y = graphics.bounds.bottom();
+
+    const WIDTH: f32 = 500.;
+    let font_size = graphics.font_size();
+    let height = font_size * count as f32 + MARGIN * 2.;
+
+    let rect = Rect::point_and_size(LogicalPosition::new(x - WIDTH / 2., y - height), LogicalSize::new(WIDTH, height));
+    graphics.draw_rectangle(rect, MODAL_BACKGROUND);
+
+    let mut curr_y = rect.top() + MARGIN;
+    for toast in toasts.values() {
+        let text = crate::ui::get_drawable_text(graphics.font_size(), toast);
+        graphics.draw_text(LogicalPosition::new(x - text.width() / 2., curr_y), graphics.font_color(), &text);
+        curr_y += font_size;
     }
 }

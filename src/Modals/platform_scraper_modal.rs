@@ -1,7 +1,6 @@
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
 use crate::scraper::PlatformScrapeResult;
 use crate::input::Actions;
-use crate::modals::ListModal;
 use crate::assets::AssetKey;
 use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
 
@@ -55,9 +54,9 @@ fn build_container(item: &PlatformScrapeResult) -> Container {
 
 pub fn on_platform_found_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
     if let ModalResult::Ok = result {
-        let content = content.as_any().downcast_ref::<ListModal<PlatformScrapeResult>>().unwrap();
+        let content = content.as_any().downcast_ref::<PlatformScraperModal>().unwrap();
 
-        let item = content.get_selected();
+        let item = content.list.get_selected();
         crate::platform::insert_platform(state, &item.info);
     }
 }

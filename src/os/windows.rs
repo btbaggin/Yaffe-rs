@@ -26,6 +26,8 @@ use std::time::Instant;
 use std::os::windows::ffi::OsStrExt;
 use std::ops::Deref;
 use std::convert::TryInto;
+use crate::logger::LogEntry;
+
 use super::{StartupResult, ShutdownResult, VolumeResult};
 
 struct ComString { string: BSTR }
@@ -122,11 +124,7 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 	unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
 
 	let working_path = std::fs::canonicalize(".").unwrap();
-	let path = if cfg!(debug_assertions) {
-		std::fs::canonicalize("../target/debug/Yaffe-rs.exe").unwrap()
-	} else {
-		std::fs::canonicalize("./Yaffe-rs.exe").unwrap()
-	};
+	let path = std::env::current_exe().log("Unable to figure out current executable");
 
     let mut p_service: ComPtr<ITaskService> = ComPtr::default();
 	safe_com_call!(CoCreateInstance(&TaskScheduler::uuidof(), 

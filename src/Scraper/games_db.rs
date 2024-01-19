@@ -4,32 +4,42 @@ use std::path::Path;
 
 const GAMESDB_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../api_key.txt")) };
 
-pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
+pub fn search_game(id: u64, name: &str, exe: String, platform: i64) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
     crate::logger::info!("Searching for game {}", name);
 
     let resp = crate::json_request!("https://api.thegamesdb.net/v1.1/Games/ByGameName", 
                      &[("name", name), 
-                     ("fields", "players,overview,rating,genres"),
+                     ("fields", "name,overview,rating,genres"),
                      ("include", "boxart"),
                      ("filter[platform]", &platform.to_string()),
                      ("apikey", GAMESDB_API_KEY)]);
 
 
+    println!("{}", resp);
     assert!(resp["data"]["games"].is_array());
     let array = resp["data"]["games"].as_array().unwrap();
+    if array.len() == 0 { return Ok(ServiceResponse::no_results(id)); }
+
     let base_url = resp["include"]["boxart"]["base_url"]["medium"].as_str().unwrap();
     let images = resp["include"]["boxart"]["data"].as_object().unwrap();
 
     let (count, exact) = get_count_and_exact(array, "game_title", name);
-    let mut result = ServiceResponse::new(count, exact);
+    let mut result = ServiceResponse::new(id, String::from(name), count, exact);
 
     for game in array {
         let id = game["id"].as_i64().unwrap().to_string();
 
-        let game_images = images[&id].as_array().unwrap();
-        let boxart = match game_images.iter().position(|i| i["side"] == "front") {
-            Some(i) => String::from(get_null_string(&game_images[i], "filename")),
-            None => String::new(),
+        // Some games don't have images
+        let boxart = if let Some(images) = images.get(&id) {
+            let game_images = images.as_array().unwrap();
+
+            match game_images.iter().position(|i| i["side"] == "front") {
+                // Trim any beginning '/' to ensure the path is interpretted as relative when joining
+                Some(i) => String::from(get_null_string(&game_images[i], "filename").trim_start_matches('/')),
+                None => String::new(),
+            }
+        } else {
+            String::new()
         };
 
         let name = String::from(game["game_title"].as_str().unwrap());
@@ -47,7 +57,7 @@ pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<Serv
     Ok(result)
 }
 
-pub fn search_platform(name: &str, path: String, args: String) -> ServiceResult<ServiceResponse<PlatformScrapeResult>> {
+pub fn search_platform(id: u64, name: &str, path: String, args: String) -> ServiceResult<ServiceResponse<PlatformScrapeResult>> {
     crate::logger::info!("Searching for platform {}", name);
     
     let resp = crate::json_request!("https://api.thegamesdb.net/v1/Platforms/ByPlatformName",
@@ -57,8 +67,10 @@ pub fn search_platform(name: &str, path: String, args: String) -> ServiceResult<
 
     assert!(resp["data"]["platforms"].is_array());
     let array = resp["data"]["platforms"].as_array().unwrap();
+    if array.len() == 0 { return Ok(ServiceResponse::no_results(id)); }
+
     let (count, exact) = get_count_and_exact(array, "name", name);
-    let mut result = ServiceResponse::new(count, exact);
+    let mut result = ServiceResponse::new(id, String::from(name), count, exact);
 
     if !array.is_empty() {
         let ids = array.iter().map(|v| v["id"].as_i64().unwrap().to_string()).collect::<Vec<String>>();
@@ -77,7 +89,8 @@ pub fn search_platform(name: &str, path: String, args: String) -> ServiceResult<
             let id = platform["id"].as_i64().unwrap();
             let boxart = images[id.to_string()].as_array().unwrap();
             let boxart = if !boxart.is_empty() {
-                String::from(get_null_string(&boxart[0], "filename"))
+                // Trim any beginning '/' to ensure the path is interpretted as relative when joining
+                String::from(get_null_string(&boxart[0], "filename").trim_start_matches('/'))
             } else {
                 String::new()
             };
@@ -93,15 +106,15 @@ pub fn search_platform(name: &str, path: String, args: String) -> ServiceResult<
     Ok(result)
 }
 
-fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str) -> (usize, isize) {
-    let mut count: usize = 0;
-    let mut exact_index: isize = -1;
+fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str) -> (usize, Option<usize>) {
+    let mut count = 0usize;
+    let mut exact_index = None;
 
     for i in value {
         assert!(i[element].is_string());
 
-        if i[element].as_str().unwrap() == name && exact_index == -1 { 
-            exact_index = count as isize;
+        if i[element].as_str().unwrap() == name && exact_index.is_none() { 
+            exact_index = Some(count);
         }
         count += 1;
     }

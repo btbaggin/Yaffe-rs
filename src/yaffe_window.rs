@@ -46,6 +46,12 @@ impl WindowHandler for WidgetTree {
                 graphics.bounds = window_rect;
                 crate::ui::render_modal(m, &mut graphics);
             }
+
+            if !self.data.toasts.is_empty() {
+                // Render calls will modify the bounds, so we must reset it
+                graphics.bounds = window_rect;
+                crate::ui::render_toasts(&self.data.toasts, &mut graphics);
+            }
         }
 
         self.data.running
@@ -119,7 +125,7 @@ fn on_menu_close(state: &mut YaffeState, result: ModalResult, content: &dyn crat
                 let content = Box::new(SetRestrictedModal::new());
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(on_restricted_modal_close))
             },
-            "Scan For New Roms" => crate::scan_new_files(state),
+            "Scan For New Roms" => crate::platform::scan_new_files(state),
             "Exit Yaffe" => state.running = false, 
             "Shut Down" => { 
                 if crate::os::shutdown().display_failure("Failed to shut down", state).is_some() {
@@ -152,19 +158,15 @@ fn process_jobs(state: &mut YaffeState, job_results: &mut Vec<JobResult>) {
                     }
                     
                     let content = GameScraperModal::new(items);
-                    display_modal(state, "Select Game", None, Box::new(content), Some(crate::modals::on_game_found_close));
+                    display_modal(state, &format!("Select Game: {}", result.request), None, Box::new(content), Some(crate::modals::on_game_found_close));
                 }
+
+                state.toasts.remove(&result.id);
             },
             JobResult::SearchPlatform(result) => {
                 use crate::modals::PlatformScraperModal;
                 if let Some(platform) = result.get_exact() {
                     crate::platform::insert_platform(state, &platform.info);
-                    // Create Roms folder
-                    let path = std::path::Path::new("./Roms");
-                    if !path.exists() { std::fs::create_dir(path).unwrap(); }
-
-                    let path = path.join(platform.info.platform.clone());
-                    if !path.exists() { std::fs::create_dir(path).unwrap(); }
 
                 } else if result.count > 0 {
                     let mut items = vec!();
@@ -175,6 +177,8 @@ fn process_jobs(state: &mut YaffeState, job_results: &mut Vec<JobResult>) {
                     let content = PlatformScraperModal::new(items);
                     display_modal(state, "Select Platform", None, Box::new(content), Some(crate::modals::on_platform_found_close));
                 }
+
+                state.toasts.remove(&result.id);
             }
             _ => {},
         }

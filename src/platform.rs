@@ -25,6 +25,7 @@ pub enum Rating {
     Mature,
     AdultOnly,
     NotRated,
+    Pending,
 }
 impl std::fmt::Display for Rating {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -35,6 +36,7 @@ impl std::fmt::Display for Rating {
             Rating::Mature => "M - Mature 17+",
             Rating::AdultOnly => "AO - Adult Only 18+",
             Rating::NotRated => "Not Rated",
+            Rating::Pending => "RP - Rating Pending",
         };
         write!(f, "{text}")
     }
@@ -50,6 +52,7 @@ impl TryFrom<i64> for Rating {
             x if x == Rating::Mature as i64 => Ok(Rating::Mature),
             x if x == Rating::AdultOnly as i64 => Ok(Rating::AdultOnly),
             x if x == Rating::NotRated as i64 => Ok(Rating::NotRated),
+            x if x == Rating::Pending as i64 => Ok(Rating::Pending),
             _ => Err(()),
         }
     }
@@ -64,6 +67,7 @@ impl TryFrom<String> for Rating {
             "M - Mature 17+" => Ok(Rating::Mature),
             "AO - Adult Only 18+" => Ok(Rating::AdultOnly),
             "Not Rated" => Ok(Rating::NotRated),
+            "RP - Rating Pending" => Ok(Rating::Pending),
             _ => Err(()),
         }
     }
@@ -174,6 +178,8 @@ pub fn get_database_info(state: &mut YaffeState) {
 }
 
 pub fn scan_new_files(state: &mut YaffeState) {
+    let mut count = 0;
+    let job_id = crate::job_system::generate_job_id();
     for p in &state.platforms {
         if let PlatformType::Emulator = p.kind {
             for entry in std::fs::read_dir(p.get_rom_path()).log_and_panic() {
@@ -193,12 +199,18 @@ pub fn scan_new_files(state: &mut YaffeState) {
                     let exists = crate::data::GameInfo::exists(id, &file).log_and_panic();
                     if !exists {
                         crate::logger::info!("{name} not found in database, performing search");
-                        let job = crate::Job::SearchGame {exe: file.to_string(), name: name.to_string(), platform: id };
+                        let job = crate::Job::SearchGame { id: job_id, exe: file.to_string(), name: name.to_string(), platform: id };
                         queue.send(job).unwrap();
+
+                        count += 1;
                     }
                 }
             }
         }
+    }
+
+    if count != 0 {
+        state.toasts.insert(job_id, format!("Found {count} new files, searching for information..."));
     }
 }
 
@@ -250,14 +262,17 @@ fn clean_file_name(file: &str) -> &str {
 pub fn insert_platform(state: &mut YaffeState, data: &crate::data::PlatformInfo) {
     crate::logger::info!("Inserting new platform into database {}", data.platform);
 
+    // Create Roms folder
+    let path = Path::new("./Roms");
+    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+    let path = path.join(&data.platform);
+    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+
+    // Create Assets folder
+    let path = Path::new("./Assets").join(&data.platform);
+    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+
     crate::data::PlatformInfo::insert(data).log_and_panic();
-    if !Path::new("./Roms").exists() {
-        std::fs::create_dir("./Roms").unwrap();
-    }
-    let folder = Path::new("./Roms").join(&data.platform);
-    if !folder.exists() {
-        std::fs::create_dir(folder).unwrap();
-    }
 
     state.refresh_list = true;
 }

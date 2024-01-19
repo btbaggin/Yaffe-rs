@@ -48,7 +48,7 @@ stringy_enum! {
         FontColor("font_color") = SettingValue::Color(Color::from_rgba(0.95, 0.95, 0.95, 1.)),
         AccentColor("accent_color") = SettingValue::Color(Color::from_rgba(0.25, 0.3, 1., 1.)),
         RecentPageCount("recent_page_count") = SettingValue::F32(1.),
-        AssetCacheSizeMb("asset_cache_size_mb") = SettingValue::I32(32),
+        AssetCacheSizeMb("asset_cache_size_mb") = SettingValue::I32(64),
         LoggingLevel("logging_level") = SettingValue::String(String::from("Info")),
     }
 }

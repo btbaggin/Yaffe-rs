@@ -29,7 +29,7 @@ impl Control for Label {
             crate::ui::get_drawable_text(size, &self.text)
         };
 
-        graphics.draw_text(*container.top_left(), graphics.font_color(), &text);
+        graphics.draw_text_cropped(*container.top_left(), *container, graphics.font_color(), &text);
         
         let size = text.size();
         crate::LogicalSize::new(size.x, size.y)

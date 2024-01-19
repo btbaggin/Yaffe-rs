@@ -22,7 +22,7 @@ impl TextBox {
 
 impl Control for TextBox {
     fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
-        const MAX_SIZE: f32 = 250.;
+        const MAX_SIZE: f32 = 500.;
 
         let size = f32::min(container.width() - LABEL_SIZE, MAX_SIZE);
         let control = draw_label_and_box(graphics, container.top_left(), size, &self.label);
@@ -45,7 +45,7 @@ impl Control for TextBox {
         }
 
         //Clip text so it doesnt render outside box
-        let clip = Rect::new(LogicalPosition::new(box_left, container.top()), LogicalPosition::new(container.right(), container.top() + height));
+        let clip = Rect::new(LogicalPosition::new(box_left, container.top()), LogicalPosition::new(box_left + size, container.top() + height));
         graphics.draw_text_cropped(LogicalPosition::new(origin_x, control.top()), clip, graphics.font_color(), &text);
 
         if self.focused {

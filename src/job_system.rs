@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::thread;
 use std::cell::RefCell;
 use std::sync::Arc;
+use rand::Rng;
+
 use crate::assets::AssetKey;
 use crate::scraper::*;
 use crate::logger::*;
@@ -44,17 +46,17 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
     
             Job::DownloadUrl { url, file_path } => crate::scraper::download_file(url, file_path),
 
-            Job::SearchPlatform { name, path, args } => {
-                match search_platform(&name, path, args) {
+            Job::SearchPlatform { id, name, path, args } => {
+                match search_platform(id, &name, path, args) {
                     Ok(result) => send_reply(JobResult::SearchPlatform(result)),
-                    Err(e) => warn!("Error occured while searching platforms {:?}", e),
+                    Err(e) => error!("Error occured while searching platforms {:?}", e),
                 }
             },
 
-            Job::SearchGame { exe, name, platform } => {
-                match search_game(&name, exe, platform) {
-                    Ok(result) =>  send_reply(JobResult::SearchGame(result)),
-                    Err(e) => warn!("Error occured while searching games {:?}", e),
+            Job::SearchGame { id, exe, name, platform } => {
+                match search_game(id, &name, exe, platform) {
+                    Ok(result) => send_reply(JobResult::SearchGame(result)),
+                    Err(e) => error!("Error occured while searching games {:?}", e),
                 }
             },
 
@@ -66,6 +68,10 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
     }
 }
 
+pub fn generate_job_id() -> u64 {
+    rand::thread_rng().gen::<u64>()
+}
+
 #[derive(Debug)]
 pub enum Job {
     /// Loads an image synchronously
@@ -75,10 +81,10 @@ pub enum Job {
     DownloadUrl { url: std::path::PathBuf, file_path: std::path::PathBuf },
 
     /// Searches TheGamesDb for a given platform
-    SearchPlatform { name: String, path: String, args: String },
+    SearchPlatform { id: u64, name: String, path: String, args: String },
 
     /// Searches TheGamesDb for a given game
-    SearchGame { exe: String, name: String, platform: i64 },
+    SearchGame { id: u64, exe: String, name: String, platform: i64 },
 
     CheckUpdates,
 }

@@ -9,6 +9,7 @@ impl crate::ui::Widget for PlatformList {
             Actions::Down =>  {
                 if state.selected_platform < state.platforms.len() - 1 { 
                     state.selected_platform += 1;
+                    state.selected_app = 0;
                     handler.load_plugin(crate::plugins::NavigationAction::Load);
                 }
                 true
@@ -16,6 +17,7 @@ impl crate::ui::Widget for PlatformList {
             Actions::Up => {
                 if state.selected_platform > 0 { 
                     state.selected_platform -= 1;
+                    state.selected_app = 0;
                     handler.load_plugin(crate::plugins::NavigationAction::Load);
                 }
                 true

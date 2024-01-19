@@ -36,23 +36,37 @@ impl crate::ui::ListItem for PlatformScrapeResult {
 }
 
 pub struct ServiceResponse<T> {
+    pub id: u64,
+    pub request: String,
     pub count: usize,
-    pub exact_index: isize,
+    pub exact_index: Option<usize>,
     pub results: Vec<T>,
 }
 
 impl<T> ServiceResponse<T> {
-    fn new(count: usize, exact_index: isize) -> ServiceResponse<T> {
+    fn new(id: u64, request: String, count: usize, exact_index: Option<usize>) -> ServiceResponse<T> {
         ServiceResponse {
+            id,
+            request,
             count,
             exact_index,
             results: vec!(),
         }
     }
 
+    fn no_results(id: u64) -> ServiceResponse<T> {
+        ServiceResponse {
+            id,
+            request: String::new(),
+            count: 0,
+            exact_index: None,
+            results: vec!()
+        }
+    }
+
     pub fn get_exact(&self) -> Option<&T> {
-        if self.exact_index != -1 {
-            Some(&self.results[self.exact_index as usize])
+        if let Some(i) = self.exact_index {
+            Some(&self.results[i])
         } else { 
             None
         }

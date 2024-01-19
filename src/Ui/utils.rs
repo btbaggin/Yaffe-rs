@@ -16,8 +16,9 @@ pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition
     graphics.draw_text(right, color, &text);
     if let Some(i) = image {
         right.x -= size.y;
-        let i = crate::assets::request_image(graphics, i).unwrap();
-        i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
+        if let Some(i) = crate::assets::request_image(graphics, i) {
+            i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
+        }
     }
 
     right

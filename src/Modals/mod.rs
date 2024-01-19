@@ -48,5 +48,3 @@ impl ModalContent for MessageModalContent {
         graphics.draw_text(*rect.top_left(), graphics.font_color(), &name_label);
     }
 }
-
-

@@ -55,15 +55,15 @@ pub fn create_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     
     for c in &columns {
         let t = TYPE_MAPPING.get(&c.data_type[..]).unwrap();
-        create.push_str("\"");
+        create.push('"');
         create.push_str(&c.name);
         create.push_str("\" ");
         create.push_str(t);
-        create.push_str(",");
+        create.push(',');
     }
 
     create.pop();
-    create.push_str(")");
+    create.push(')');
     let stmt = crate::create_statement!(con, create, );
     execute_update(stmt)?;
     Ok(())

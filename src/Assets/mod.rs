@@ -101,17 +101,12 @@ impl AssetSlot {
 static mut ASSET_MAP: Option<PooledCache<32, AssetKey, AssetSlot>> = None;
 
 pub fn initialize_asset_cache() {
-    let mut map = PooledCache::new();
-    map.insert(AssetKey::image(Images::Background), AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()));
-
-    map.insert(AssetKey::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
-    
-    unsafe { ASSET_MAP = Some(map); }
+    unsafe { ASSET_MAP = Some(PooledCache::new()); }
 }
 
 pub fn preload_assets(graphics: &mut Graphics2D) {
     let map = unsafe { ASSET_MAP.as_mut().unwrap() };
-    if map.get_mut(&AssetKey::image(Images::Error)).is_none() {
+    if !map.exists(&AssetKey::image(Images::Error)) {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
 
@@ -143,6 +138,15 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
     if map.get_mut(&AssetKey::image(Images::Placeholder)).is_none() {
         preload_image(graphics, "./Assets/placeholder.jpg", Images::Placeholder, map);
     }
+
+    if !map.exists(&AssetKey::image(Images::Background)) {
+        map.insert(AssetKey::image(Images::Background), AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()));
+    }
+
+    if !map.exists(&AssetKey::Static(AssetTypes::Font(Fonts::Regular))) {
+        map.insert(AssetKey::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
+    }
+    
 }
 
 pub fn get_asset_slot(asset: &AssetKey) -> &'static mut AssetSlot {
@@ -184,36 +188,36 @@ pub fn ensure_asset_loaded<'a>(queue: &mut crate::job_system::JobQueue, asset: &
 }
 
 pub fn clear_old_cache(state: &crate::YaffeState) {
-    use crate::pooled_cache::PooledCacheIndex;
     let map = unsafe { ASSET_MAP.as_mut().unwrap() };
 
     let mut total_memory = 0;
-    let mut last_used_index: Option<PooledCacheIndex> = None;
+    let mut last_used_index: Option<AssetKey> = None;
     let mut last_request = Instant::now();
-    let indices = map.indexes().collect::<Vec<PooledCacheIndex>>();
-    for index in indices {
-        let mut slot = map.get_index_mut(index).unwrap();
-        if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            total_memory += slot.data_length;
+    for key in map.keys() {
+        if let AssetKey::Static(_) = key {
+            // Static assets should not be released
+        } else {
+            let slot = map.get(key).unwrap();
+            if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+                total_memory += slot.data_length;
 
-            //Find oldest asset
-            if slot.last_request < last_request {
-                last_request = slot.last_request;
-                last_used_index = Some(index);
-            } else if slot.last_request.elapsed().as_secs() > 60 {
-                //If it hasnt been requested in a minute, remove it regardless
-                slot.data = AssetData::None;
-                slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
+                //Find oldest asset
+                if slot.last_request.elapsed().as_secs() > 30 && slot.last_request < last_request{
+                    last_request = slot.last_request;
+                    last_used_index = Some(key.clone());
+                }
             }
         }
     }
+
     //Remove oldest asset if we are over our memory threshold
     //This will happen once per frame until we are under the threshold
     if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize {
-       if let Some(index) = last_used_index {
-            let mut slot = map.get_index_mut(index).unwrap();
+        if let Some(index) = last_used_index {
+            let mut slot = map.get_mut(&index).unwrap();
             slot.data = AssetData::None;
             slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
-       }
+            crate::logger::info!("Releasing file at {} due to memory pressure", slot.path.display());
+        }
     }
 }

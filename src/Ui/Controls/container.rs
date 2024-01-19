@@ -39,8 +39,7 @@ impl Container {
             size: width,
         }
     }
-}
-impl Container {
+    
     pub fn child_count(&self) -> usize {
         self.controls.len()
     }
@@ -50,6 +49,7 @@ impl Container {
         let i = self.controls.len();
         self.controls.push(ContainerType::Input(Box::new(control)));
         self.tags.insert(tag.to_string(), i);
+        self.focus_index = Some(0);
     }
 
     pub fn add(&mut self, control: impl Control + 'static) {

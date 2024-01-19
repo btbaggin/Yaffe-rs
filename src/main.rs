@@ -3,14 +3,14 @@
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::cell::RefCell;
-use platform::scan_new_files;
+use std::collections::HashMap;
 use crate::logger::{PanicLogEntry, error};
 use crate::assets::AssetKey;
 use yaffe_lib::UPDATE_FILE_PATH;
 
 /* 
  * TODO
- * Fix selected_app when moving between large things
+ * memory usage seems to be too high?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -74,6 +74,7 @@ pub struct YaffeState {
     plugins: Vec<RefCell<plugins::Plugin>>,
     focused_widget: ui::WidgetId,
     modals: Mutex<Vec<ui::Modal>>,
+    toasts: HashMap<u64, String>,
     queue: job_system::ThreadSafeJobQueue,
     search_info: SearchInfo,
     restricted_mode: RestrictedMode,
@@ -95,6 +96,7 @@ impl YaffeState {
             focused_widget: get_widget_id!(widgets::PlatformList),
             restricted_mode: RestrictedMode::Off,
             modals: Mutex::new(vec!()),
+            toasts: HashMap::new(),
             queue,
             refresh_list: true,
             settings,
@@ -118,6 +120,7 @@ impl YaffeState {
 
 fn main() {
     logger::init();
+    log_panics::init();
     
     //Check for and apply updates on startup
     if std::path::Path::new(UPDATE_FILE_PATH).exists() {
