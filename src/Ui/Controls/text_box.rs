@@ -35,13 +35,16 @@ impl Control for TextBox {
         let mut origin_x = control.left();
         if self.focused {
             let text = get_drawable_text(height, &self.text[0..self.caret]);
+            // Very special case. The text already accounts for scaling, so we need to undo that to revert back to logical units
+            // Then we can do calculations and pass them to the graphics API which converts back to physical units
+            let width = text.width() / graphics.scale_factor;
 
             //If the text is too long to fit in the box, shift it left
-            if text.width() > size {
-                origin_x = box_left + (size - text.width())
+            if width > size {
+                origin_x = box_left + (size - width)
             } 
 
-            cursor_x = f32::min(origin_x + text.width(), control.right());
+            cursor_x = f32::min(origin_x + width, control.right());
         }
 
         //Clip text so it doesnt render outside box
@@ -49,6 +52,7 @@ impl Control for TextBox {
         graphics.draw_text_cropped(LogicalPosition::new(origin_x, control.top()), clip, graphics.font_color(), &text);
 
         if self.focused {
+
             graphics.draw_line(LogicalPosition::new(cursor_x, control.top() + 2.), LogicalPosition::new(cursor_x, control.bottom() - 2.), 2., graphics.font_color());
         }
 
