@@ -37,7 +37,7 @@ impl crate::ui::Widget for AppList {
             }
             Actions::Accept => {
                 if let Some(exe) = state.get_executable() {
-                   if exe.rating < crate::platform::Rating::Mature ||
+                   if crate::restrictions::rating_allowed(&exe.rating) ||
                       crate::restrictions::verify_restricted_action(state) {
                         start_game(state, handler)
                    }

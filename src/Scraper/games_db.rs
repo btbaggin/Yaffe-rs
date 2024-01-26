@@ -15,7 +15,6 @@ pub fn search_game(id: u64, name: &str, exe: String, platform: i64) -> ServiceRe
                      ("apikey", GAMESDB_API_KEY)]);
 
 
-    println!("{}", resp);
     assert!(resp["data"]["games"].is_array());
     let array = resp["data"]["games"].as_array().unwrap();
     if array.len() == 0 { return Ok(ServiceResponse::no_results(id)); }

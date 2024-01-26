@@ -225,8 +225,8 @@ macro_rules! intern_atom {
 pub(super) fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
     let mut result = None;
     unsafe {
-        let w = window.xlib_window().unwrap(); //TODO this should be better than unwrap
-        let d = window.xlib_display().unwrap();
+        let w = window.xlib_window().log_and_panic("Unable to get xlib window");
+        let d = window.xlib_display().log_and_panic("Unable to get xlib display");
         let d = &mut *(d as *mut x11::xlib::_XDisplay);
 
         let utf8 = intern_atom!(d, "UTF8_STRING", 1);

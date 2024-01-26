@@ -53,3 +53,10 @@ pub fn verify_restricted_action(state: &mut YaffeState) -> bool {
     } 
     true
 }
+
+pub fn rating_allowed(rating: &str) -> bool {
+    match rating {
+        "M - Mature 17+" | "Restricted" | "Not Rated" | "AO - Adult Only 18+" => false,
+        _ => true 
+    }
+}

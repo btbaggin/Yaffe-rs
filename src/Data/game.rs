@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use crate::create_statement;
 use super::{YaffeConnection, QueryResult, QueryError, execute_select, execute_select_once, execute_update};
 use crate::{Executable, Platform, get_column};
@@ -9,7 +8,7 @@ crate::table_struct! (
         pub name: String,
         pub overview: String,
         pub players: i64,
-        pub rating: i64,
+        pub rating: String,
         pub released: String,
         pub filename: String,
         pub platform: i64,
@@ -21,8 +20,7 @@ impl GameInfo {
     pub fn new(id: i64, name: String, overview: String, players: i64,
                rating: String, released: String,
                filename: String, platform: i64) -> GameInfo {
-        let rating: crate::platform::Rating = rating.try_into().unwrap();
-        GameInfo { id, name, overview, players, filename, rating: rating as i64, released, platform, lastrun: 0 }
+        GameInfo { id, name, overview, players, filename, rating, released, platform, lastrun: 0 }
     }
 
     fn from_row(row: &sqlite::Statement, platform: i64) -> GameInfo {
@@ -30,7 +28,7 @@ impl GameInfo {
         let name = get_column!(row, String, "name");
         let overview = get_column!(row, String, "overview");
         let players = get_column!(row, i64, "players");
-        let rating = get_column!(row, i64, "rating");
+        let rating = get_column!(row, String, "rating");
         let released = get_column!(row, String, "released");
         let filename = get_column!(row, String, "filename");
         let lastrun = get_column!(row, i64, "lastrun");
@@ -104,7 +102,7 @@ impl GameInfo {
         crate::logger::info!("Inserting new game into database {}", game.name);
 
         let con = YaffeConnection::new();
-        let stmt = create_statement!(con, QS_ADD_GAME, game.id, game.platform, &*game.name, &*game.overview, game.players, game.rating, &*game.filename);
+        let stmt = create_statement!(con, QS_ADD_GAME, game.id, game.platform, &*game.name, &*game.overview, game.players, &*game.rating, &*game.filename);
 
         execute_update(stmt)
     }

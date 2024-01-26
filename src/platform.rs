@@ -4,7 +4,6 @@ use crate::logger::PanicLogEntry;
 use crate::data::GameInfo;
 use super::{Platform, Executable};
 use yaffe_lib::YaffePluginItem;
-use std::convert::{TryFrom, TryInto};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
@@ -14,63 +13,6 @@ pub enum PlatformType {
     Emulator,
     Plugin,
     Recents,
-}
-
-#[repr(u8)]
-#[derive(Debug, PartialEq, PartialOrd)]
-pub enum Rating {
-    Everyone,
-    Everyone10,
-    Teen,
-    Mature,
-    AdultOnly,
-    NotRated,
-    Pending,
-}
-impl std::fmt::Display for Rating {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let text = match self {
-            Rating::Everyone => "E - Everyone",
-            Rating::Everyone10 => "E10+ - Everyone 10+",
-            Rating::Teen => "T - Teen",
-            Rating::Mature => "M - Mature 17+",
-            Rating::AdultOnly => "AO - Adult Only 18+",
-            Rating::NotRated => "Not Rated",
-            Rating::Pending => "RP - Rating Pending",
-        };
-        write!(f, "{text}")
-    }
-}
-impl TryFrom<i64> for Rating {
-    type Error = ();
-
-    fn try_from(v: i64) -> Result<Self, Self::Error> {
-        match v {
-            x if x == Rating::Everyone as i64 => Ok(Rating::Everyone),
-            x if x == Rating::Everyone10 as i64 => Ok(Rating::Everyone10),
-            x if x == Rating::Teen as i64 => Ok(Rating::Teen),
-            x if x == Rating::Mature as i64 => Ok(Rating::Mature),
-            x if x == Rating::AdultOnly as i64 => Ok(Rating::AdultOnly),
-            x if x == Rating::NotRated as i64 => Ok(Rating::NotRated),
-            x if x == Rating::Pending as i64 => Ok(Rating::Pending),
-            _ => Err(()),
-        }
-    }
-}
-impl TryFrom<String> for Rating {
-    type Error = ();
-    fn try_from(v: String) -> Result<Self, Self::Error> {
-        match &v[..] {
-            "E - Everyone" => Ok(Rating::Everyone),
-            "E10+ - Everyone 10+" => Ok(Rating::Everyone10),
-            "T - Teen" => Ok(Rating::Teen),
-            "M - Mature 17+" => Ok(Rating::Mature),
-            "AO - Adult Only 18+" => Ok(Rating::AdultOnly),
-            "Not Rated" => Ok(Rating::NotRated),
-            "RP - Rating Pending" => Ok(Rating::Pending),
-            _ => Err(()),
-        }
-    }
 }
 
 impl Platform {
@@ -137,7 +79,7 @@ impl Executable {
             platform_index,
             boxart,
             players: 1,
-            rating: if !item.restricted { Rating::Everyone } else { Rating::Mature },
+            rating: if !item.restricted { String::from("Allowed") } else { String::from("Restricted") },
         }
     }
 
@@ -150,7 +92,7 @@ impl Executable {
             boxart: crate::assets::AssetKey::File(boxart),
             released: info.released.clone(),
             players: info.players as u8,
-            rating: info.rating.try_into().unwrap(),
+            rating: info.rating.clone(),
         }
     }
 }
@@ -188,16 +130,17 @@ pub fn scan_new_files(state: &mut YaffeState) {
                 if path.is_file() && is_allowed_file_type(&path) {
                     
                     let file = path.file_name().unwrap().to_string_lossy();
-                    let name = path.file_stem().unwrap().to_string_lossy();
-                    let name = clean_file_name(&name);
-                    crate::logger::info!("Found local game {name}");
-                    
-                    let lock = state.queue.lock().log_and_panic();
-                    let mut queue = lock.borrow_mut();
+                    crate::logger::info!("Found local game {file}");
                     
                     let id = p.id.unwrap();
                     let exists = crate::data::GameInfo::exists(id, &file).log_and_panic();
                     if !exists {
+                        let name = path.file_stem().unwrap().to_string_lossy();
+                        let name = clean_file_name(&name);
+                        let name = name.trim();
+
+                        let lock = state.queue.lock().log_and_panic();
+                        let mut queue = lock.borrow_mut();
                         crate::logger::info!("{name} not found in database, performing search");
                         let job = crate::Job::SearchGame { id: job_id, exe: file.to_string(), name: name.to_string(), platform: id };
                         queue.send(job).unwrap();
@@ -249,14 +192,45 @@ fn is_allowed_file_type(path: &std::path::Path) -> bool {
     false
 }
 
-fn clean_file_name(file: &str) -> &str {
-    for (i, c) in file.chars().enumerate() {
-        if c == '(' || c == '[' {
-            return file[0..i - 1].trim_end();
+fn clean_file_name(file: &str) -> String {
+    let mut i = 0;
+    let mut index = 0;
+    let mut cleaned_file = String::new();
+    let mut chars = file.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            ',' => {
+                // When we encounter a comma we want to take the next word and move it to the front
+                // eg Legend of Zelda, The
+
+                // Take the string up to this point
+                cleaned_file.push_str(&file[index..i]);
+                // Move past the comma
+                chars.next(); i += 1;
+
+                // Find the word boundary (or end of string)
+                let ii = match chars.position(|cc| cc == ' ') {
+                    Some(ii) => ii,
+                    None => file.len() - i - 1,
+                } + 1;
+                // Insert it to the beginning of the string, add a space
+                cleaned_file.insert_str(0, &file[i..i + ii]);
+                cleaned_file.insert_str(ii, " ");
+                // Move positions after that word
+                i += ii;
+                index += i;
+            },
+            '(' | '[' => /* These have country or language, ignore eg (USA)*/ break,
+            _ => {},
         }
+        i += 1;
+    }
+    // If we ended with a comma word, we would have moved past the end of the string
+    if index < file.len() {
+        cleaned_file.push_str(&file[index..i]);
     }
 
-    file[..].trim_end()
+    cleaned_file
 }
 
 pub fn insert_platform(state: &mut YaffeState, data: &crate::data::PlatformInfo) {

@@ -59,7 +59,7 @@ pub struct Executable {
     file: String,
     name: String,
     description: String,
-    rating: platform::Rating,
+    rating: String,
     released: String,
     players: u8,
     platform_index: usize,

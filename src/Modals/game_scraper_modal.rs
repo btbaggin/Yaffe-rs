@@ -2,10 +2,8 @@
 use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
 use crate::scraper::GameScrapeResult;
 use crate::input::Actions;
-use crate::platform::Rating;
 use crate::assets::AssetKey;
 use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
-use std::convert::TryInto;
 
 
 pub struct GameScraperModal {
@@ -53,7 +51,7 @@ fn build_container(item: &GameScrapeResult) -> Container {
 
     top.add(Image::new(AssetKey::Url(item.boxart.clone())));
     details.add(Label::simple(format!("Players: {}", item.info.players)));
-    details.add(Label::simple(format!("Rating: {}", TryInto::<Rating>::try_into(item.info.rating).unwrap_or(Rating::NotRated))));
+    details.add(Label::simple(format!("Rating: {}", item.info.rating)));
     details.add(Label::simple(format!("Released: {}", item.info.released)));
     top.add(details);
     main.add(top);

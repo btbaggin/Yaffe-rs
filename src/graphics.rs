@@ -37,7 +37,7 @@ impl<'a> Graphics<'a> {
         let size = if let SettingValue::F32(s) = self.cached_settings[&SettingNames::InfoFontSize] { s } else  { unreachable!() };
         size * self.scale_factor
     }
-    pub fn font_unfocused_color(&self) -> Color { change_brightness(&self.font_color(), -0.4) }
+    pub fn font_unfocused_color(&self) -> Color { change_brightness(&self.font_color(), -0.5) }
     pub fn accent_unfocused_color(&self) -> Color { change_brightness(&self.accent_color(), -0.3) }
 
     pub fn draw_rectangle(&mut self, rect: Rect, color: Color) {
