@@ -24,7 +24,7 @@ impl Control for TextBox {
     fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
         const MAX_SIZE: f32 = 500.;
 
-        let size = f32::min(container.width() - LABEL_SIZE, MAX_SIZE);
+        let size = f32::min(container.width() - LABEL_SIZE - crate::ui::MARGIN, MAX_SIZE);
         let control = draw_label_and_box(graphics, container.top_left(), size, &self.label);
 
         let height = control.height();

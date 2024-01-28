@@ -49,11 +49,7 @@ impl AppTile {
     }
 
 
-    pub fn render(&mut self, 
-                  focused: bool, 
-                  animation: f32, 
-                  exe: &crate::Executable, 
-                  graphics: &mut crate::Graphics) {
+    pub fn render(&mut self, focused: bool, animation: f32, exe: &crate::Executable, graphics: &mut crate::Graphics) {
         if !self.is_visible() { return; }
 
         let mut target_size = self.size;
@@ -72,6 +68,11 @@ impl AppTile {
 
             let name = crate::ui::get_drawable_text_with_wrap(font_size, &exe.name, target_size.x);
             let mut height = 0.;
+            let info = crate::ui::get_drawable_text(font_size, "Info");
+            let run = crate::ui::get_drawable_text(font_size, "Run");
+
+            let physical_width = target_size.x.to_physical(graphics);
+            let options_width = info.width() + run.width() + font_size * 2. + 5. * 2.;
 
             let lines: Vec<&std::rc::Rc<speedy2d::font::FormattedTextLine>> = name.iter_lines().collect();
             let line_count = lines.len();
@@ -81,7 +82,7 @@ impl AppTile {
                 //or the line is big enough where the menu won't fit
                 if line_number < line_count - 1 {
                     menu_position.y += line_height;
-                } else if  line.width().to_logical(graphics) > target_size.x * 0.5 {
+                } else if  line.width() > physical_width - options_width {
                     menu_position.y += line_height;
                     height += line_height;
                 }
@@ -96,12 +97,10 @@ impl AppTile {
             graphics.draw_text(LogicalPosition::new(position.x, position.y + target_size.y), graphics.font_color().with_alpha(alpha), &name);
 
             //Help
-            let text = crate::ui::get_drawable_text(font_size, "Info");
-            menu_position = crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), graphics.font_color().with_alpha(alpha), text);
-            menu_position = LogicalPosition::new(menu_position.x - 5., menu_position.y);
+            menu_position = crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonX), graphics.font_color().with_alpha(alpha), info);
+            menu_position.x -= 5.;
 
-            let text = crate::ui::get_drawable_text(font_size, "Run");
-            crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), graphics.font_color().with_alpha(alpha), text);
+            crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), graphics.font_color().with_alpha(alpha), run);
         }
 
 

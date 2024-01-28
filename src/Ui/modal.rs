@@ -110,18 +110,18 @@ pub fn is_modal_open(state: &YaffeState) -> bool {
 
 /// Renders a modal window along with its contents
 pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
-    const TOOLBAR_SIZE: f32 = 18.;
-    const TITLEBAR_SIZE: f32 = 32.;
     const PADDING: f32 = 2.;
+    let titlebar_size = graphics.font_size() * 1.25;
+    let toolbar_size = graphics.font_size() * 0.75;
 
     let padding = LogicalSize::new(graphics.bounds.width() * 0.1, graphics.bounds.height() * 0.1);
     let rect = Rect::new(*graphics.bounds.top_left() + padding, graphics.bounds.size() - padding);
     let content_size = modal.content.size(rect, graphics);
 
     //Calulate size
-    let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + TITLEBAR_SIZE + content_size.y);
+    let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + titlebar_size + content_size.y);
     if modal.confirmation_button.is_some() {
-        size.y += TOOLBAR_SIZE;
+        size.y += toolbar_size;
     }
 
     let window_position = (rect.size() - size) / 2. + padding;
@@ -135,25 +135,25 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
     let titlebar_color = graphics.accent_color();
     let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
     let titlebar_pos = window_position + LogicalSize::new(PADDING, PADDING);
-    let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - 4., TITLEBAR_SIZE));
+    let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - PADDING * 2., titlebar_size - PADDING));
     graphics.draw_rectangle(titlebar, titlebar_color);
 
-    let title_text = crate::ui::get_drawable_text(graphics.font_size(), &modal.title);
-    let title_pos = LogicalPosition::new(titlebar_pos.x + MARGIN, titlebar_pos.y + (TITLEBAR_SIZE - title_text.height()) / 2.);
+    let title_text = crate::ui::get_drawable_text(titlebar_size, &modal.title);
+    let title_pos = LogicalPosition::new(titlebar_pos.x + MARGIN, titlebar_pos.y);
     graphics.draw_text(title_pos, graphics.font_color(), &title_text);
 
     //Content
     //Window + margin for window + margin for icon
-    let content_pos = LogicalPosition::new(window_position.x + MARGIN + PADDING, window_position.y + MARGIN + TITLEBAR_SIZE + PADDING); 
+    let content_pos = LogicalPosition::new(window_position.x + MARGIN + PADDING, window_position.y + MARGIN + titlebar_size + PADDING); 
     let content_rect = Rect::new(content_pos, content_pos + content_size);
     modal.content.render(content_rect, graphics);
 
     //Action buttons
     if let Some(s) = &modal.confirmation_button {
-        let mut right = LogicalPosition::new(window.right() - 5., window.bottom() - (TOOLBAR_SIZE + MARGIN));
+        let mut right = LogicalPosition::new(window.right() - MARGIN, window.bottom() - toolbar_size);
 
         for t in [("Cancel", Images::ButtonB), (&s[..], Images::ButtonA)] {
-            let text = crate::ui::get_drawable_text(TOOLBAR_SIZE, t.0);
+            let text = crate::ui::get_drawable_text(toolbar_size, t.0);
             right = crate::ui::right_aligned_text(graphics, right, Some(t.1), graphics.font_color(), text);
             right.x -= MARGIN;
         }

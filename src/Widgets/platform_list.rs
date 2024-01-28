@@ -74,7 +74,6 @@ impl crate::ui::Widget for PlatformList {
             }
             
             //Label
-            // let name_label = crate::ui::get_drawable_text(font_size, &p.name);
             graphics.draw_text(LogicalPosition::new(MARGIN, y), text_color, &name_label);
     
             if let PlatformType::Emulator = p.kind {
