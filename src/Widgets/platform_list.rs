@@ -1,4 +1,4 @@
-use crate::{YaffeState, platform::PlatformType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
+use crate::{YaffeState, state::GroupType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
 use crate::modals::{PlatformDetailModal, on_update_platform_close};
 use crate::ui::{MARGIN, MENU_BACKGROUND, display_modal};
 
@@ -28,7 +28,7 @@ impl crate::ui::Widget for PlatformList {
             }
             Actions::Info => {
                 let platform = state.get_platform();
-                if platform.kind == PlatformType::Emulator {
+                if let GroupType::Emulator = platform.kind {
                     let modal = Box::new(PlatformDetailModal::from_existing(platform));
                     display_modal(state, "Platform Info", Some("Save"), modal, Some(on_update_platform_close));
                 }
@@ -76,7 +76,7 @@ impl crate::ui::Widget for PlatformList {
             //Label
             graphics.draw_text(LogicalPosition::new(MARGIN, y), text_color, &name_label);
     
-            if let PlatformType::Emulator = p.kind {
+            if let GroupType::Emulator = p.kind {
                 //Count
                 let num_label = crate::ui::get_drawable_text(font_size, &p.apps.len().to_string());
                 graphics.draw_text(LogicalPosition::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
@@ -86,12 +86,12 @@ impl crate::ui::Widget for PlatformList {
     }
 }
 
-fn draw_header(graphics: &mut crate::Graphics, y: f32, width: f32, kind: PlatformType) -> f32 {
+fn draw_header(graphics: &mut crate::Graphics, y: f32, width: f32, kind: GroupType) -> f32 {
     const ICON_SIZE: f32 = 28.;
     let image = match kind {
-        PlatformType::Emulator => crate::assets::Images::Emulator,
-        PlatformType::Plugin => crate::assets::Images::App,
-        PlatformType::Recents => crate::assets::Images::Recent,
+        GroupType::Emulator => crate::assets::Images::Emulator,
+        GroupType::Plugin => crate::assets::Images::App,
+        GroupType::Recents => crate::assets::Images::Recent,
     };
 
     let y = y + MARGIN * 2.;

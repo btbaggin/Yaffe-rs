@@ -1,109 +1,16 @@
 use crate::YaffeState;
-use crate::plugins::Plugin;
 use crate::logger::PanicLogEntry;
-use crate::data::GameInfo;
-use super::{Platform, Executable};
-use yaffe_lib::YaffePluginItem;
-use std::cell::RefCell;
+use crate::state::{TileGroup, Tile, GroupType};
 use std::path::{Path, PathBuf};
 
-#[repr(u8)]
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub enum PlatformType {
-    Emulator,
-    Plugin,
-    Recents,
-}
-
-impl Platform {
-    pub fn new(id: i64, name: String) -> Platform {
-        super::Platform {
-            id: Some(id),
-            name,
-            apps: vec!(),
-            kind: PlatformType::Emulator,
-            plugin_index: 0,
-        }
-    }
-
-    pub fn recents(name: String) -> Platform {
-        super::Platform {
-            id: None,
-            name,
-            apps: vec!(),
-            kind: PlatformType::Recents,
-            plugin_index: 0,
-        }
-    }
-
-    pub fn plugin(plugin_index: usize, name: String) -> Platform {
-        super::Platform {
-            id: None,
-            name,
-            apps: vec!(),
-            kind: PlatformType::Plugin,
-            plugin_index,
-        }
-    }
-
-    pub fn get_plugin<'a>(&self, state: &'a YaffeState) -> Option<&'a RefCell<Plugin>> {
-        if let PlatformType::Plugin = self.kind {
-            let plugin = &state.plugins[self.plugin_index];
-            return Some(plugin);
-        }
-        None
-    }
-
-    pub fn get_rom_path(&self) -> std::path::PathBuf {
-        std::path::Path::new("./Roms").join(&self.name)
-    }
-}
-
-impl Executable {
-    pub fn plugin_item(platform_index: usize, item: YaffePluginItem) -> Self {
-        let boxart = match item.thumbnail {
-            yaffe_lib::PathType::Url(s) => {
-                crate::assets::AssetKey::Url(s)
-            },
-            yaffe_lib::PathType::File(s) => {
-                let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
-                crate::assets::AssetKey::File(canon)
-            },
-        };
-
-        Self {
-            file: item.path,
-            name: item.name,
-            description: item.description,
-            released: String::new(),
-            platform_index,
-            boxart,
-            players: 1,
-            rating: if !item.restricted { String::from("Allowed") } else { String::from("Restricted") },
-        }
-    }
-
-    pub fn new_game(info: &GameInfo, index: usize, boxart: PathBuf) -> Self {
-        Self {
-            file: info.filename.clone(),
-            name: info.name.clone(),
-            description: info.overview.clone(),
-            platform_index: index,
-            boxart: crate::assets::AssetKey::File(boxart),
-            released: info.released.clone(),
-            players: info.players as u8,
-            rating: info.rating.clone(),
-        }
-    }
-}
 
 pub fn get_database_info(state: &mut YaffeState) {
     crate::logger::info!("Refreshing information from database");
 
     let mut platforms = vec!();
-    platforms.push(Platform::recents(String::from("Recent")));
+    platforms.push(TileGroup::recents(String::from("Recent")));
     for p in crate::data::PlatformInfo::get_all() {
-        platforms.push(Platform::new(p.id, p.platform));
+        platforms.push(TileGroup::new(p.id, p.platform));
     }
 
     for i in 0..platforms.len() {
@@ -113,7 +20,7 @@ pub fn get_database_info(state: &mut YaffeState) {
     for (i, p) in state.plugins.iter_mut().enumerate() {
         let name = String::from(p.borrow().name());
 
-        platforms.push(Platform::plugin(i, name));
+        platforms.push(TileGroup::plugin(i, name));
     }
 
     state.platforms = platforms;
@@ -123,7 +30,7 @@ pub fn scan_new_files(state: &mut YaffeState) {
     let mut count = 0;
     let job_id = crate::job_system::generate_job_id();
     for p in &state.platforms {
-        if let PlatformType::Emulator = p.kind {
+        if let GroupType::Emulator = p.kind {
             for entry in std::fs::read_dir(p.get_rom_path()).log_and_panic() {
                 let entry = entry.unwrap();
                 let path = entry.path();
@@ -157,23 +64,23 @@ pub fn scan_new_files(state: &mut YaffeState) {
     }
 }
 
-fn refresh_executable(state: &mut YaffeState, platforms: &mut [Platform], index: usize) {
+fn refresh_executable(state: &mut YaffeState, platforms: &mut [TileGroup], index: usize) {
     match platforms[index].kind {
-        PlatformType::Emulator => {
+        GroupType::Emulator => {
             let platform = platforms.get_mut(index).unwrap();
             for g in crate::data::GameInfo::get_all(platform.id.unwrap()) {
                 let boxart = crate::assets::get_asset_path(&platform.name, &g.name);
-                platform.apps.push(Executable::new_game(&g, index, boxart));
+                platform.apps.push(Tile::new_game(&g, index, boxart));
 
             }
             
             platform.apps.sort_by(|a, b| a.name.cmp(&b.name));
         }
-        PlatformType::Plugin => {
+        GroupType::Plugin => {
             //These are not stored from the database, but loaded at runtime
             unreachable!();
         }
-        PlatformType::Recents => {
+        GroupType::Recents => {
             crate::logger::info!("Getting recent games");
 
             let max = state.settings.get_i32(crate::SettingNames::ItemsPerRow) as f32 * 

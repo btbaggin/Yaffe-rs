@@ -31,7 +31,7 @@ impl crate::ui::Widget for Toolbar {
 
         } else if state.focused_widget == crate::get_widget_id!(crate::widgets::PlatformList) {
             let platform = state.get_platform();
-            if crate::platform::PlatformType::Recents != platform.kind {
+            if !matches!(platform.kind, crate::state::GroupType::Recents) {
                 let text = crate::ui::get_drawable_text(font_size, "Settings");
                 right = crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonX), font_color, text);
                 right = LogicalPosition::new(right.x - MARGIN * 2., right.y);

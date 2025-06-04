@@ -187,7 +187,7 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 		fn bstr_variant(string: &str) -> winapi::um::oaidl::VARIANT {
 			unsafe {
 				let mut var: winapi::um::oaidl::VARIANT = std::mem::zeroed();
-				let mut n2 = var.n1.n2_mut();
+				let n2 = var.n1.n2_mut();
 				n2.vt = winapi::shared::wtypes::VT_BSTR.try_into().unwrap();
 				let n3 = n2.n3.bstrVal_mut();
 				

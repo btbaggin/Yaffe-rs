@@ -141,7 +141,7 @@ pub fn load_plugin_items(kind: NavigationAction, state: &mut crate::YaffeState) 
 		if let Some(items) = items.display_failure("Error loading plugin", state) {
 			let platform = &mut state.platforms[state.selected_platform];
 			for i in items {
-				platform.apps.push(crate::Executable::plugin_item(state.selected_platform, i));
+				platform.apps.push(crate::Tile::plugin_item(state.selected_platform, i));
 			}
 		}
 	}

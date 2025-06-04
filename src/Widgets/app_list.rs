@@ -121,7 +121,7 @@ impl AppList {
         //Get size each tile should try to stretch to
         let (tiles_x, tiles_y, ideal_tile_size) = self.get_ideal_tile_size(state,
             graphics, 
-            platform.kind != crate::platform::PlatformType::Emulator, 
+            !matches!(platform.kind, crate::state::GroupType::Emulator), 
             &list_rect.to_physical(scale_factor));
 
         self.tiles_x = tiles_x;
@@ -259,7 +259,7 @@ impl AppList {
             let offset = crate::offset_of!(AppList => tile_animation);
             self.animate(offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
 
-            if let crate::platform::PlatformType::Plugin = state.get_platform().kind {
+            if let crate::state::GroupType::Plugin = state.get_platform().kind {
                 if visible + self.tiles_x * self.tiles_y >= self.tiles.len() as isize {
                     handler.load_plugin(crate::plugins::NavigationAction::Load);
                 }
@@ -273,7 +273,7 @@ fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
 
         if let Some(platform) = state.platforms.get(exe.platform_index) {
             let child = match platform.kind {
-                crate::platform::PlatformType::Plugin => {
+                crate::state::GroupType::Plugin => {
                     let plugin = platform.get_plugin(state).unwrap();
                     let process = plugin.borrow_mut().select(&exe.name, &exe.file);
 

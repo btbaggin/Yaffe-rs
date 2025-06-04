@@ -21,8 +21,6 @@ enum FocusType {
 
 
 pub trait UiElement {
-    fn position(&self) -> LogicalPosition;
-    fn size(&self) -> LogicalSize;
     fn layout(&self) -> Rect;
     fn set_layout(&mut self, layout: Rect);
 }
@@ -67,8 +65,6 @@ macro_rules! widget {
             $($element: $ty),* 
         }
         impl $crate::ui::UiElement for $name {
-            fn position(&self) -> $crate::LogicalPosition { self.position }
-            fn size(&self) -> $crate::LogicalSize { self.size }
             fn layout(&self) -> $crate::Rect { $crate::Rect::new(self.position, self.position + self.size) }
             fn set_layout(&mut self, layout: $crate::Rect) { 
                 self.position = *layout.top_left(); 

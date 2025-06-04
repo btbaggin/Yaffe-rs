@@ -10,7 +10,7 @@ widget!(pub struct InfoPane {
     offset: LogicalPosition = LogicalPosition::new(1., 0.)
 });
 
-fn build_container(exe: Option<&crate::Executable>) -> Container {
+fn build_container(exe: Option<&crate::Tile>) -> Container {
     let mut main = Container::vertical(1.);
     if let Some(exe) = exe {
         main.add(Label::new(exe.name.clone(), Some(crate::ui::TITLE_SIZE)));

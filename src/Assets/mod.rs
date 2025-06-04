@@ -104,8 +104,15 @@ pub fn initialize_asset_cache() {
     unsafe { ASSET_MAP = Some(PooledCache::new()); }
 }
 
+pub fn get_asset_map() -> &'static mut PooledCache<32, AssetKey, AssetSlot> {
+    // Safety: This function is only called after the asset cache has been initialized
+    // and we only access the asset map in a single-threaded context.
+    #[allow(static_mut_refs)]
+    unsafe { ASSET_MAP.as_mut().unwrap() }
+}
+
 pub fn preload_assets(graphics: &mut Graphics2D) {
-    let map = unsafe { ASSET_MAP.as_mut().unwrap() };
+    let map = get_asset_map();
     if !map.exists(&AssetKey::image(Images::Error)) {
         let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear,"./Assets/packed.png").log_and_panic();
         let image = Rc::new(data);
@@ -150,7 +157,7 @@ pub fn preload_assets(graphics: &mut Graphics2D) {
 }
 
 pub fn get_asset_slot(asset: &AssetKey) -> &'static mut AssetSlot {
-    let map = unsafe { ASSET_MAP.as_mut().unwrap() };
+    let map = get_asset_map();
     if !map.exists(asset) {
         map.insert(asset.clone(), AssetSlot::new(asset.clone().get_path()));
     }
@@ -188,7 +195,7 @@ pub fn ensure_asset_loaded<'a>(queue: &mut crate::job_system::JobQueue, asset: &
 }
 
 pub fn clear_old_cache(state: &crate::YaffeState) {
-    let map = unsafe { ASSET_MAP.as_mut().unwrap() };
+    let map = get_asset_map();
 
     let mut total_memory = 0;
     let mut last_used_index: Option<AssetKey> = None;
@@ -214,7 +221,7 @@ pub fn clear_old_cache(state: &crate::YaffeState) {
     //This will happen once per frame until we are under the threshold
     if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize {
         if let Some(index) = last_used_index {
-            let mut slot = map.get_mut(&index).unwrap();
+            let slot = map.get_mut(&index).unwrap();
             slot.data = AssetData::None;
             slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
             crate::logger::info!("Releasing file at {} due to memory pressure", slot.path.display());

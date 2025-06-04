@@ -1,6 +1,6 @@
 use crate::create_statement;
 use super::{YaffeConnection, QueryResult, QueryError, execute_select, execute_select_once, execute_update};
-use crate::{Executable, Platform, get_column};
+use crate::{Tile, TileGroup, get_column};
 
 crate::table_struct! (
     pub struct GameInfo {
@@ -69,7 +69,7 @@ impl GameInfo {
     }
 
     /// Gets the most recent games launched from Yaffe
-    pub fn get_recent(max: i64, map: &[Platform]) -> Vec<Executable> {
+    pub fn get_recent(max: i64, map: &[TileGroup]) -> Vec<Tile> {
         const QS_GET_RECENT_GAMES: &str = "SELECT g.id, g.name, g.overview, g.players, g.rating, g.filename, g.released, p.id as platformid, p.platform FROM Games g, Platforms p WHERE g.platform = p.id AND lastrun IS NOT NULL ORDER BY lastrun DESC LIMIT @Max";
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_RECENT_GAMES, max);
@@ -84,7 +84,7 @@ impl GameInfo {
             let boxart = crate::assets::get_asset_path(&platform_name, &name);
             let index = map.iter().position(|s| s.id == Some(platform_id));
             if let Some(index) = index {
-                result.push(Executable::new_game(&info, index, boxart));
+                result.push(Tile::new_game(&info, index, boxart));
         }
         });
 

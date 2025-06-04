@@ -17,7 +17,7 @@ pub struct Graphics<'a> {
     cached_settings: HashMap<SettingNames, SettingValue>
 }
 impl<'a> Graphics<'a> {
-    pub fn new(graphics: &'a mut speedy2d::Graphics2D, queue: ThreadSafeJobQueue, scale_factor: f32, bounds: Rect, delta_time: f32) -> Graphics {
+    pub fn new(graphics: &'a mut speedy2d::Graphics2D, queue: ThreadSafeJobQueue, scale_factor: f32, bounds: Rect, delta_time: f32) -> Graphics<'a> {
         Graphics { graphics, queue, scale_factor, bounds, delta_time, cached_settings: HashMap::new() }
     }
     pub fn cache_settings(&mut self, settings: &SettingsFile) {

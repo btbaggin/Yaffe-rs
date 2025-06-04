@@ -3,9 +3,7 @@
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use crate::logger::{PanicLogEntry, error};
-use crate::assets::AssetKey;
 use yaffe_lib::UPDATE_FILE_PATH;
 
 /* 
@@ -35,87 +33,17 @@ mod pooled_cache;
 mod graphics;
 mod ui;
 mod yaffe_window;
+mod state;
 
 use ui::DeferredAction;
 use utils::Transparent;
 use widgets::*;
-use overlay::OverlayWindow;
-use restrictions::RestrictedMode;
 use job_system::Job;
 use input::Actions;
 use graphics::Graphics;
 use settings::SettingNames;
 use utils::{LogicalPosition, LogicalSize, PhysicalSize, Rect, PhysicalRect, ScaleFactor};
-
-pub struct Platform {
-    id: Option<i64>,
-    name: String,
-    apps: Vec<Executable>,
-    kind: platform::PlatformType,
-    plugin_index: usize,
-}
-
-pub struct Executable {
-    file: String,
-    name: String,
-    description: String,
-    rating: String,
-    released: String,
-    players: u8,
-    platform_index: usize,
-    boxart: AssetKey,
-}
-
-pub struct YaffeState {
-    overlay: Rc<RefCell<OverlayWindow>>,
-    selected_platform: usize,
-    selected_app: usize,
-    platforms: Vec<Platform>,
-    plugins: Vec<RefCell<plugins::Plugin>>,
-    focused_widget: ui::WidgetId,
-    modals: Mutex<Vec<ui::Modal>>,
-    toasts: HashMap<u64, String>,
-    queue: job_system::ThreadSafeJobQueue,
-    search_info: SearchInfo,
-    restricted_mode: RestrictedMode,
-    refresh_list: bool,
-    settings: settings::SettingsFile,
-    running: bool,
-}
-impl YaffeState {
-    fn new(overlay: Rc<RefCell<OverlayWindow>>, 
-           settings: settings::SettingsFile, 
-           queue: job_system::ThreadSafeJobQueue) -> YaffeState {
-        YaffeState {
-            overlay,
-            selected_platform: 0,
-            selected_app: 0,
-            platforms: vec!(),
-            plugins: vec!(),
-            search_info: SearchInfo::new(),
-            focused_widget: get_widget_id!(widgets::PlatformList),
-            restricted_mode: RestrictedMode::Off,
-            modals: Mutex::new(vec!()),
-            toasts: HashMap::new(),
-            queue,
-            refresh_list: true,
-            settings,
-            running: true,
-        }
-    }
-
-    fn get_platform(&self) -> &Platform {
-        &self.platforms[self.selected_platform]
-    }
-
-    fn get_executable(&self) -> Option<&Executable> {
-        let p = &self.get_platform();
-        if p.apps.len() > self.selected_app { 
-            return Some(&p.apps[self.selected_app]);
-        }
-        None
-    }
-}
+use state::{YaffeState, TileGroup, Tile};
 
 
 fn main() {

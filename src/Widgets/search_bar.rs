@@ -18,7 +18,7 @@ impl SearchInfo {
         SearchInfo { option: SEARCH_OPTION_NONE, index: -1, start: 0, end: 0 }
     }
 
-    pub fn item_is_visible(&self, exe: &crate::Executable) -> bool {
+    pub fn item_is_visible(&self, exe: &crate::Tile) -> bool {
         if self.index == -1 { return true; }
 
         match self.option {
@@ -202,7 +202,7 @@ impl crate::ui::Widget for SearchBar {
 }
 
 /// Gets a bitmask of filter options that have items we can filter
-fn get_exists_mask(option: i32, apps: &[crate::Executable]) -> u64 {
+fn get_exists_mask(option: i32, apps: &[crate::Tile]) -> u64 {
     let mut mask = 0u64;
     match option {
         SEARCH_OPTION_NONE => { /*do nothing, everything is valid*/ }

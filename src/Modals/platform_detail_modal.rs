@@ -17,7 +17,7 @@ impl PlatformDetailModal {
         PlatformDetailModal { controls, id: 0, }
     }
 
-    pub fn from_existing(plat: &crate::Platform) -> PlatformDetailModal {
+    pub fn from_existing(plat: &crate::TileGroup) -> PlatformDetailModal {
         //This should never fail since we orignally got it from the database
         let id = plat.id.unwrap();
         let (path, args) = crate::data::PlatformInfo::get_info(id).log_and_panic();

@@ -40,7 +40,7 @@ impl AppTile {
         (self.flags & VISIBLE_FLAG) != 0
     }
 
-    pub fn apply_filter(&mut self, filter: &crate::widgets::SearchInfo, apps: &[crate::Executable]) {
+    pub fn apply_filter(&mut self, filter: &crate::widgets::SearchInfo, apps: &[crate::Tile]) {
         fn set_visible(flags: u8, visible: bool) -> u8 {
             if visible { flags | VISIBLE_FLAG } else { flags & !VISIBLE_FLAG }
         }
@@ -49,7 +49,7 @@ impl AppTile {
     }
 
 
-    pub fn render(&mut self, focused: bool, animation: f32, exe: &crate::Executable, graphics: &mut crate::Graphics) {
+    pub fn render(&mut self, focused: bool, animation: f32, exe: &crate::Tile, graphics: &mut crate::Graphics) {
         if !self.is_visible() { return; }
 
         let mut target_size = self.size;
