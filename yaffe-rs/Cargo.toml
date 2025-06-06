@@ -1,0 +1,43 @@
+[package]
+name = "yaffe-rs"
+version = "0.8.1"
+authors = ["allex"]
+edition = "2018"
+
+[[bin]]
+name = "yaffe"
+path = "src/main.rs"
+
+[[bin]]
+name = "yaffe-updater"
+path = "src/updater.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sqlite = "^0.30"
+speedy2d = { version = "^1.12", default-features = false, features = ["image-loading"] }
+spmc = "^0.3"
+chrono = "^0.4"
+serde_json = "^1"
+serde = { version = "^1", features = ["derive"] }
+reqwest = { version = "^0.11", features = ["blocking", "json"] }
+image = "^0.24"
+glutin = "^0.29"
+takeable-option = "^0.5"
+memoffset = "^0.8"
+libloading = "^0.8"
+lazy_static = "^1.4"
+log = "^0.4"
+log-panics = "2.1.0"
+rand = "^0.8"
+yaffe-lib = { path = "../yaffe-lib" }
+
+[target.'cfg(target_os="windows")'.dependencies.winapi]
+version = "0.3.9"
+features = ["libloaderapi", "winerror", "std", "taskschd", "impl-default", "oleauto", "objbase", "xinput", "mmdeviceapi", "endpointvolume", "securitybaseapi", "winbase"]
+
+[target.'cfg(target_os="linux")'.dependencies]
+libc = "0.2.120"
+x11 = "2.19.1"
+alsa = "0.6.0"

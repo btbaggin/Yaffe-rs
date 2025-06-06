@@ -1,0 +1,13 @@
+[package]
+name = "yaffe-lib"
+version = "0.1.0"
+edition = "2024"
+
+
+[lib]
+name = "yaffe_lib"
+crate-type = ["dylib", "rlib"]
+# path = "src/yaffe_lib/lib.rs"
+
+
+[dependencies]
