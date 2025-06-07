@@ -7,10 +7,13 @@ use std::path::PathBuf;
 
 
 pub struct Plugin {
-	#[allow(dead_code)]
-	lib: Library,
 	pub filters: Vec<PluginFilter>,
 	plugin: Box<dyn YaffePlugin>,
+
+	// Lib must be the last field to ensure it is dropped last
+	// This is necessary because YaffePlugin comes from that library
+	#[allow(dead_code)]
+	lib: Library,
 }
 impl Deref for Plugin {
     type Target = Box<dyn YaffePlugin>;
@@ -33,9 +36,9 @@ fn load(state: &mut YaffeState, path: &mut PathBuf) -> Result<(), Box<dyn std::e
 		let mut plugin = create_plugin();
 		info!("Loaded plugin {}", plugin.name());
 
-		path.pop();
-		let path = path.join(format!("{}.settings", plugin.name()));
-		let settings = crate::settings::load_settings_from_path(path).unwrap_or_default();
+
+		path.set_extension("settings");
+		let settings = crate::settings::load_settings_from_path(path.clone()).unwrap_or_default();
 		let filters = plugin.initialize(&settings).display_failure("Unable to load plugin", state).unwrap_or_default();
 		state.plugins.push(Plugin { lib, filters, plugin });
 	}
@@ -54,13 +57,7 @@ pub fn load_plugins(state: &mut YaffeState, directory: &str) {
 		if let Some(ext) = path.extension() {
 			let ext = ext.to_string_lossy();
 
-			#[cfg(windows)] 
-			let ok = ext == "dll";
-			#[cfg(not(windows))] 
-			let ok = ext == "so";
-
-			if ok && path.is_file() {
-				
+			if ext == crate::os::lib_ext() && path.is_file() {
 				info!("Found plugin {}", path.display());
 				load(state, &mut path).display_failure(&format!("Failed to load plugin {path:?}"), state);
 			}

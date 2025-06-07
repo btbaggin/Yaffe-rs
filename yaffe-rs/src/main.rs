@@ -4,10 +4,12 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::cell::RefCell;
 use crate::logger::{PanicLogEntry, error};
+use crate::utils::append_app_ext;
 
 /* 
  * TODO
  * Search bar doesnt work well on plugins
+ * Icons dont render on overlay. I think its because there are 2 Graphics2D objects and we need to load it into both of them. This means i probably need to store the asset cache on YaffeState
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -53,7 +55,8 @@ fn main() {
     
     //Check for and apply updates on startup
     if std::path::Path::new(UPDATE_FILE_PATH).exists() {
-        match os::update() { 
+        let app = append_app_ext("./yaffe-rs");
+        match crate::utils::yaffe_helper("update", &[UPDATE_FILE_PATH, &app]) { 
             Ok(_) => return,
             Err(e) => error!("Updated file found, but unable to run updater {:?}", e),
         }

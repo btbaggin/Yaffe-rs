@@ -23,7 +23,7 @@ impl crate::ui::Widget for SearchBar {
             }
             Actions::Accept => {
                 handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
-                let filter = self.current_search().clone();
+                let filter = self.searches[self.active_search].clone();
 
                 //If our current item is no longer visible because it was filtered out
                 //Find the first visible item so it can be selected in the app list
@@ -81,7 +81,7 @@ impl crate::ui::Widget for SearchBar {
 
             let current = &mut self.searches[self.active_search];
             current.set_mask(&group.tiles);
-            current.selected = -1;
+            current.selected = None;
 
             self.cached_platform = group.id;
         }
@@ -95,7 +95,7 @@ impl crate::ui::Widget for SearchBar {
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
-        let current_search = self.current_search();
+        let current_search = &self.searches[self.active_search];
         let rect = graphics.bounds;
         let filter_start = rect.left() + NAME_WIDTH;
         let name = &current_search.name;
@@ -112,7 +112,7 @@ impl crate::ui::Widget for SearchBar {
         //Highlight
         let mut highlight_position = rect.left() + self.highlight_offset;
         let mut highlight_width = NAME_WIDTH;
-        if current_search.selected >= 0 { 
+        if current_search.selected.is_some() { 
             highlight_position += NAME_WIDTH; 
             highlight_width = item_size;
         }
@@ -162,14 +162,11 @@ impl SearchBar {
         self.active_search > 0
     }
 
-    fn current_search(&self) -> &MetadataSearch {
-        &self.searches[self.active_search]
-    }
-
     fn switch_search(&mut self, state: &YaffeState, increment: isize) {
         let group = state.get_selected_group();
         self.active_search = (self.active_search as isize + increment) as usize;
         self.highlight_offset = 0.;
+        self.searches[self.active_search].selected = None;
         self.searches[self.active_search].set_mask(&group.tiles);
     }
 
@@ -179,7 +176,7 @@ impl SearchBar {
         self.searches[self.active_search].increment_index(increment);
 
         let offset = crate::offset_of!(SearchBar => highlight_offset);
-        self.animate(offset, f32::max(0., self.searches[self.active_search].selected as f32 * item_size), 0.1);
+        self.animate(offset, self.searches[self.active_search].selected.unwrap_or(0) as f32 * item_size, 0.1);
         state.filter = Some(self.searches[self.active_search].clone());
     }
 

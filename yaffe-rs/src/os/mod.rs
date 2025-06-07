@@ -33,8 +33,12 @@ type StartupResult<T> = Result<T, StartupError>;
 type ShutdownResult = std::io::Result<()>;
 type VolumeResult<T> = Result<T, StartupError>;
 
-pub fn update() -> std::io::Result<std::process::Child> {
-    os_impl::update()
+pub fn lib_ext() -> &'static str {
+    os_impl::lib_ext()
+}
+
+pub fn app_ext() -> &'static str {
+    os_impl::app_ext()
 }
 
 pub fn shutdown() -> ShutdownResult {

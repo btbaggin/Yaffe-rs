@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -40,16 +41,15 @@ pub struct MetadataSearch {
     pub name: String,
     pub options: Vec<String>,
     pub mask: usize,
-    pub selected: isize
+    pub selected: Option<usize>
 }
 impl MetadataSearch {
-    const NO_SELECTION: isize = -1;
     pub fn new(name: &str, options: &[&str]) -> MetadataSearch {
         MetadataSearch {
             name: name.to_string(),
             options: options.iter().map(|o| o.to_string()).collect(),
             mask: 0,
-            selected: Self::NO_SELECTION,
+            selected: None,
         }
     }
 
@@ -58,7 +58,7 @@ impl MetadataSearch {
             name: filter.name.to_string(),
             options: filter.options.clone(),
             mask: 0,
-            selected: Self::NO_SELECTION,
+            selected: None,
         }
     }
 
@@ -67,13 +67,12 @@ impl MetadataSearch {
             name: name.to_string(),
             options: Self::generate_string_range(start, end),
             mask: 0,
-            selected: Self::NO_SELECTION,
+            selected: None,
         }
     }
 
     pub fn get_selected(&self) -> Option<String> {
-        if self.selected == Self::NO_SELECTION { return None; }
-        Some(self.options[self.selected as usize].clone())
+        self.selected.and_then(|i| Some(self.options[i].clone()))
     }
 
     pub fn set_mask(&mut self,  tiles: &[Tile]) {
@@ -94,30 +93,43 @@ impl MetadataSearch {
     }
 
     pub fn increment_index(&mut self, amount: isize) {
-        let mut i = self.selected;
+        let mut i = if let Some(i) = self.selected {
+            i as isize
+        } else {
+            -1
+        };
         //self.index must be assigned in all paths of this loop
         //this loop is guaranteed to end because either the index will hit -1 or self.end
         loop {
             i += amount;
-            if i <= -1 { i = Self::NO_SELECTION; break; }
-            else if self.mask & 1 << i != 0 { i = i; break; }
-            else if i >= self.options.len() as isize { i = Self::NO_SELECTION; break; }
+            if i <= -1 {
+                self.selected = None;
+                return;
+            } else if self.mask & 1 << i != 0 {
+                self.selected = Some(i as usize);
+                return;
+            } else if i >= self.options.len() as isize {
+                self.selected = None;
+                return;
+            }
         }
-        self.selected = i;
     }
 
     pub fn item_is_visible(&self, tile: &Tile) -> bool {
-        if self.selected == Self::NO_SELECTION { return true; }
+        if let Some(i) = self.selected { 
+            if let Some(m) = tile.get_metadata(&self.name) {
+                let m = m.to_ascii_lowercase();
 
-        if let Some(m) = tile.get_metadata(&self.name) {
-            let m = m.to_ascii_lowercase();
-
-            let o = self.options[self.selected as usize].to_ascii_lowercase();
-            if m.starts_with(&o) || m == o {
-                        return true;
+                let o = self.options[i].to_ascii_lowercase();
+                if m.starts_with(&o) || m == o {
+                            return true;
+                }
             }
+            false
         }
-        false
+        else { 
+            true
+        }
     }
 
     fn generate_string_range(start: &str, end: &str) -> Vec<String> {
@@ -193,16 +205,14 @@ pub struct Tile {
     pub description: String,
     pub restricted: bool,
     // We need to store the group on here because recents can be from multiple platforms
-    pub group_id: i64,
+    group_id: i64,
     pub boxart: AssetKey,
     pub metadata: HashMap<String, String>,
 }
 impl Tile {
     pub fn plugin_item(group_id: i64, item: YaffePluginItem) -> Self {
         let boxart = match item.thumbnail {
-            yaffe_lib::PathType::Url(s) => {
-                crate::assets::AssetKey::Url(s)
-            },
+            yaffe_lib::PathType::Url(s) => crate::assets::AssetKey::Url(s),
             yaffe_lib::PathType::File(s) => {
                 let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
                 crate::assets::AssetKey::File(canon)
@@ -250,40 +260,54 @@ impl Tile {
     }
 
     pub fn run(&self, state: &YaffeState, handler: &mut DeferredAction) {
-        if let Some(platform) = state.find_group(self.group_id) {
-            let child = match platform.kind {
-                GroupType::Plugin(index) => {
-                    let plugin = &state.plugins[index];
-
-                    match plugin.select_tile(&self.name, &self.file) {
-                        SelectedAction::Load(p) => {
-                            handler.load_plugin();
-                            return;
-                        },
-                        SelectedAction::Start(mut p) => p.spawn()
-                    }
-                },
-                GroupType::Emulator | GroupType::Recents => {
-                    let id = platform.id;
-                    //This should never fail since we got it from the database
-                    let (path, args) = crate::data::PlatformInfo::get_info(id).log_message_and_panic("Platform not found");
-                    crate::data::GameInfo::update_last_run(id, &self.file).log("Unable to update game last run");
-
-                    let mut process = &mut std::process::Command::new(path);
-                    let exe_path = platform.get_rom_path().join(&self.file);
-
-                    process = process.arg(exe_path.to_str().unwrap());
-                    if !args.is_empty() { process = process.args(args.split(' ')); }
-                    process.spawn()
+        if let Some(group) = state.find_group(self.group_id) {
+            let child = self.get_tile_process(state, group);
+            if let Some(process) = child.display_failure_deferred("Unable to start process", handler) {
+                if let Some(process) = process {
+                    let mut overlay = state.overlay.borrow_mut();
+                    overlay.set_process(process);
+                    //We could refresh so our recent games page updates, but I dont think that's desirable   
                 }
-            };
-
-            if let Some(process) = child.display_failure_deferred("Unable to start game", handler) {
-                let mut overlay = state.overlay.borrow_mut();
-                overlay.set_process(process);
-                //We could refresh so our recent games page updates, but I dont think that's desirable
             }
         }
+    }
+
+    fn get_tile_process(&self, state: &YaffeState, group: &TileGroup) -> Result<Option<Box<dyn ExternalProcess>>, Box<dyn std::error::Error>> {
+        let child: Box<dyn ExternalProcess> = match group.kind {
+            GroupType::Plugin(index) => {
+                let plugin = &state.plugins[index];
+
+                match plugin.select_tile(&self.name, &self.file) {
+                    SelectedAction::Load(p) => {
+                        // TODO
+                        // handler.load_plugin();
+                        // return None;
+                        return Ok(None)
+                    },
+                    SelectedAction::Webview(site) => {
+                        let child = crate::utils::yaffe_helper("webview", &[&site]);
+                        Box::new(child?) as Box<dyn ExternalProcess>
+                    },
+                    SelectedAction::Process(mut p) => {
+                        Box::new(p.spawn()?) as Box<dyn ExternalProcess>
+                    }
+                }
+            },
+            GroupType::Emulator | GroupType::Recents => {
+                let id = group.id;
+                //This should never fail since we got it from the database
+                let (path, args) = crate::data::PlatformInfo::get_info(id).log_message_and_panic("Platform not found");
+                crate::data::GameInfo::update_last_run(id, &self.file).log("Unable to update game last run");
+
+                let mut process = &mut std::process::Command::new(path);
+                let exe_path = group.get_rom_path().join(&self.file);
+
+                process = process.arg(exe_path.to_str().unwrap());
+                if !args.is_empty() { process = process.args(args.split(' ')); }
+                Box::new(process.spawn()?) as Box<dyn ExternalProcess>
+            }
+        };
+        Ok(Some(child))
     }
 }
 
@@ -315,6 +339,40 @@ impl SelectedItem {
         }
     }
 }
+
+pub trait ExternalProcess {
+    fn is_running(&mut self) -> bool;
+    fn kill(&mut self) -> std::io::Result<()>;
+}
+impl ExternalProcess for std::process::Child {
+    fn is_running(&mut self) -> bool {
+        match self.try_wait() { 
+            Ok(None) => true,
+            Ok(Some(_)) => false,
+            Err(_) => {
+                //If we cant kill it, oh well.
+                self.kill().log("Unable to determine process status");
+                false
+            }
+        }
+    }
+    fn kill(&mut self) -> std::io::Result<()> {
+        self.kill()
+    }
+}
+// impl<T> ExternalProcess for WebView<'_, T> {
+//     fn is_running(&mut self) -> bool {
+//         // WebView does not have a direct way to check if it's running
+//         // Assuming it is always running once created
+//         true
+//     }
+//     fn kill(&mut self) -> std::io::Result<()> {
+//         std::thread::spawn(move || {
+//             self.exit();
+//         });
+//         Ok(())
+//     }
+// }
 
 pub struct YaffeState {
     pub overlay: Rc<RefCell<OverlayWindow>>,
@@ -367,9 +425,4 @@ impl YaffeState {
     pub fn find_group(&self, id: i64) -> Option<&TileGroup> {
         self.groups.iter().find(|p| p.id == id)
     }
-
-    // pub fn set_query_page(&mut self, index: usize, offset: usize) {
-    //     self.query.index = index;
-    //     self.query.offset = offset;
-    // }
 }

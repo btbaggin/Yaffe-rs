@@ -12,7 +12,8 @@ pub enum PathType {
 
 #[repr(C)]
 pub enum SelectedAction {
-    Start(std::process::Command),
+    Process(std::process::Command),
+    Webview(String),
     Load(String),
 }
 

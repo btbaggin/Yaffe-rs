@@ -1,4 +1,5 @@
 use crate::job_system::ThreadSafeJobQueue;
+use crate::state::ExternalProcess;
 use crate::{Rect, PhysicalSize, LogicalPosition, Graphics};
 use crate::logger::LogEntry;
 use crate::ui;
@@ -10,7 +11,7 @@ use std::cell::RefCell;
 /// the Yaffe game overlay
 pub struct OverlayWindow {
     modal: ui::Modal,
-    process: Option<std::process::Child>,
+    process: Option<Box<dyn ExternalProcess>>,
     showing: bool,
     settings: crate::settings::SettingsFile,
     queue: ThreadSafeJobQueue
@@ -34,7 +35,7 @@ impl OverlayWindow {
     }
 
     /// Sets the currently running process
-    pub fn set_process(&mut self, process: std::process::Child) {
+    pub fn set_process(&mut self, process: Box<dyn ExternalProcess>) {
         self.process = Some(process);
     }
 
@@ -43,23 +44,14 @@ impl OverlayWindow {
     /// process = None and hide the overlay
     pub fn process_is_running(&mut self, helper: &mut WindowHelper) -> bool {
         if let Some(process) = &mut self.process {
-            match process.try_wait() { 
-                Ok(None) => true,
-                Ok(Some(_)) => {
-                    self.process = None;
-                    self.hide(helper);
-                    false
-                },
-                Err(_) => {
-                    //If we cant kill it, oh well.
-                    process.kill().log("Unable to determine process status");
-                    self.hide(helper);
-                    false
-                }
+            if !process.is_running() {
+                self.hide(helper);
+                self.process = None;
+                return false;
             }
-        } else { 
-            false 
+            return true;
         }
+        false
     }
 
     /// Shows the overlay if possible
@@ -76,11 +68,13 @@ impl OverlayWindow {
 
 impl crate::windowing::WindowHandler for OverlayWindow {
     fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, _: f32, size: PhysicalSize, scale_factor: f32) -> bool {
+        let data = graphics.create_image_from_file_path(None, speedy2d::image::ImageSmoothingMode::Linear,"./Assets/packed.png").ok();
+
         let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
 
-            let mut graphics = Graphics::new(graphics, self.queue.clone(), scale_factor, window_rect, 0.);
-            graphics.cache_settings(&self.settings);
-            crate::ui::render_modal(&self.modal, &mut graphics);
+        let mut graphics = Graphics::new(graphics, self.queue.clone(), scale_factor, window_rect, 0.);
+        graphics.cache_settings(&self.settings);
+        crate::ui::render_modal(&self.modal, &mut graphics);
 
         true
     }

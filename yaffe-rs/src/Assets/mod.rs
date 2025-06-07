@@ -104,12 +104,12 @@ pub fn initialize_asset_cache() {
     unsafe { ASSET_MAP = Some(PooledCache::new()); }
 }
 
-pub fn get_asset_map() -> &'static mut PooledCache<32, AssetKey, AssetSlot> {
-    // Safety: This function is only called after the asset cache has been initialized
-    // and we only access the asset map in a single-threaded context.
-    #[allow(static_mut_refs)]
-    unsafe { ASSET_MAP.as_mut().unwrap() }
-}
+// pub fn get_asset_map() -> &'static mut PooledCache<32, AssetKey, AssetSlot> {
+//     // Safety: This function is only called after the asset cache has been initialized
+//     // and we only access the asset map in a single-threaded context.
+//     #[allow(static_mut_refs)]
+//     unsafe { ASSET_MAP.as_mut().unwrap() }
+// }
 
 pub fn preload_assets(graphics: &mut Graphics2D) {
     let map = get_asset_map();

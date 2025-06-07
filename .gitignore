@@ -12,5 +12,4 @@ api_key.txt
 google_api_key.txt
 version.txt
 yaffe-rs.update
-yaffe-updater.exe
-yaffe-updater
+yaffe-helper.exe*

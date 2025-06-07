@@ -218,12 +218,10 @@ pub(super) fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
 	Ok(())
 }
 
-pub(super) fn update() -> std::io::Result<std::process::Child> {
-	if std::path::Path::new("./yaffe-updater.exe").exists() {
-		return std::process::Command::new("./yaffe-updater.exe").arg("./yaffe-rs.exe").spawn();
-	}
-	Err(std::io::Error::from(std::io::ErrorKind::NotFound))
-}
+pub fn lib_ext() -> &'static str { "dll" }
+
+pub fn app_ext() -> &'static str { "exe" }
+
 
 pub(super) fn shutdown() -> ShutdownResult {
 	use std::iter::once;
