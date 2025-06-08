@@ -51,7 +51,7 @@ impl PlatformInfo {
     /// Gets Path, and Args of a Platform
     pub fn get_info(platform: i64) -> QueryResult<(String, String)> {
         const QS_GET_PLATFORM: &str = "SELECT path, args FROM Platforms WHERE id = @ID";
-        crate::logger::info!("Getting information for platform {}", platform);
+        crate::logger::info!("Getting information for platform {platform}");
 
         let con = YaffeConnection::new();
         let mut stmt = create_statement!(con, QS_GET_PLATFORM, platform);

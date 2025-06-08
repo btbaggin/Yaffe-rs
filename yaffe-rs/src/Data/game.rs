@@ -55,7 +55,7 @@ impl GameInfo {
     /// Gets Name, Overview, Players, and Rating of a game
     pub fn exists(id: i64, file: &str) -> QueryResult<bool> {
         const QS_GET_GAME_EXISTS: &str = "SELECT COUNT(1) FROM Games WHERE platform = @Platform AND filename = @Game";
-        crate::logger::info!("Getting all applications for {}", file);
+        crate::logger::info!("Getting all applications for {file}");
 
         let con = YaffeConnection::new();
         let mut stmt = create_statement!(con, QS_GET_GAME_EXISTS, id, file);
@@ -111,7 +111,7 @@ impl GameInfo {
         SET lastrun = strftime('%s', 'now', 'localtime')
         WHERE platform = @Platform AND filename = @Game
         ";
-        crate::logger::info!("Updating last run for game {}", id);
+        crate::logger::info!("Updating last run for game {id}");
 
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_UPDATE_GAME_LAST_RUN, id, file);

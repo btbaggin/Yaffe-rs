@@ -155,7 +155,7 @@ pub fn check_for_updates() -> ServiceResult<bool> {
     let data = data_request!(&url, &[("alt", "media"), ("key", GOOGLE_API_KEY)]);
 
     let version = std::str::from_utf8(&data).unwrap();
-    crate::logger::info!("Found remote version {}", version);
+    crate::logger::info!("Found remote version {version}");
 
     if needs_updating(crate::CARGO_PKG_VERSION, version) {
         crate::logger::info!("Remote version greater than current version. Updating...");
@@ -198,6 +198,6 @@ pub fn download_file(url: PathBuf, file_path: PathBuf) {
             let file = bytes.bytes().unwrap();
             std::fs::write(file_path, file).log("Unable to write downloaded file to disk");
         }
-        Err(e) => error!("{:?}", e),
+        Err(e) => error!("{e:?}"),
     }
 }

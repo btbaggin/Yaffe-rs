@@ -25,7 +25,7 @@ impl WindowHandler for WidgetTree {
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         if !self.data.overlay.borrow().is_active() {
             
-            let window_rect = graphics.bounds.clone();
+            let window_rect = graphics.bounds;
 
             //Update the platform and emulator list from database
             if self.data.refresh_list {
@@ -63,21 +63,24 @@ impl WindowHandler for WidgetTree {
 
         match action {
             Actions::ShowMenu => {
-                //TODO this modal can stack which I dont like
-                let mut items = vec!();
-                items.push(String::from("Scan For New Roms"));
-                items.push(String::from("Add Emulator"));
-                match self.data.restricted_mode {
-                    RestrictedMode::On(_) => items.push(String::from("Disable Restricted Mode")),
-                    RestrictedMode::Off => items.push(String::from("Enable Restricted Mode")),
+                if !crate::ui::is_modal_open(&self.data) {
+                    let mut items = vec!();
+                    items.push(String::from("Scan For New Roms"));
+                    items.push(String::from("Add Emulator"));
+                    match self.data.restricted_mode {
+                        RestrictedMode::On(_) => items.push(String::from("Disable Restricted Mode")),
+                        RestrictedMode::Off => items.push(String::from("Enable Restricted Mode")),
+                    }
+                    items.push(String::from("Settings"));
+                    items.push(String::from("Exit Yaffe"));
+                    items.push(String::from("Shut Down"));
+        
+                    let list = Box::new(crate::modals::ListModal::new(items));
+                    crate::ui::display_modal(&mut self.data, "Menu", None, list, Some(on_menu_close));
+                    true
+                } else {
+                    false
                 }
-                items.push(String::from("Settings"));
-                items.push(String::from("Exit Yaffe"));
-                items.push(String::from("Shut Down"));
-    
-                let list = Box::new(crate::modals::ListModal::new(items));
-                crate::ui::display_modal(&mut self.data, "Menu", None, list, Some(on_menu_close));
-                true
             },
             Actions::ToggleOverlay => { false /* Overlay handles this */ }
             _ => {

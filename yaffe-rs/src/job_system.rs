@@ -36,7 +36,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
     };
 
     while let Ok(msg) = queue.recv() {
-        crate::logger::info!("Processing job {:?}", msg);
+        crate::logger::info!("Processing job {msg:?}");
         match msg {
             Job::LoadImage { key, file } => {
                 if let Some((data, dimensions)) = crate::assets::load_image_async(&key, file) {
@@ -49,14 +49,14 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
             Job::SearchPlatform { id, name, path, args } => {
                 match search_platform(id, &name, path, args) {
                     Ok(result) => send_reply(JobResult::SearchPlatform(result)),
-                    Err(e) => error!("Error occured while searching platforms {:?}", e),
+                    Err(e) => error!("Error occured while searching platforms {e:?}"),
                 }
             },
 
             Job::SearchGame { id, exe, name, platform } => {
                 match search_game(id, &name, exe, platform) {
                     Ok(result) => send_reply(JobResult::SearchGame(result)),
-                    Err(e) => error!("Error occured while searching games {:?}", e),
+                    Err(e) => error!("Error occured while searching games {e:?}"),
                 }
             },
 

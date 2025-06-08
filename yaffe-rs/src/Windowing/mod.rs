@@ -80,7 +80,7 @@ fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()
             match result {
                 Ok(context) => { return Some(context); }
                 Err(err) => {
-                    crate::logger::warn!("Failed to create context: {:?}", err);
+                    crate::logger::warn!("Failed to create context: {err:?}");
                 }
             }
         }
@@ -174,7 +174,7 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         
-        crate::logger::trace!("Window event {:?}", event);
+        crate::logger::trace!("Window event {event:?}");
         match event {
             Event::LoopDestroyed => *control_flow = ControlFlow::Exit,
 
@@ -279,8 +279,6 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = crate::input::input_to_action(&input_map, &mut gamepad);
 
-                //TODO process animatinos
-
                 check_for_updates(&mut update_timer, delta_time, &queue);
 
                 // Get results from any completed jobs
@@ -303,10 +301,12 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                     let mut handle = window.handler.borrow_mut();
                     let context = ct.get_current(window.context_id).unwrap();
                     
+                    // Fixed update
                     let mut helper = WindowHelper { visible: None, };
                     let fixed_update = handle.on_fixed_update(&mut helper);
                     helper.resolve(context.windowed().window());
 
+                    // Process animations
                     let mut animations = window.animations.borrow_mut();
                     let root = handle.get_ui();
                     animations.process(root, delta_time);

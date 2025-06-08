@@ -289,7 +289,7 @@ fn load<S: AsRef<str>>(s: S) -> Option<WindowsInput> {
     unsafe {
         let get_state_ptr = GetProcAddress(xinput_handle, 100 as *mut i8);
         if !get_state_ptr.is_null() {
-            opt_xinput_get_state = Some(::std::mem::transmute(get_state_ptr));
+            opt_xinput_get_state = Some(::std::mem::transmute::<*mut winapi::shared::minwindef::__some_function, unsafe extern "system" fn(u32, *mut crate::os::os_impl::XInputGamepadEx) -> u32>(get_state_ptr));
         }
     }
 
@@ -386,10 +386,7 @@ pub(super) fn get_clipboard(_: &glutin::window::Window) -> Option<String> {
 			if !data.is_null() {
 				let text = GlobalLock(data);
 				if !text.is_null() { 
-					result = match std::ffi::CString::from_raw(text as *mut i8).into_string() {
-						Err(_) => None,
-						Ok(result) => Some(result),
-					};
+					result = std::ffi::CString::from_raw(text as *mut i8).into_string().ok();
 				}
 					
 				GlobalUnlock(data);

@@ -13,8 +13,8 @@ pub fn get_database_info(state: &mut YaffeState) {
         platforms.push(TileGroup::emulator(p.id, p.platform));
     }
 
-    for mut p in platforms.iter_mut() {
-        refresh_executable(state, &mut p);
+    for p in platforms.iter_mut() {
+        refresh_executable(state, p);
     }
 
     for (i, p) in state.plugins.iter_mut().enumerate() {
@@ -116,7 +116,7 @@ fn clean_file_name(file: &str) -> String {
                 } + 1;
                 // Insert it to the beginning of the string, add a space
                 cleaned_file.insert_str(0, &file[i..i + ii]);
-                cleaned_file.insert_str(ii, " ");
+                cleaned_file.insert(ii, ' ');
                 // Move positions after that word
                 i += ii;
                 index += i;

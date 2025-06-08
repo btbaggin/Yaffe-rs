@@ -39,12 +39,6 @@ impl Graphics {
         self.bounds = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
         self.delta_time = delta_time;
     }
-    pub fn graphics(&self) -> &speedy2d::Graphics2D {
-        unsafe { &*self.graphics_ptr }
-    }
-    pub fn graphics_mut(&self) -> &mut speedy2d::Graphics2D {
-        unsafe { &mut *self.graphics_ptr }
-    }
     pub fn cache_settings(&mut self, settings: &SettingsFile) {
         for s in [SettingNames::InfoFontSize, SettingNames::LightShadeFactor, SettingNames::DarkShadeFactor] {
             self.cached_settings.insert(s, SettingValue::F32(settings.get_f32(s)));
@@ -122,11 +116,11 @@ impl Graphics {
 impl Deref for Graphics {
     type Target = speedy2d::Graphics2D;
     fn deref(&self) -> &Self::Target {
-        self.graphics()
+        unsafe { &*self.graphics_ptr }
     }
 }
 impl DerefMut for Graphics {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.graphics_mut()
+        unsafe { &mut *self.graphics_ptr }
     }
 }

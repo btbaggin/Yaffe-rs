@@ -48,13 +48,14 @@ impl YaffeTexture {
     }
 }
 impl Graphics {
-    pub fn request_asset_image(&self, key: &AssetKey) -> Option<YaffeTexture> {
+    pub fn request_asset_image(&mut self, key: &AssetKey) -> Option<YaffeTexture> {
         let queue = self.queue.clone();
         let mut map = self.asset_cache.borrow_mut();
         if let Some(slot) = super::ensure_asset_loaded(queue, &mut map, key) {
             if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
                 if let AssetData::Raw((data, dimensions)) = &slot.data {
-                    let image = self.graphics_mut().create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
+                    let graphics = unsafe { &mut *self.graphics_ptr };
+                    let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
                     slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
                 }
             }
@@ -69,7 +70,7 @@ impl Graphics {
         None
     }
 
-    pub fn request_image(&self, image: Images) -> Option<YaffeTexture> {
+    pub fn request_image(&mut self, image: Images) -> Option<YaffeTexture> {
         self.request_asset_image(&AssetKey::image(image))
     }
 }
@@ -77,7 +78,7 @@ impl Graphics {
 
 
 pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec<u8>, (u32, u32))> {
-    info!("Loading image asynchronously {:?}", path);
+    info!("Loading image asynchronously {path:?}");
 
     let data = match &key {
         AssetKey::File(_) | AssetKey::Static(_) => std::fs::read(path).log_and_panic(),
@@ -97,7 +98,7 @@ pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec
             let data = buffer.into_vec();
             return Some((data, dimensions))
         },
-        Err(e) => warn!("Error loading {:?}: {:?}", key, e),
+        Err(e) => warn!("Error loading {key:?}: {e:?}"),
     }
     None
 }

@@ -122,7 +122,7 @@ impl crate::ui::Widget for SearchBar {
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
 
-        let name_label = crate::ui::get_drawable_text(graphics, font_size, &name);
+        let name_label = crate::ui::get_drawable_text(graphics, font_size, name);
         let half = name_label.width().to_logical(graphics) / 2.;
         graphics.draw_text(LogicalPosition::new(mid - half, (filter_rect.top() + filter_rect.height() / 2.) - name_label.height().to_logical(graphics) / 2.), focused_color, &name_label);
 
@@ -146,7 +146,7 @@ impl crate::ui::Widget for SearchBar {
             //Filter item
             //If there are no items that match a certain filter we will draw it unfocused
             let color =  if mask & 1 << i != 0 { focused_color } else { graphics.font_unfocused_color() };
-            let item_label = crate::ui::get_drawable_text(graphics, font_size, &o);
+            let item_label = crate::ui::get_drawable_text(graphics, font_size, o);
             
             let label_half = LogicalSize::new(item_label.width().to_logical(graphics) / 2., item_label.height().to_logical(graphics) / 2.);
             graphics.draw_text(LogicalPosition::new(item_start + item_size / 2. - label_half.x, rect.top()  + label_half.y), color, &item_label);

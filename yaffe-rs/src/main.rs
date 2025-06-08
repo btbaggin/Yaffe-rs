@@ -58,7 +58,7 @@ fn main() {
         let app = append_app_ext("./yaffe-rs");
         match crate::utils::yaffe_helper("update", &[UPDATE_FILE_PATH, &app]) { 
             Ok(_) => return,
-            Err(e) => error!("Updated file found, but unable to run updater {:?}", e),
+            Err(e) => error!("Updated file found, but unable to run updater {e:?}"),
         }
     }
     crate::data::init_database().log_message_and_panic("Unable to create database");
@@ -68,7 +68,7 @@ fn main() {
     let settings = match settings::load_settings("./yaffe.settings") {
         Ok(settings) => settings,
         Err(e) => {
-            logger::error!("Unable to load settings: {:?}", e);
+            logger::error!("Unable to load settings: {e:?}");
             settings::SettingsFile::default()
         },
     };

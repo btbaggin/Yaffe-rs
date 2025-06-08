@@ -71,7 +71,7 @@ impl MetadataSearch {
     }
 
     pub fn get_selected(&self) -> Option<String> {
-        self.selected.and_then(|i| Some(self.options[i].clone()))
+        self.selected.map(|i| self.options[i].clone())
     }
 
     pub fn set_mask(&mut self,  tiles: &[Tile]) {
@@ -181,14 +181,14 @@ impl TileGroup {
         }
     }
 
-    pub fn plugin(plugin_index: usize, name: String, filters: &Vec<PluginFilter>) -> TileGroup {
+    pub fn plugin(plugin_index: usize, name: String, filters: &[PluginFilter]) -> TileGroup {
         super::TileGroup {
             id: plugin_index as i64,
             name,
             tiles: vec!(),
             kind: GroupType::Plugin(plugin_index),
-            search: filters.into_iter()
-                .map(|f| MetadataSearch::from_filter(f))
+            search: filters.iter()
+                .map(MetadataSearch::from_filter)
                 .collect(),
         }
     }
@@ -235,10 +235,7 @@ impl Tile {
         metadata.insert(String::from("Rating"), info.rating.clone());
         metadata.insert(String::from("Released"), info.released.clone());
 
-        let restricted =  match info.rating.as_str() {
-            "M - Mature 17+" | "Restricted" | "Not Rated" | "AO - Adult Only 18+" => true,
-            _ => false 
-        };
+        let restricted =  matches!(info.rating.as_str(), "M - Mature 17+" | "Restricted" | "Not Rated" | "AO - Adult Only 18+");
         Self {
             file: info.filename.clone(),
             name: info.name.clone(),
@@ -261,12 +258,10 @@ impl Tile {
     pub fn run(&self, state: &YaffeState, handler: &mut DeferredAction) {
         if let Some(group) = state.find_group(self.group_id) {
             let child = self.get_tile_process(state, group);
-            if let Some(process) = child.display_failure_deferred("Unable to start process", handler) {
-                if let Some(process) = process {
-                    let mut overlay = state.overlay.borrow_mut();
-                    overlay.set_process(process);
-                    //We could refresh so our recent games page updates, but I dont think that's desirable   
-                }
+            if let Some(Some(process)) = child.display_failure_deferred("Unable to start process", handler) {
+                let mut overlay = state.overlay.borrow_mut();
+                overlay.set_process(process);
+                //We could refresh so our recent games page updates, but I dont think that's desirable   
             }
         }
     }

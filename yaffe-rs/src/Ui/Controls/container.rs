@@ -64,7 +64,6 @@ impl Container {
                 ContainerType::Control(_) => unreachable!(),
             }
         } 
-        //TODO check child containers
         None
     }
 

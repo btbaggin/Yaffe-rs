@@ -74,7 +74,7 @@ impl<const C: usize, K: Eq + Hash, T> PooledCache<C, K, T> {
 
     pub fn keys(&self) -> Keys<'_, K, PooledCacheIndex> { self.map.keys() }
 
-    pub fn exists(&self, file: &K) -> bool { self.map.get(file).is_some() }
+    pub fn exists(&self, file: &K) -> bool { self.map.contains_key(file) }
 
     pub fn insert(&mut self, file: K, data: T) {
         let _lock = self.lock.lock().unwrap();

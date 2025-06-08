@@ -39,7 +39,7 @@ pub fn set_log_level(level: &str) {
 
 static LOGGER: YaffeLogger = YaffeLogger;
 lazy_static::lazy_static! {
-    pub static ref FILE: Mutex<File> = Mutex::new(OpenOptions::new().create(true).write(true).open("./log.txt").unwrap());
+    pub static ref FILE: Mutex<File> = Mutex::new(OpenOptions::new().create(true).append(true).open("./log.txt").unwrap());
 }
 
 pub fn init() {
@@ -63,7 +63,7 @@ impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
     fn log_message_and_panic(self, message: &str) -> T {
         match self {
             Err(e) => {
-                log::error!("{:?} - {}", e, message);
+                log::error!("{e:?} - {message}");
                 panic!("encountered unexpected error");
             }
             Ok(r) => r,
@@ -74,7 +74,7 @@ impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
     fn log_and_panic(self) -> T {
         match self {
             Err(e) => {
-                log::error!("{:?}", e);
+                log::error!("{e:?}");
                 panic!("encountered unexpected error");
             }
             Ok(r) => r,
@@ -86,7 +86,7 @@ impl <T: Default, E: Debug> LogEntry<T> for std::result::Result<T, E> {
     fn log(self, message: &str) -> T {
         match self {
             Err(e) => {
-                log::warn!("{:?} - {}", e, message);
+                log::warn!("{e:?} - {message}");
                 std::default::Default::default()
             }
             Ok(r) => r,
@@ -129,7 +129,7 @@ impl<T> PanicLogEntry<T> for Option<T> {
         match self {
             Some(t) => t,
             None => {
-                log::error!("None - {}", message);
+                log::error!("None - {message}");
                 panic!("encountered unexpected error");
             }
         }

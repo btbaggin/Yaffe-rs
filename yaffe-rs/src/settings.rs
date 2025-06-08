@@ -96,7 +96,7 @@ impl SettingsFile {
     }
 
     pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
-        assert!(SETTINGS.iter().any(|&n| n == name));
+        assert!(SETTINGS.contains(&name));
 
         let setting = SettingNames::get_default(name);
         let value = setting_from_string(&setting, value, true)?;

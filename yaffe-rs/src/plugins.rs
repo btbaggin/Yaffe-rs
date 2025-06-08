@@ -69,7 +69,6 @@ pub fn load_plugin_items(state: &mut YaffeState, index: usize) {
 	let y = state.settings.get_i32(crate::SettingNames::MaxRows);
 	let x = state.settings.get_i32(crate::SettingNames::MaxColumns);
 
-	// TODO
 	let (filter, value) = if let Some(search) = &state.filter {
 		(Some(search.name.clone()), search.get_selected())
 	} else {

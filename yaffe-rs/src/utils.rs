@@ -155,13 +155,13 @@ impl ScaleFactor for f32 {
 
 pub fn yaffe_helper(action: &str, args: &[&str]) -> std::io::Result<std::process::Child> {
     let helper_path = append_app_ext("./yaffe-helper");
-    return std::process::Command::new(helper_path).arg(action).args(args).stdout(Stdio::piped()).spawn();
+    std::process::Command::new(helper_path).arg(action).args(args).stdout(Stdio::piped()).spawn()
 }
 
 pub fn append_app_ext(path: &str) -> String {
     let app_ext = crate::os::app_ext();
     if !app_ext.is_empty() {
-        return format!("{}.{}", path, app_ext);
+        return format!("{path}.{app_ext}");
     }
     path.to_string()
 }

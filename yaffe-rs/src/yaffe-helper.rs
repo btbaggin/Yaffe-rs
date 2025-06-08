@@ -38,11 +38,11 @@ fn update_yaffe(patch: &str, app: &str) {
     println!("Applying patch file");
     if std::path::Path::new(patch).exists() {
         if let Err(e) = std::fs::rename(patch, app) {
-            println!("{:?}", e);
+            println!("{e:?}");
         }
 
         if let Err(e) = Command::new(app).spawn() {
-            println!("{:?}", e);
+            println!("{e:?}");
         }
     }
 }

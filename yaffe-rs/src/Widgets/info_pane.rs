@@ -20,7 +20,7 @@ fn build_container(exe: Option<&crate::Tile>) -> Container {
     
         top.add(Image::new(exe.boxart.clone()));
         for (key, value) in &exe.metadata {
-            details.add(Label::simple(format!("{}: {}", key, value)));
+            details.add(Label::simple(format!("{key}: {value}")));
         }
         top.add(details);
         main.add(top);

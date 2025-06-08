@@ -105,7 +105,7 @@ pub fn update_modal(state: &mut YaffeState, helper: &mut WindowHelper, action: &
 
 pub fn is_modal_open(state: &YaffeState) -> bool {
     let modals = state.modals.lock().unwrap();
-    modals.len() > 0
+    !modals.is_empty()
 }
 
 /// Renders a modal window along with its contents
