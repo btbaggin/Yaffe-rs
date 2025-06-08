@@ -5,26 +5,28 @@ use crate::modals::{SetRestrictedModal, SettingsModal, PlatformDetailModal, List
 use crate::input::Actions;
 use crate::job_system::JobResult;
 use crate::graphics::Graphics;
-use crate::utils::{LogicalPosition, PhysicalSize, Rect};
 use crate::logger::{UserMessage, PanicLogEntry, LogEntry};
 use crate::restrictions::{RestrictedMode, on_restricted_modal_close};
 
 
 impl WindowHandler for WidgetTree {
-    fn on_fixed_update(&mut self, _: &mut WindowHelper, job_results: &mut Vec<JobResult>) -> bool {
+    fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool {
         //Clear any assets that haven't been requested in a long time
         crate::assets::clear_old_cache(&self.data);
 
         //Check for any updates to the settings file
-        process_jobs(&mut self.data, job_results);
         crate::settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
 
-    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool {
+    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>) {
         crate::assets::preload_assets(graphics);
+        process_jobs(&mut self.data, graphics, jobs);
+    }
 
+    fn on_frame(&mut self, graphics: &mut crate::graphics::Graphics) -> bool {
         if !self.data.overlay.borrow().is_active() {
-            let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
+            
+            let window_rect = graphics.bounds.clone();
 
             //Update the platform and emulator list from database
             if self.data.refresh_list {
@@ -32,25 +34,24 @@ impl WindowHandler for WidgetTree {
                 self.data.refresh_list = false;
             }
 
-            let mut graphics = Graphics::new(graphics, self.data.queue.clone(), scale_factor, window_rect, delta_time);
             graphics.cache_settings(&self.data.settings);
             self.data.focused_widget = *self.focus.last().unwrap();
-            self.render_all(&mut graphics);
+            self.render_all(graphics);
 
-            self.process_animations(delta_time);
+            self.process_animations(graphics.delta_time);
 
             //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
             if let Some(m) = modals.last() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_modal(m, &mut graphics);
+                crate::ui::render_modal(m, graphics);
             }
 
             if !self.data.toasts.is_empty() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_toasts(&self.data.toasts, &mut graphics);
+                crate::ui::render_toasts(&self.data.toasts, graphics);
             }
         }
 
@@ -100,6 +101,7 @@ impl WindowHandler for WidgetTree {
     }
 
     fn is_window_dirty(&self) -> bool {
+        // If we are drawing animations we need to request redraws. Could this be included in the framework?
         self.needs_new_frame()
     }
 }
@@ -137,13 +139,14 @@ fn on_menu_close(state: &mut YaffeState, result: ModalResult, content: &dyn crat
     }
 }
 
-fn process_jobs(state: &mut YaffeState, job_results: &mut Vec<JobResult>) {
+fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: &mut Vec<JobResult>) {
     crate::job_system::process_results(job_results, |j| 
         matches!(j, JobResult::LoadImage { .. } | JobResult::SearchGame(_) | JobResult::SearchPlatform(_)), 
     |result| {
         match result {
             JobResult::LoadImage { data, dimensions, key } => {
-                let asset_slot = crate::assets::get_asset_slot(&key);
+                let mut map = graphics.asset_cache.borrow_mut();
+                let asset_slot = crate::assets::get_asset_slot(&mut map, &key);
                 asset_slot.set_data(data, dimensions);
             },
             JobResult::SearchGame(result) => {

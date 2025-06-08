@@ -138,7 +138,7 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
     let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - PADDING * 2., titlebar_size - PADDING));
     graphics.draw_rectangle(titlebar, titlebar_color);
 
-    let title_text = crate::ui::get_drawable_text(titlebar_size, &modal.title);
+    let title_text = crate::ui::get_drawable_text(graphics, titlebar_size, &modal.title);
     let title_pos = LogicalPosition::new(titlebar_pos.x + MARGIN, titlebar_pos.y);
     graphics.draw_text(title_pos, graphics.font_color(), &title_text);
 
@@ -153,7 +153,7 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
         let mut right = LogicalPosition::new(window.right() - MARGIN, window.bottom() - toolbar_size);
 
         for t in [("Cancel", Images::ButtonB), (&s[..], Images::ButtonA)] {
-            let text = crate::ui::get_drawable_text(toolbar_size, t.0);
+            let text = crate::ui::get_drawable_text(graphics, toolbar_size, t.0);
             right = crate::ui::right_aligned_text(graphics, right, Some(t.1), graphics.font_color(), text);
             right.x -= MARGIN;
         }
@@ -174,7 +174,7 @@ pub fn render_toasts(toasts: &HashMap<u64, String>, graphics: &mut crate::Graphi
 
     let mut curr_y = rect.top() + MARGIN;
     for toast in toasts.values() {
-        let text = crate::ui::get_drawable_text(graphics.font_size(), toast);
+        let text = crate::ui::get_drawable_text(graphics, graphics.font_size(), toast);
         graphics.draw_text(LogicalPosition::new(x - text.width() / 2., curr_y), graphics.font_color(), &text);
         curr_y += font_size;
     }

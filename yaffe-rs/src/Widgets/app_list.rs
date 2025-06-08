@@ -189,10 +189,10 @@ impl AppList {
         let image = tile.get_image(state);
         let mut tile_size = *size;
         
-        let bitmap_size = if let Some(i) = crate::assets::request_asset_image(graphics, &image) {
+        let bitmap_size = if let Some(i) = graphics.request_asset_image(&image) {
                 i.size()
         } else {
-            crate::assets::request_image(graphics, crate::assets::Images::Placeholder).unwrap().size()
+            graphics.request_image(crate::assets::Images::Placeholder).unwrap().size()
         };
     
         //By default on the recents menu it chooses the widest game boxart (see pFindMax in GetTileSize)

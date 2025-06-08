@@ -38,7 +38,7 @@ impl crate::ui::Widget for PlatformList {
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
 
         //Title
-        let title = crate::ui::get_drawable_text(32. * graphics.scale_factor, "Yaffe");
+        let title = crate::ui::get_drawable_text(graphics, 32. * graphics.scale_factor, "Yaffe");
         graphics.draw_text(LogicalPosition::new(rect.width() - title.width().to_logical(graphics) - MARGIN, MARGIN), graphics.font_color(), &title);
 
         let text_color = if crate::is_focused!(state) { graphics.font_color() } else { graphics.font_unfocused_color() };
@@ -56,7 +56,7 @@ impl crate::ui::Widget for PlatformList {
                 plat_kind = Some(p.kind);
             }
             
-            let name_label = crate::ui::get_drawable_text_with_wrap(font_size, &p.name, rect.width() - font_size * 2.);
+            let name_label = crate::ui::get_drawable_text_with_wrap(graphics, font_size, &p.name, rect.width() - font_size * 2.);
             
             //Highlight bar
             let height = name_label.height();
@@ -72,7 +72,7 @@ impl crate::ui::Widget for PlatformList {
     
             if p.kind.show_count() {
                 //Count
-                let num_label = crate::ui::get_drawable_text(font_size, &p.tiles.len().to_string());
+                let num_label = crate::ui::get_drawable_text(graphics, font_size, &p.tiles.len().to_string());
                 graphics.draw_text(LogicalPosition::new(right - num_label.width() - MARGIN, y), text_color, &num_label);
             }
             y += height;
@@ -89,8 +89,9 @@ fn draw_header(graphics: &mut crate::Graphics, y: f32, width: f32, kind: GroupTy
     };
 
     let y = y + MARGIN * 2.;
-    let i = crate::assets::request_image(graphics, image).unwrap();
-    i.render(graphics, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)));
+    graphics.draw_image(Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)), image);
+    // let i = crate::assets::request_image(graphics, image).unwrap();
+    // i.render(graphics, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)));
     
     let y = y + ICON_SIZE;
     graphics.draw_line(LogicalPosition::new(ICON_SIZE + MARGIN * 2., y), LogicalPosition::new(width - MARGIN, y), 2., graphics.font_color());

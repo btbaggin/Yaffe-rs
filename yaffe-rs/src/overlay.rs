@@ -1,6 +1,5 @@
-use crate::job_system::ThreadSafeJobQueue;
 use crate::state::ExternalProcess;
-use crate::{Rect, PhysicalSize, LogicalPosition, Graphics};
+use crate::Graphics;
 use crate::logger::LogEntry;
 use crate::ui;
 use crate::windowing::WindowHelper;
@@ -14,17 +13,15 @@ pub struct OverlayWindow {
     process: Option<Box<dyn ExternalProcess>>,
     showing: bool,
     settings: crate::settings::SettingsFile,
-    queue: ThreadSafeJobQueue
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
-    pub fn new(settings: crate::settings::SettingsFile, queue: ThreadSafeJobQueue) -> Rc<RefCell<OverlayWindow>> {
+    pub fn new(settings: crate::settings::SettingsFile) -> Rc<RefCell<OverlayWindow>> {
         let overlay = OverlayWindow {
             modal: ui::Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
             process: None,
             showing: false,
             settings,
-            queue,
         };
   
         Rc::new(RefCell::new(overlay))
@@ -67,19 +64,17 @@ impl OverlayWindow {
 }
 
 impl crate::windowing::WindowHandler for OverlayWindow {
-    fn on_frame(&mut self, graphics: &mut speedy2d::Graphics2D, _: f32, size: PhysicalSize, scale_factor: f32) -> bool {
-        let data = graphics.create_image_from_file_path(None, speedy2d::image::ImageSmoothingMode::Linear,"./Assets/packed.png").ok();
+    fn on_frame_begin(&mut self, graphics: &mut Graphics, _: &mut Vec<crate::job_system::JobResult>) {
+        crate::assets::preload_assets(graphics);
+    }
 
-        let window_rect = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
-
-        let mut graphics = Graphics::new(graphics, self.queue.clone(), scale_factor, window_rect, 0.);
+    fn on_frame(&mut self, graphics: &mut crate::graphics::Graphics) -> bool {
         graphics.cache_settings(&self.settings);
-        crate::ui::render_modal(&self.modal, &mut graphics);
-
+        crate::ui::render_modal(&self.modal, graphics);
         true
     }
 
-    fn on_fixed_update(&mut self, helper: &mut WindowHelper, _: &mut Vec<crate::job_system::JobResult>) -> bool {
+    fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool {
         !self.process_is_running(helper)
     }
 

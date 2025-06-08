@@ -45,11 +45,9 @@ pub fn scan_new_files(state: &mut YaffeState) {
                         let name = clean_file_name(&name);
                         let name = name.trim();
 
-                        let lock = state.queue.lock().log_and_panic();
-                        let mut queue = lock.borrow_mut();
                         crate::logger::info!("{name} not found in database, performing search");
                         let job = crate::Job::SearchGame { id: job_id, exe: file.to_string(), name: name.to_string(), platform: p.id };
-                        queue.send(job).unwrap();
+                        state.start_job(job);
 
                         count += 1;
                     }
@@ -162,10 +160,7 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
     let plat_name = crate::data::PlatformInfo::get_name(info.platform()).unwrap();
 
     let file_path = crate::assets::get_asset_path(&plat_name, &info.name);
-    let lock = state.queue.lock().log_and_panic();
-    let mut queue = lock.borrow_mut();
-
-    queue.send(crate::Job::DownloadUrl { url: boxart, file_path }).unwrap();
+    state.start_job(crate::Job::DownloadUrl { url: boxart, file_path });
 
     state.refresh_list = true;
 }

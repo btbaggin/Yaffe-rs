@@ -34,8 +34,8 @@ impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
         let width = Self::modal_width(rect, ModalSize::Half);
-        let name_label = crate::ui::get_drawable_text_with_wrap(graphics.font_size(), &self.message, width);
-        LogicalSize::new(width, name_label.height())
+        LogicalSize::new(width, graphics.font_size() + crate::ui::MARGIN)
+
     }
 
     fn action(&mut self, action: &crate::Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -44,7 +44,7 @@ impl ModalContent for MessageModalContent {
 
 
     fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
-        let name_label = crate::ui::get_drawable_text_with_wrap(graphics.font_size(), &self.message, rect.width() * graphics.scale_factor);
+        let name_label = crate::ui::get_drawable_text_with_wrap(graphics, graphics.font_size(), &self.message, rect.width() * graphics.scale_factor);
         graphics.draw_text(*rect.top_left(), graphics.font_color(), &name_label);
     }
 }

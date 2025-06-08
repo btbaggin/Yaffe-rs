@@ -1,7 +1,8 @@
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
 use crate::{LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use crate::assets::{Images, Fonts, AssetKey, request_asset_image, request_font};
+use crate::assets::{Images, Fonts, AssetKey};
+use crate::graphics::Graphics;
 
 //
 // Text helper methods
@@ -16,23 +17,24 @@ pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition
     graphics.draw_text(right, color, &text);
     if let Some(i) = image {
         right.x -= size.y;
-        if let Some(i) = crate::assets::request_image(graphics, i) {
-            i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
-        }
+        graphics.draw_image(Rect::point_and_size(right, LogicalSize::new(size.y, size.y)), i);
+        // if let Some(i) = crate::assets::request_image(graphics, i) {
+        //     i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
+        // }
     }
 
     right
 }
 
 /// Simple helper method to get a text object
-pub fn get_drawable_text(size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
-    let font = request_font(Fonts::Regular);
+pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
+    let font = graphics.request_font(Fonts::Regular);
     font.layout_text(text, size, TextOptions::new())
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
-pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
-    let font = request_font(Fonts::Regular);
+pub fn get_drawable_text_with_wrap(graphics: &mut Graphics,size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
+    let font = graphics.request_font(Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);
     font.layout_text(text, size, option)
@@ -40,10 +42,10 @@ pub fn get_drawable_text_with_wrap(size: f32, text: &str, width: f32) -> std::rc
 
 /// Scales an image to the largest size that can fit in the smallest dimension
 pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &LogicalSize) -> LogicalSize {
-    let bitmap_size = if let Some(i) = request_asset_image(graphics, slot) {
+    let bitmap_size = if let Some(i) = graphics.request_asset_image(slot) {
             i.size()
     } else {
-        crate::assets::request_image(graphics, Images::Placeholder).unwrap().size()
+        graphics.request_image(Images::Placeholder).unwrap().size()
     };
 
     let bitmap_size = bitmap_size.to_logical(graphics.scale_factor);

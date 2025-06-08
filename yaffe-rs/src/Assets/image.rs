@@ -1,10 +1,11 @@
-use speedy2d::{image::*, color::Color, Graphics2D};
+use speedy2d::{image::*, Graphics2D};
 use std::rc::Rc;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 use crate::{PhysicalSize, PhysicalRect};
 use crate::logger::{PanicLogEntry, warn, info};
 use crate::pooled_cache::PooledCache;
+use crate::graphics::Graphics;
 use super::{AssetData, ASSET_STATE_LOADED, AssetKey, AssetSlot};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -31,27 +32,14 @@ pub enum Images {
     ErsbAdultOnly
 }
 
+#[derive(Clone)]
 pub struct YaffeTexture {
-    image: Rc<ImageHandle>,
-    bounds: Option<PhysicalRect>,
+    pub image: Rc<ImageHandle>,
+    pub bounds: Option<PhysicalRect>,
 }
 impl YaffeTexture {
     pub fn new(image: Rc<ImageHandle>, bounds: Option<PhysicalRect>) -> YaffeTexture {
         YaffeTexture { image, bounds }
-    }
-
-    pub fn render(&self, graphics: &mut crate::Graphics, rect: crate::Rect) {
-        let rect = rect.to_physical(graphics.scale_factor);
-        if let Some(b) = &self.bounds {
-            graphics.draw_rectangle_image_subset_tinted(rect, Color::WHITE, b.clone(), &self.image);
-        } else {
-            graphics.draw_rectangle_image(rect, &self.image);
-        }
-    }
-
-    pub fn render_tinted(&self, graphics: &mut crate::Graphics, color: Color, rect: crate::Rect) {
-        let rect = rect.to_physical(graphics.scale_factor);
-        graphics.draw_rectangle_image_tinted(rect, color, &self.image);
     }
 
     pub fn size(&self) -> PhysicalSize {
@@ -59,34 +47,34 @@ impl YaffeTexture {
         PhysicalSize::new(size.x as f32, size.y as f32)
     }
 }
-
-pub fn request_asset_image<'a>(graphics: &mut crate::Graphics, key: &AssetKey) -> Option<&'a YaffeTexture> {
-    let q = graphics.queue.clone();
-    let queue = q.as_ref();
-    let lock = queue.lock().log_and_panic();
-    let mut queue = lock.borrow_mut();
-
-    if let Some(slot) = super::ensure_asset_loaded(&mut queue, key) {
-        if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-            if let AssetData::Raw((data, dimensions)) = &slot.data {
-                let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
-                slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
+impl Graphics {
+    pub fn request_asset_image(&self, key: &AssetKey) -> Option<YaffeTexture> {
+        let queue = self.queue.clone();
+        let mut map = self.asset_cache.borrow_mut();
+        if let Some(slot) = super::ensure_asset_loaded(queue, &mut map, key) {
+            if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+                if let AssetData::Raw((data, dimensions)) = &slot.data {
+                    let image = self.graphics_mut().create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
+                    slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
+                }
             }
+        
+            return if let AssetData::Image(image) = &slot.data {
+                slot.last_request = Instant::now();
+                Some(image.clone())
+            } else {
+                None
+            };
         }
-    
-        return if let AssetData::Image(image) = &slot.data {
-            slot.last_request = Instant::now();
-            Some(image)
-        } else {
-            None
-        };
+        None
     }
-    None
+
+    pub fn request_image(&self, image: Images) -> Option<YaffeTexture> {
+        self.request_asset_image(&AssetKey::image(image))
+    }
 }
 
-pub fn request_image<'a>(graphics: &mut crate::Graphics, image: Images) -> Option<&'a YaffeTexture> {
-    request_asset_image(graphics, &AssetKey::image(image))
-}
+
 
 pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec<u8>, (u32, u32))> {
     info!("Loading image asynchronously {:?}", path);

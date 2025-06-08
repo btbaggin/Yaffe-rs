@@ -1,5 +1,5 @@
 use crate::{Transparent, YaffeState, LogicalPosition, LogicalSize, ScaleFactor, PhysicalSize, Rect};
-use crate::assets::{request_asset_image, request_image, Images};
+use crate::assets::Images;
 use crate::ui::MODAL_BACKGROUND;
 
 pub const ANIMATION_TIME: f32 = 0.25;
@@ -70,10 +70,10 @@ impl AppTile {
             //Position of the text and buttons for the focused game
             let mut menu_position = LogicalPosition::new(position.x + target_size.x, position.y + target_size.y + 2.);
 
-            let name = crate::ui::get_drawable_text_with_wrap(font_size, &exe.name, target_size.x);
+            let name = crate::ui::get_drawable_text_with_wrap(graphics, font_size, &exe.name, target_size.x);
             let mut height = 0.;
-            let info = crate::ui::get_drawable_text(font_size, "Info");
-            let run = crate::ui::get_drawable_text(font_size, "Run");
+            let info = crate::ui::get_drawable_text(graphics, font_size, "Info");
+            let run = crate::ui::get_drawable_text(graphics, font_size, "Run");
 
             let physical_width = target_size.x.to_physical(graphics);
             let options_width = info.width() + run.width() + font_size * 2. + 5. * 2.;
@@ -107,11 +107,10 @@ impl AppTile {
             crate::ui::right_aligned_text(graphics, menu_position, Some(Images::ButtonA), graphics.font_color().with_alpha(alpha), run);
         }
 
-
-        if let Some(i) = request_asset_image(graphics, &exe.boxart.clone()) {
-            i.render(graphics, Rect::point_and_size(position, target_size));
-        } else if let Some(i) = request_image(graphics, Images::Placeholder) {
-            i.render(graphics, Rect::point_and_size(position, target_size));
+        if graphics.request_asset_image(&exe.boxart.clone()).is_some() {
+            graphics.draw_asset_image(Rect::point_and_size(position, target_size), &exe.boxart.clone());
+        } else {
+            graphics.draw_image(Rect::point_and_size(position, target_size), Images::Placeholder);
         }
     }
 
@@ -124,10 +123,10 @@ impl AppTile {
     pub fn get_image_size(&self, state: &YaffeState, graphics: &mut crate::Graphics,) -> PhysicalSize {
         let slot = self.get_image(state);
 
-        if let Some(i) = request_asset_image(graphics, &slot) {
+        if let Some(i) = graphics.request_asset_image(&slot) {
             return i.size()
         }
 
-        request_image(graphics, Images::Placeholder).unwrap().size()
+        graphics.request_image(Images::Placeholder).unwrap().size()
     }
 }

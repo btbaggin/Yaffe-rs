@@ -4,6 +4,7 @@ use glutin::event::{Event, WindowEvent, VirtualKeyCode, ModifiersState};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, WindowBuilder};
 use crate::{
+    graphics::Graphics,
     input::ControllerInput, PhysicalSize, input::InputType, Actions,
     logger::{PanicLogEntry, LogEntry},
     job_system::{JobResults, JobResult, Job, ThreadSafeJobQueue}
@@ -37,15 +38,16 @@ impl WindowHelper {
     pub fn resolve(self, window: &glutin::window::Window) {
         match self.visible {
             Some(WindowVisibility::Hide) => window.set_visible(false),
-            Some(WindowVisibility::Visible) => window.set_visible(true),
+            Some(WindowVisibility::Visible) => window.set_visible(true), 
             None => {},
         }
     }
 }
 
 pub(crate) trait WindowHandler {
-    fn on_fixed_update(&mut self, _: &mut WindowHelper, _: &mut Vec<JobResult>) -> bool { false }
-    fn on_frame(&mut self, graphics: &mut Graphics2D, delta_time: f32, size: PhysicalSize, scale_factor: f32) -> bool;
+    fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool;
+    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>);
+    fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
     fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_stop(&mut self) { }
     fn is_window_dirty(&self) -> bool {
@@ -58,6 +60,7 @@ struct YaffeWindow {
     renderer: GLRenderer,
     size: PhysicalSize,
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
+    graphics: RefCell<crate::Graphics>
 }
 
 fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()>) -> Option<glutin::WindowedContext<glutin::NotCurrent>> {
@@ -90,7 +93,8 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
                  event_loop: &EventLoop<()>, 
                  tracker: &mut ContextTracker, 
                  builder: WindowBuilder,
-                 handler: Rc<RefCell<impl WindowHandler + 'static>>) -> PhysicalSize {
+                 handler: Rc<RefCell<impl WindowHandler + 'static>>,
+                 queue: ThreadSafeJobQueue) -> PhysicalSize {
 
     let windowed_context = create_best_context(&builder, event_loop).log_and_panic();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
@@ -107,7 +111,7 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
     ));
 
     let size = PhysicalSize::new(size.width as f32, size.height as f32);
-    let window = YaffeWindow { context_id, renderer, size, handler};
+    let window = YaffeWindow { context_id, renderer, size, handler, graphics: RefCell::new(Graphics::new(queue)) };
     windows.insert(id, window);
     size
 }
@@ -141,7 +145,7 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
         .with_title("Yaffe")  
         .with_fullscreen(fullscreen)
         .with_visible(true);
-    let size = create_window(&mut windows, &el, &mut ct, builder, handler);
+    let size = create_window(&mut windows, &el, &mut ct, builder, handler, queue.clone());
 
     //Doing full size seems to make it fullscreen and it loses transparency
     let builder = WindowBuilder::new()
@@ -152,12 +156,13 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
         .with_always_on_top(true)
         .with_transparent(true)
         .with_decorations(false);
-    create_window(&mut windows, &el, &mut ct, builder, overlay);
+    create_window(&mut windows, &el, &mut ct, builder, overlay, queue.clone());
 
     let mut delta_time = 0f32;
     let mut last_time = Instant::now();
     let mut mods = ModifiersState::empty();
     let mut update_timer = 0f32;
+    let mut finished_jobs = vec!();
     
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -239,14 +244,19 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                     let scale = context.windowed().window().scale_factor() as f32;
                     let size = PhysicalSize::new(window.size.x, window.size.y);
                     let mut handle = window.handler.borrow_mut();
+                    let mut window_graphics = window.graphics.borrow_mut();
                     window.renderer.draw_frame(|graphics| {
-                        if !handle.on_frame(graphics, delta_time, size, scale) {
+                        unsafe { window_graphics.set_frame(graphics, scale, size, delta_time); }
+
+                        handle.on_frame_begin(&mut window_graphics, &mut finished_jobs);
+                        if !handle.on_frame(&mut window_graphics) {
                             *control_flow = ControlFlow::Exit;
                             handle.on_stop();
                         }
                     });
                     context.windowed().swap_buffers().unwrap();
                 }
+                finished_jobs.clear();
             },
 
             Event::MainEventsCleared => {
@@ -265,17 +275,16 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                 check_for_updates(&mut update_timer, delta_time, &queue);
 
                 // Get results from any completed jobs
-                let mut results = vec!();
                 while let Ok(result) = job_results.try_recv() {
-                    results.push(result);
+                    finished_jobs.push(result);
                 }
                 // Process our "system" jobs
-                crate::job_system::process_results(&mut results, |j| matches!(j, JobResult::CheckUpdates(_)), |result| {
+                crate::job_system::process_results(&mut finished_jobs, |j| matches!(j, JobResult::CheckUpdates(_)), |result| {
                     if let JobResult::CheckUpdates(applied) = result {
                         if applied { update_timer = f32::MIN; }
                     }
                 });
-                let jobs_completed = !results.is_empty();
+                let jobs_completed = !finished_jobs.is_empty();
 
                 for (_, window) in windows.iter_mut() {
                     //Send an action, if its handled remove it so a different window doesnt respond to it
@@ -286,7 +295,7 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                     let context = ct.get_current(window.context_id).unwrap();
                     
                     let mut helper = WindowHelper { visible: None, };
-                    let fixed_update = handle.on_fixed_update(&mut helper, &mut results);
+                    let fixed_update = handle.on_fixed_update(&mut helper);
                     helper.resolve(context.windowed().window());
 
                     if fixed_update || jobs_completed || handle.is_window_dirty() {

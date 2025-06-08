@@ -38,7 +38,7 @@ impl ModalContent for SetRestrictedModal {
     fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
         let font_size = graphics.font_size();
 
-        let item_label = crate::ui::get_drawable_text(font_size, "*");
+        let item_label = crate::ui::get_drawable_text(graphics, font_size, "*");
         for i in 0..self.pass.len() {
             graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * font_size, rect.top()), graphics.font_color(), &item_label);
         }

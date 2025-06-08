@@ -57,7 +57,7 @@ impl Widget for InfoPane {
             let left = bounds.left() + MARGIN;
             //Overview
             if !app.description.is_empty() {
-                let name_label = get_drawable_text_with_wrap(graphics.font_size(), &app.description, (bounds.width() - MARGIN) * graphics.scale_factor);
+                let name_label = get_drawable_text_with_wrap(graphics, graphics.font_size(), &app.description, (bounds.width() - MARGIN) * graphics.scale_factor);
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height().to_logical(graphics) + top > bounds.height() {

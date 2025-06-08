@@ -90,9 +90,5 @@ pub fn load_plugin_items(state: &mut YaffeState, index: usize) {
 }
 
 pub fn unload(plugins: &mut Vec<Plugin>) {
-	// TODO
-	// for p in &mut *plugins {
-	// 	std::mem::forget(p.lib);
-	// }
 	plugins.clear();
 }

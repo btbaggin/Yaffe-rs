@@ -28,13 +28,13 @@ impl Control for TextBox {
         let control = draw_label_and_box(graphics, container.top_left(), size, &self.label);
 
         let height = control.height();
-        let text = get_drawable_text(height, &self.text);
+        let text = get_drawable_text(graphics, height, &self.text);
         let box_left = container.left() + LABEL_SIZE;
 
         let mut cursor_x = 0.;
         let mut origin_x = control.left();
         if self.focused {
-            let text = get_drawable_text(height, &self.text[0..self.caret]);
+            let text = get_drawable_text(graphics, height, &self.text[0..self.caret]);
             // Very special case. The text already accounts for scaling, so we need to undo that to revert back to logical units
             // Then we can do calculations and pass them to the graphics API which converts back to physical units
             let width = text.width() / graphics.scale_factor;

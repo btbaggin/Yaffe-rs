@@ -24,9 +24,9 @@ impl Control for Label {
     fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
         let size = if let Some(size) = self.size { size } else { graphics.font_size() };
         let text = if self.wrap {
-            crate::ui::get_drawable_text_with_wrap(size, &self.text, (container.width() - crate::ui::MARGIN) * graphics.scale_factor)
+            crate::ui::get_drawable_text_with_wrap(graphics, size, &self.text, (container.width() - crate::ui::MARGIN) * graphics.scale_factor)
         } else {
-            crate::ui::get_drawable_text(size, &self.text)
+            crate::ui::get_drawable_text(graphics, size, &self.text)
         };
 
         graphics.draw_text_cropped(*container.top_left(), *container, graphics.font_color(), &text);

@@ -1,4 +1,3 @@
-use std::io::Read;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -382,7 +381,7 @@ pub struct YaffeState {
     pub focused_widget: WidgetId,
     pub modals: Mutex<Vec<Modal>>,
     pub toasts: HashMap<u64, String>,
-    pub queue: ThreadSafeJobQueue,
+    queue: ThreadSafeJobQueue,
     pub filter: Option<MetadataSearch>,
     pub restricted_mode: RestrictedMode,
     pub refresh_list: bool,
@@ -424,5 +423,11 @@ impl YaffeState {
 
     pub fn find_group(&self, id: i64) -> Option<&TileGroup> {
         self.groups.iter().find(|p| p.id == id)
+    }
+
+    pub fn start_job(&self, job: crate::Job) {
+        let lock = self.queue.lock().log_and_panic();
+        let mut queue = lock.borrow_mut();
+        queue.send(job).unwrap();
     }
 }

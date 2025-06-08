@@ -9,7 +9,8 @@ use crate::utils::append_app_ext;
 /* 
  * TODO
  * Search bar doesnt work well on plugins
- * Icons dont render on overlay. I think its because there are 2 Graphics2D objects and we need to load it into both of them. This means i probably need to store the asset cache on YaffeState
+ * on_frame_end? on_window_init?
+ * break animation rendering out of client code? M
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -77,10 +78,8 @@ fn main() {
     let animation = Rc::new(RefCell::new(ui::AnimationManager::new()));
     let q = Arc::new(Mutex::new(RefCell::new(queue)));
     let root = build_ui_tree(animation.clone());
-    let overlay = overlay::OverlayWindow::new(settings.clone(), q.clone());
+    let overlay = overlay::OverlayWindow::new(settings.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
-
-    assets::initialize_asset_cache();
 
     let mut ui = ui::WidgetTree::new(root, animation, state);
     ui.focus(std::any::TypeId::of::<PlatformList>());
