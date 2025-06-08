@@ -1,10 +1,10 @@
 use crate::{YaffeState, state::GroupType, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, ScaleFactor, Rect};
 use crate::modals::{PlatformDetailModal, on_update_platform_close};
-use crate::ui::{MARGIN, MENU_BACKGROUND, display_modal};
+use crate::ui::{MARGIN, MENU_BACKGROUND, display_modal, AnimationManager};
 
 widget!(pub struct PlatformList {});
 impl crate::ui::Widget for PlatformList {
-    fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
+    fn action(&mut self, state: &mut YaffeState, _: &mut AnimationManager, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Down =>  {
                 state.selected.next_platform(state.groups.len());

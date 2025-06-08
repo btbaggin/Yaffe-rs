@@ -7,7 +7,8 @@ use crate::{
     graphics::Graphics,
     input::ControllerInput, PhysicalSize, input::InputType, Actions,
     logger::{PanicLogEntry, LogEntry},
-    job_system::{JobResults, JobResult, Job, ThreadSafeJobQueue}
+    job_system::{JobResults, JobResult, Job, ThreadSafeJobQueue},
+    ui::AnimationManager,
 };
 use std::time::Instant;
 use std::rc::Rc;
@@ -48,11 +49,9 @@ pub(crate) trait WindowHandler {
     fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool;
     fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>);
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
-    fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
+    fn on_input(&mut self, animations: &mut AnimationManager, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_stop(&mut self) { }
-    fn is_window_dirty(&self) -> bool {
-        false
-    }
+    fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer;
 }
 
 struct YaffeWindow {
@@ -60,7 +59,8 @@ struct YaffeWindow {
     renderer: GLRenderer,
     size: PhysicalSize,
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
-    graphics: RefCell<crate::Graphics>
+    graphics: RefCell<Graphics>,
+    animations: RefCell<AnimationManager>,
 }
 
 fn create_best_context(window_builder: &WindowBuilder, event_loop: &EventLoop<()>) -> Option<glutin::WindowedContext<glutin::NotCurrent>> {
@@ -111,7 +111,14 @@ fn create_window(windows: &mut std::collections::HashMap<glutin::window::WindowI
     ));
 
     let size = PhysicalSize::new(size.width as f32, size.height as f32);
-    let window = YaffeWindow { context_id, renderer, size, handler, graphics: RefCell::new(Graphics::new(queue)) };
+    let window = YaffeWindow {
+        context_id,
+        renderer,
+        size,
+        handler,
+        graphics: RefCell::new(Graphics::new(queue)),
+        animations: RefCell::new(AnimationManager::new()),
+    };
     windows.insert(id, window);
     size
 }
@@ -272,6 +279,8 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                 //Convert our input to actions we will propogate through the UI
                 let mut actions = crate::input::input_to_action(&input_map, &mut gamepad);
 
+                //TODO process animatinos
+
                 check_for_updates(&mut update_timer, delta_time, &queue);
 
                 // Get results from any completed jobs
@@ -298,7 +307,12 @@ pub(crate) fn create_yaffe_windows(job_results: JobResults,
                     let fixed_update = handle.on_fixed_update(&mut helper);
                     helper.resolve(context.windowed().window());
 
-                    if fixed_update || jobs_completed || handle.is_window_dirty() {
+                    let mut animations = window.animations.borrow_mut();
+                    let root = handle.get_ui();
+                    animations.process(root, delta_time);
+                    let is_dirty = animations.is_dirty();
+
+                    if fixed_update || jobs_completed || is_dirty {
                         context.windowed().window().request_redraw();
                     }
                 }
@@ -315,9 +329,10 @@ fn send_action_to_window(window: &mut YaffeWindow,
     let mut helper = WindowHelper { visible: None, };
     let context = ct.get_current(window.context_id).unwrap();
     let mut handle = window.handler.borrow_mut();
+    let mut animations = window.animations.borrow_mut();
 
     //Send an action, if its handled remove it so a different window doesnt respond to it
-    let result = handle.on_input(&mut helper, action);
+    let result = handle.on_input(&mut animations, &mut helper, action);
     if result { 
         //If the window responded to the action, set it to redraw
         context.windowed().window().request_redraw();

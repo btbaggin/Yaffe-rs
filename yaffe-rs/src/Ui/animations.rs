@@ -20,9 +20,6 @@ struct Animation {
     data: AnimationData,
 }
 
-pub enum AnimationTarget {
-    F32(f32),
-}
 
 enum AnimationData {
     F32 {from: f32, to: f32 },
@@ -38,10 +35,8 @@ impl AnimationManager {
 
     pub fn is_dirty(&self) -> bool { !self.animations.is_empty() }
 
-    pub fn animate(&mut self, widget: &impl crate::ui::FocusableWidget, field: FieldOffset, target: AnimationTarget, duration: f32) {
-        let data = match target {
-            AnimationTarget::F32(to) => AnimationData::F32 { from: *apply(field, widget), to }
-        };
+    pub fn animate_f32(&mut self, widget: &impl crate::ui::FocusableWidget, field: FieldOffset, target: f32, duration: f32) {
+        let data = AnimationData::F32 { from: *apply(field, widget), to: target };
 
         let anim = Animation {
             widget: widget.get_id(),

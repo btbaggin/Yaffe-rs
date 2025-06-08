@@ -1,6 +1,6 @@
 use crate::YaffeState;
 use crate::windowing::{WindowHandler, WindowHelper};
-use crate::ui::{WidgetTree, DeferredAction, ModalResult, display_modal};
+use crate::ui::{WidgetTree, DeferredAction, ModalResult, AnimationManager, display_modal};
 use crate::modals::{SetRestrictedModal, SettingsModal, PlatformDetailModal, ListModal, on_add_platform_close, on_settings_close};
 use crate::input::Actions;
 use crate::job_system::JobResult;
@@ -12,7 +12,6 @@ use crate::restrictions::{RestrictedMode, on_restricted_modal_close};
 impl WindowHandler for WidgetTree {
     fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool {
         //Clear any assets that haven't been requested in a long time
-        crate::assets::clear_old_cache(&self.data);
 
         //Check for any updates to the settings file
         crate::settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
@@ -23,7 +22,7 @@ impl WindowHandler for WidgetTree {
         process_jobs(&mut self.data, graphics, jobs);
     }
 
-    fn on_frame(&mut self, graphics: &mut crate::graphics::Graphics) -> bool {
+    fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         if !self.data.overlay.borrow().is_active() {
             
             let window_rect = graphics.bounds.clone();
@@ -37,8 +36,6 @@ impl WindowHandler for WidgetTree {
             graphics.cache_settings(&self.data.settings);
             self.data.focused_widget = *self.focus.last().unwrap();
             self.render_all(graphics);
-
-            self.process_animations(graphics.delta_time);
 
             //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
@@ -55,10 +52,13 @@ impl WindowHandler for WidgetTree {
             }
         }
 
+        let cache_size = self.data.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize;
+        crate::assets::clear_old_cache(graphics, cache_size);
+
         self.data.running
     }
 
-    fn on_input(&mut self, helper: &mut WindowHelper, action: &Actions) -> bool {
+    fn on_input(&mut self, animations: &mut AnimationManager, helper: &mut WindowHelper, action: &Actions) -> bool {
         if self.data.overlay.borrow().is_active() { return false; }
 
         match action {
@@ -85,12 +85,12 @@ impl WindowHandler for WidgetTree {
                 let result = if !crate::ui::is_modal_open(&self.data) {
                     let focus = self.focus.last().log_and_panic();
         
-                    self.root.action(&mut self.data, action, focus, &mut handler)
+                    self.root.action(&mut self.data, animations, action, focus, &mut handler)
                 } else {
                     crate::ui::update_modal(&mut self.data, helper, action, &mut handler);
                     true
                 };
-                handler.resolve(self);
+                handler.resolve(self, animations);
                 result
             }
         }
@@ -100,9 +100,8 @@ impl WindowHandler for WidgetTree {
         crate::plugins::unload(&mut self.data.plugins);
     }
 
-    fn is_window_dirty(&self) -> bool {
-        // If we are drawing animations we need to request redraws. Could this be included in the framework?
-        self.needs_new_frame()
+    fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer {
+        &mut self.root
     }
 }
 

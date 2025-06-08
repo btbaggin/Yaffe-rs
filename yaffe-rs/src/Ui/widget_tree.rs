@@ -1,7 +1,5 @@
 use std::ops::Deref;
 use std::time::Instant;
-use std::rc::Rc;
-use std::cell::RefCell;
 use crate::YaffeState;
 use crate::ui::{WidgetContainer, WidgetId, AnimationManager};     
 
@@ -20,16 +18,14 @@ pub struct WidgetTree {
     pub root: WidgetContainer,
     pub focus: Vec<WidgetId>,
     pub data: YaffeState,
-    animations: Rc<RefCell<AnimationManager>>,
     last_focus: (Option<WidgetId>, Instant),
 }
 impl WidgetTree {
-    pub fn new(root: WidgetContainer, animations: Rc<RefCell<AnimationManager>>, data: YaffeState) -> WidgetTree {
+    pub fn new(root: WidgetContainer, data: YaffeState, initial_focus: WidgetId) -> WidgetTree {
         WidgetTree {
             root,
-            focus: vec!(),
+            focus: vec!(initial_focus),
             data,
-            animations,
             last_focus: (None, Instant::now()),
         }
     }
@@ -39,16 +35,6 @@ impl WidgetTree {
         self.root.render(&self.data, graphics);
     }
 
-    pub fn needs_new_frame(&self) -> bool {
-        let a = self.animations.borrow();
-        a.is_dirty()
-    }
-
-    pub fn process_animations(&mut self, delta_time: f32) {
-        let mut animator = self.animations.borrow_mut();
-        animator.process(&mut self.root, delta_time)
-    }
-
     fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer) -> Option<&'a mut WidgetContainer> {
         if let Some(last) = focus.last() {
             return root.find_widget_mut(*last);
@@ -56,21 +42,21 @@ impl WidgetTree {
         None
     }
 
-    pub fn focus(&mut self, widget: WidgetId) {
+    pub fn focus(&mut self, widget: WidgetId, animations: &mut AnimationManager) {
         //Find current focus so we can notify it is about to lose
         if let Some(lost) = Self::current_focus(&self.focus, &mut self.root) {
-            lost.widget.lost_focus(&self.data);
+            lost.widget.lost_focus(&self.data, animations);
             self.last_focus = (Some(lost.widget.get_id()), Instant::now());
         }
     
         //Find new focus
         if let Some(got) = self.root.find_widget_mut(widget) {
-            got.widget.got_focus(&self.data);
+            got.widget.got_focus(&self.data, animations);
             self.focus.push(widget);
         }
     }
 
-    pub fn revert_focus(&mut self) {
+    pub fn revert_focus(&mut self, animations: &mut AnimationManager) {
         let now = Instant::now();
 
         //Check if we have pressed back multiple times in quick succession
@@ -89,13 +75,13 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(last) = last {
             if let Some(lost) = self.root.find_widget_mut(last) {
-                lost.widget.lost_focus(&self.data);
+                lost.widget.lost_focus(&self.data, animations);
             }
         }
 
         //Revert to previous focus
         if let Some(got) = Self::current_focus(&self.focus, &mut self.root) {
-            got.widget.got_focus(&self.data);
+            got.widget.got_focus(&self.data, animations);
         }
 
         if !different {

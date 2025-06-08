@@ -10,7 +10,6 @@ use crate::utils::append_app_ext;
  * TODO
  * Search bar doesnt work well on plugins
  * on_frame_end? on_window_init?
- * break animation rendering out of client code? M
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,14 +74,11 @@ fn main() {
     };
     logger::set_log_level(&settings.get_str(SettingNames::LoggingLevel));
 
-    let animation = Rc::new(RefCell::new(ui::AnimationManager::new()));
     let q = Arc::new(Mutex::new(RefCell::new(queue)));
-    let root = build_ui_tree(animation.clone());
-    let overlay = overlay::OverlayWindow::new(settings.clone());
+    let overlay = overlay::OverlayWindow::new(build_overlay_tree(), settings.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
 
-    let mut ui = ui::WidgetTree::new(root, animation, state);
-    ui.focus(std::any::TypeId::of::<PlatformList>());
+    let mut ui = ui::WidgetTree::new(build_main_tree(), state, std::any::TypeId::of::<PlatformList>());
  
     let input_map = input::get_input_map();
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
@@ -91,16 +87,20 @@ fn main() {
     windowing::create_yaffe_windows(notify, q, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
-fn build_ui_tree(animation: Rc<RefCell<ui::AnimationManager>>) -> ui::WidgetContainer {
+fn build_main_tree() -> ui::WidgetContainer {
     use ui::ContainerAlignment;
 
-    let mut root = ui::WidgetContainer::root(Background::new(animation.clone()));
-    root.add_child(PlatformList::new(animation.clone()), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
-        .with_child(AppList::new(animation.clone()), LogicalSize::new(0.75, 1.))
-            .add_child(SearchBar::new(animation.clone()), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
-            .add_child(Toolbar::new(animation.clone()), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
-            .add_child(InfoPane::new(animation), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
+    let mut root = ui::WidgetContainer::root(Background::new());
+    root.add_child(PlatformList::new(), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
+        .with_child(AppList::new(), LogicalSize::new(0.75, 1.))
+            .add_child(SearchBar::new(), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
+            .add_child(Toolbar::new(), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
+            .add_child(InfoPane::new(), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
             
     root
+}
+
+fn build_overlay_tree() -> ui::WidgetContainer {
+     ui::WidgetContainer::root(Background::new())
 }
 

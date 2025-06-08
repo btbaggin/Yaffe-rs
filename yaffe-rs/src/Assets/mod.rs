@@ -198,38 +198,37 @@ pub fn ensure_asset_loaded<'a>(queue: crate::job_system::ThreadSafeJobQueue, map
     }
 }
 
-pub fn clear_old_cache(state: &crate::YaffeState) {
-    // TODO
-    // let map = get_asset_map();
+pub fn clear_old_cache(graphics: &mut Graphics, cache_size: usize) {
+    let mut map = graphics.asset_cache.borrow_mut();
 
-    // let mut total_memory = 0;
-    // let mut last_used_index: Option<AssetKey> = None;
-    // let mut last_request = Instant::now();
-    // for key in map.keys() {
-    //     if let AssetKey::Static(_) = key {
-    //         // Static assets should not be released
-    //     } else {
-    //         let slot = map.get(key).unwrap();
-    //         if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
-    //             total_memory += slot.data_length;
+    let mut total_memory = 0;
+    let mut last_used_index: Option<AssetKey> = None;
+    let mut last_request = Instant::now();
+    for key in map.keys() {
+        if let AssetKey::Static(_) = key {
+            // Static assets should not be released
+        } else {
+            let slot = map.get(key).unwrap();
+            if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
+                total_memory += slot.data_length;
 
-    //             //Find oldest asset
-    //             if slot.last_request.elapsed().as_secs() > 30 && slot.last_request < last_request{
-    //                 last_request = slot.last_request;
-    //                 last_used_index = Some(key.clone());
-    //             }
-    //         }
-    //     }
-    // }
+                //Find oldest asset
+                if slot.last_request.elapsed().as_secs() > 30 && slot.last_request < last_request{
+                    last_request = slot.last_request;
+                    last_used_index = Some(key.clone());
+                }
+            }
+        }
+    }
 
-    // //Remove oldest asset if we are over our memory threshold
-    // //This will happen once per frame until we are under the threshold
-    // if total_memory > 1024 * 1024 * state.settings.get_i32(crate::settings::SettingNames::AssetCacheSizeMb) as usize {
-    //     if let Some(index) = last_used_index {
-    //         let slot = map.get_mut(&index).unwrap();
-    //         slot.data = AssetData::None;
-    //         slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
-    //         crate::logger::info!("Releasing file at {} due to memory pressure", slot.path.display());
-    //     }
-    // }
+    //Remove oldest asset if we are over our memory threshold
+    //This will happen once per frame until we are under the threshold
+    if total_memory > 1024 * 1024 * cache_size {
+        if let Some(index) = last_used_index {
+            let slot = map.get_mut(&index).unwrap();
+            slot.data = AssetData::None;
+            slot.state.store(ASSET_STATE_UNLOADED, Ordering::Release);
+            crate::logger::info!("Releasing file at {} due to memory pressure", slot.path.display());
+        }
+    }
 }

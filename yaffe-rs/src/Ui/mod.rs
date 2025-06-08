@@ -6,7 +6,7 @@ mod deferred_action;
 mod widget_tree;
 mod controls;
 mod modal;
-pub use animations::{AnimationManager, FieldOffset, AnimationTarget};
+pub use animations::{AnimationManager, FieldOffset};
 pub use widget_tree::{WidgetTree, ContainerAlignment};
 pub use deferred_action::DeferredAction;
 pub use utils::*;
@@ -36,13 +36,13 @@ pub trait Widget: FocusableWidget {
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
 
     /// Called when a user action occurs
-    fn action(&mut self, _: &mut YaffeState, _: &Actions, _: &mut DeferredAction) -> bool { false }
+    fn action(&mut self, _: &mut YaffeState, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction) -> bool { false }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: &YaffeState) {}
+    fn got_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: &YaffeState) {}
+    fn lost_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
 }
 
 #[macro_export]
@@ -61,7 +61,6 @@ macro_rules! widget {
         pub struct $name { 
             position: $crate::LogicalPosition,
             size: $crate::LogicalSize,
-            animator: std::rc::Rc<std::cell::RefCell<$crate::ui::AnimationManager>>,
             $($element: $ty),* 
         }
         impl $crate::ui::UiElement for $name {
@@ -75,21 +74,12 @@ macro_rules! widget {
             fn get_id(&self) -> $crate::ui::WidgetId { std::any::TypeId::of::<$name>() }
         }
         impl $name {
-            pub fn new(animator: std::rc::Rc<std::cell::RefCell<$crate::ui::AnimationManager>>) -> $name {
+            pub fn new() -> $name {
                 $name { 
                     position: $crate::LogicalPosition::new(0., 0.),
                     size: $crate::LogicalSize::new(0., 0.),
-                    animator,
                     $($element: $value),*
                 }
-            }
-
-            #[allow(dead_code)]
-            pub fn animate(&mut self, field: $crate::ui::FieldOffset, target: f32, duration: f32) {
-                use $crate::ui::AnimationTarget;
-
-                let mut animator = self.animator.borrow_mut();
-                animator.animate(self, field, AnimationTarget::F32(target), duration);
             }
         }
     };
@@ -128,13 +118,13 @@ impl WidgetContainer {
         &mut self.children[count - 1]
     }
 
-    pub fn action(&mut self, state: &mut YaffeState, action: &Actions, current_focus: &WidgetId, handler: &mut DeferredAction) -> bool {
+    pub fn action(&mut self, state: &mut YaffeState, animations: &mut AnimationManager, action: &Actions, current_focus: &WidgetId, handler: &mut DeferredAction) -> bool {
         //Only send action to currently focused widget
-        let handled = current_focus == &self.widget.get_id() && self.widget.action(state, action, handler);
+        let handled = current_focus == &self.widget.get_id() && self.widget.action(state, animations, action, handler);
         if handled { return true; }
 
         for i in self.children.iter_mut() {
-            if i.action(state, action, current_focus, handler) { return true; }
+            if i.action(state, animations, action, current_focus, handler) { return true; }
         }
 
         false

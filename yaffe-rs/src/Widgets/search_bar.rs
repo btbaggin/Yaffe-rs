@@ -1,6 +1,6 @@
 use crate::{YaffeState, Rect, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, ScaleFactor};
 use crate::state::MetadataSearch;
-use crate::ui::MENU_BACKGROUND;
+use crate::ui::{MENU_BACKGROUND, AnimationManager};
 
 const NAME_WIDTH: f32 = 175.;
 
@@ -14,7 +14,7 @@ widget!(pub struct SearchBar {
 impl crate::ui::Widget for SearchBar {
     fn offset(&self) -> LogicalPosition { self.offset }
 
-    fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
+    fn action(&mut self, state: &mut YaffeState, animations: &mut AnimationManager, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Back => {
                 handler.revert_focus();
@@ -41,11 +41,11 @@ impl crate::ui::Widget for SearchBar {
                 true
             }
             Actions::Left => {
-                self.switch_option(state, -1);
+                self.switch_option(state, -1, animations);
                 true
             }
             Actions::Right => {
-                self.switch_option(state, 1);
+                self.switch_option(state, 1, animations);
                 true
             }
             Actions::Down => {
@@ -66,9 +66,9 @@ impl crate::ui::Widget for SearchBar {
         }
     }
 
-    fn got_focus(&mut self, state: &YaffeState) {
+    fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
         let offset = crate::offset_of!(SearchBar => offset: LogicalPosition => y);
-        self.animate(offset, 0., 0.2);
+        animations.animate_f32(self, offset, 0., 0.2);
 
         // Make sure we always have the name search since thats default
         let group = state.get_selected_group();
@@ -87,10 +87,10 @@ impl crate::ui::Widget for SearchBar {
         }
     }
 
-    fn lost_focus(&mut self, state: &YaffeState) {
+    fn lost_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
         if state.filter.is_none() {
             let offset = crate::offset_of!(SearchBar => offset: LogicalPosition => y);
-            self.animate(offset, -1., 0.2);
+            animations.animate_f32(self, offset, -1., 0.2);
         }
     }
 
@@ -170,13 +170,13 @@ impl SearchBar {
         self.searches[self.active_search].set_mask(&group.tiles);
     }
 
-    fn switch_option(&mut self, state: &mut YaffeState, increment: isize) {
+    fn switch_option(&mut self, state: &mut YaffeState, increment: isize, animations: &mut AnimationManager) {
         let filter_start = self.position.x + NAME_WIDTH;
         let item_size = (self.position.x + self.size.x - filter_start) / self.searches[self.active_search].options.len() as f32;
         self.searches[self.active_search].increment_index(increment);
 
         let offset = crate::offset_of!(SearchBar => highlight_offset);
-        self.animate(offset, self.searches[self.active_search].selected.unwrap_or(0) as f32 * item_size, 0.1);
+        animations.animate_f32(self, offset, self.searches[self.active_search].selected.unwrap_or(0) as f32 * item_size, 0.1);
         state.filter = Some(self.searches[self.active_search].clone());
     }
 

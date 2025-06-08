@@ -1,5 +1,6 @@
 use crate::{YaffeState, Actions, DeferredAction, widget, LogicalPosition, LogicalSize, PhysicalSize, Rect};
 use crate::widgets::AppTile;
+use crate::ui::{AnimationManager, Widget};
 use std::collections::HashMap;
 
 const MARGIN: f32 = 0.1;
@@ -13,25 +14,25 @@ widget!(pub struct AppList {
     tile_animation: f32 = 0.
 });
 
-impl crate::ui::Widget for AppList {
-    fn action(&mut self, state: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
+impl Widget for AppList {
+    fn action(&mut self, state: &mut YaffeState, animations: &mut AnimationManager, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Up => {
                 let apps = state.settings.get_i32(crate::SettingNames::MaxRows);
-                self.update_position(state, apps, false, handler);
+                self.update_position(state, apps, false, handler, animations);
                 true
             }
             Actions::Down => {
                 let apps = state.settings.get_i32(crate::SettingNames::MaxRows);
-                self.update_position(state, apps, true, handler);
+                self.update_position(state, apps, true, handler, animations);
                 true
             }
             Actions::Left => {
-                self.update_position(state, 1, false, handler);
+                self.update_position(state, 1, false, handler, animations);
                 true
             }
             Actions::Right => { 
-                self.update_position(state, 1, true, handler);
+                self.update_position(state, 1, true, handler, animations);
                 true 
             }
             Actions::Accept => {
@@ -58,10 +59,10 @@ impl crate::ui::Widget for AppList {
         }
     }
 
-    fn got_focus(&mut self, _: &YaffeState) {
+    fn got_focus(&mut self, _: &YaffeState, animations: &mut AnimationManager) {
         self.tile_animation = 0.;
         let offset = crate::offset_of!(AppList => tile_animation);
-        self.animate(offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
+        animations.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
@@ -245,7 +246,7 @@ impl AppList {
         (index as usize, first_visible as usize)
     }
 
-    fn update_position(&mut self, state: &mut YaffeState, amount: i32, forward: bool, handler: &mut DeferredAction) {
+    fn update_position(&mut self, state: &mut YaffeState, amount: i32, forward: bool, handler: &mut DeferredAction, animations: &mut AnimationManager) {
         let group_id = state.get_selected_group().id;
         let old_index = state.selected.tile_index;
         let first_visible = self.first_visible[&group_id];
@@ -256,7 +257,7 @@ impl AppList {
 
             self.tile_animation = 0.;
             let offset = crate::offset_of!(AppList => tile_animation);
-            self.animate(offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
+            animations.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
 
             if let crate::state::GroupType::Plugin(_) = state.get_selected_group().kind {
                 if visible + self.tiles_x * self.tiles_y >= self.tiles.len() {

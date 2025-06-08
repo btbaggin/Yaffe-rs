@@ -1,5 +1,5 @@
 use crate::{YaffeState, Graphics, widget, Actions, DeferredAction, LogicalPosition, ScaleFactor, Rect};
-use crate::ui::{MARGIN, get_drawable_text_with_wrap, MODAL_BACKGROUND, Container, Control, Label, Image, Widget};
+use crate::ui::{MARGIN, get_drawable_text_with_wrap, MODAL_BACKGROUND, Container, Control, Label, Image, Widget, AnimationManager};
 
 const SCROLL_TIMER: f32 = 3.;
 
@@ -32,18 +32,18 @@ fn build_container(exe: Option<&crate::Tile>) -> Container {
 impl Widget for InfoPane {
     fn offset(&self) -> LogicalPosition { self.offset }
 
-    fn got_focus(&mut self, state: &YaffeState) {
+    fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
         let offset = crate::offset_of!(InfoPane => offset: LogicalPosition => x);
-        self.animate(offset, 0., 0.2);
+        animations.animate_f32(self, offset, 0., 0.2);
         self.scroll_timer = SCROLL_TIMER;
         self.y_offset = 0.;
 
         self.container = build_container(state.get_selected_tile())
     }
 
-    fn lost_focus(&mut self, _: &YaffeState) {
+    fn lost_focus(&mut self, _: &YaffeState, animations: &mut AnimationManager) {
         let offset = crate::offset_of!(InfoPane => offset: LogicalPosition => x);
-        self.animate(offset, 1., 0.2);
+        animations.animate_f32(self, offset, 1., 0.2);
     }
 
     fn render(&mut self, graphics: &mut Graphics, state: &YaffeState) { 
@@ -75,7 +75,7 @@ impl Widget for InfoPane {
         }
     }
 
-    fn action(&mut self, _: &mut YaffeState, action: &Actions, handler: &mut DeferredAction) -> bool {
+    fn action(&mut self, _: &mut YaffeState, _: &mut AnimationManager, action: &Actions, handler: &mut DeferredAction) -> bool {
         match action {
             Actions::Back => {
                 handler.revert_focus();

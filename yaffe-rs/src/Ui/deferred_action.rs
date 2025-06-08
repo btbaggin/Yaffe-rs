@@ -1,4 +1,4 @@
-use crate::ui::{FocusType, WidgetTree, WidgetId};
+use crate::ui::{FocusType, WidgetTree, WidgetId, AnimationManager};
 
 pub struct DeferredAction {
     focus: Option<FocusType>,
@@ -26,11 +26,11 @@ impl DeferredAction {
         self.message = Some(message);
     }
 
-    pub fn resolve(self, ui: &mut WidgetTree) {
+    pub fn resolve(self, ui: &mut WidgetTree, animations: &mut AnimationManager) {
         match self.focus {
             None => { /*do nothing*/ }
-            Some(FocusType::Revert) => ui.revert_focus(),
-            Some(FocusType::Focus(w)) => ui.focus(w),
+            Some(FocusType::Revert) => ui.revert_focus(animations),
+            Some(FocusType::Focus(w)) => ui.focus(w, animations),
         }
 
         if self.load_plugin {
