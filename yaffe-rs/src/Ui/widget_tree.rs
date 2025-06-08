@@ -1,7 +1,7 @@
+use crate::ui::{AnimationManager, WidgetContainer, WidgetId};
+use crate::YaffeState;
 use std::ops::Deref;
 use std::time::Instant;
-use crate::YaffeState;
-use crate::ui::{WidgetContainer, WidgetId, AnimationManager};     
 
 #[repr(u8)]
 pub enum ContainerAlignment {
@@ -22,12 +22,7 @@ pub struct WidgetTree {
 }
 impl WidgetTree {
     pub fn new(root: WidgetContainer, data: YaffeState, initial_focus: WidgetId) -> WidgetTree {
-        WidgetTree {
-            root,
-            focus: vec!(initial_focus),
-            data,
-            last_focus: (None, Instant::now()),
-        }
+        WidgetTree { root, focus: vec![initial_focus], data, last_focus: (None, Instant::now()) }
     }
 
     pub fn render_all(&mut self, graphics: &mut crate::Graphics) {
@@ -48,7 +43,7 @@ impl WidgetTree {
             lost.widget.lost_focus(&self.data, animations);
             self.last_focus = (Some(lost.widget.get_id()), Instant::now());
         }
-    
+
         //Find new focus
         if let Some(got) = self.root.find_widget_mut(widget) {
             got.widget.got_focus(&self.data, animations);
@@ -71,7 +66,7 @@ impl WidgetTree {
         }
         let different = last != self.last_focus.0;
         self.last_focus = (last, now);
-        
+
         //Find current focus so we can notify it is about to lose
         if let Some(last) = last {
             if let Some(lost) = self.root.find_widget_mut(last) {
@@ -90,13 +85,10 @@ impl WidgetTree {
             let state = &mut self.data;
             // crate::plugins::load_plugin_items(state);
         }
-
     }
 }
 
 impl Deref for WidgetTree {
     type Target = WidgetContainer;
-    fn deref(&self) -> &Self::Target {
-        &self.root
-    }
+    fn deref(&self) -> &Self::Target { &self.root }
 }

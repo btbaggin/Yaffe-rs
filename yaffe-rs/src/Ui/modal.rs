@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-use crate::{YaffeState, Actions, Rect, LogicalPosition, LogicalSize, DeferredAction, windowing::WindowHelper};
 use crate::assets::Images;
-use crate::ui::controls::{MARGIN, MODAL_OVERLAY_COLOR, MODAL_BACKGROUND, change_brightness};
-
+use crate::ui::controls::{change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
+use crate::{windowing::WindowHelper, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, YaffeState};
+use std::collections::HashMap;
 
 #[repr(u8)]
 pub enum ModalResult {
@@ -29,12 +28,7 @@ pub struct Modal {
 }
 impl Modal {
     pub fn overlay(content: Box<dyn ModalContent>) -> Modal {
-        Modal { 
-            title: String::from("Yaffe"), 
-            confirmation_button: Some(String::from("Exit")),
-            content, 
-            on_close: None, 
-        }
+        Modal { title: String::from("Yaffe"), confirmation_button: Some(String::from("Exit")), content, on_close: None }
     }
 
     pub fn action(&mut self, action: &crate::Actions, helper: &mut crate::windowing::WindowHelper) -> ModalResult {
@@ -47,14 +41,20 @@ pub trait ModalContent {
     fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize;
     fn render(&self, rect: Rect, graphics: &mut crate::Graphics);
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult;
-    fn default_modal_action(action: &Actions) -> ModalResult where Self: Sized {
+    fn default_modal_action(action: &Actions) -> ModalResult
+    where
+        Self: Sized,
+    {
         match action {
             Actions::Accept => ModalResult::Ok,
             Actions::Back => ModalResult::Cancel,
-            _ => ModalResult::None ,
+            _ => ModalResult::None,
         }
     }
-    fn modal_width(rect: Rect, size: ModalSize) -> f32 where Self: Sized {
+    fn modal_width(rect: Rect, size: ModalSize) -> f32
+    where
+        Self: Sized,
+    {
         match size {
             ModalSize::Third => rect.width() * 0.33,
             ModalSize::Half => rect.width() * 0.5,
@@ -63,20 +63,17 @@ pub trait ModalContent {
     }
 }
 
-pub fn display_modal(state: &mut YaffeState, 
-                     title: &str, 
-                     confirmation_button: Option<&str>,
-                     content: Box<dyn ModalContent>, 
-                     on_close: Option<ModalOnClose>) {
+pub fn display_modal(
+    state: &mut YaffeState,
+    title: &str,
+    confirmation_button: Option<&str>,
+    content: Box<dyn ModalContent>,
+    on_close: Option<ModalOnClose>,
+) {
     let confirm = confirmation_button.map(String::from);
 
-    let m = Modal { 
-        title: String::from(title), 
-        confirmation_button: confirm,
-        content, 
-        on_close, 
-    };
-    
+    let m = Modal { title: String::from(title), confirmation_button: confirm, content, on_close };
+
     let mut modals = state.modals.lock().unwrap();
     modals.push(m);
 }
@@ -96,9 +93,8 @@ pub fn update_modal(state: &mut YaffeState, helper: &mut WindowHelper, action: &
                 if let Some(close) = modal.on_close {
                     close(state, result, &*modal.content, handler);
                 }
-                
             }
-            ModalResult::None => {},
+            ModalResult::None => {}
         }
     }
 }
@@ -126,7 +122,7 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
 
     let window_position = (rect.size() - size) / 2. + padding;
     let window = Rect::new(window_position, window_position + size);
-    
+
     //Background
     graphics.draw_rectangle(graphics.bounds, MODAL_OVERLAY_COLOR);
     graphics.draw_rectangle(window, MODAL_BACKGROUND);
@@ -135,7 +131,8 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
     let titlebar_color = graphics.accent_color();
     let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
     let titlebar_pos = window_position + LogicalSize::new(PADDING, PADDING);
-    let titlebar = Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - PADDING * 2., titlebar_size - PADDING));
+    let titlebar =
+        Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - PADDING * 2., titlebar_size - PADDING));
     graphics.draw_rectangle(titlebar, titlebar_color);
 
     let title_text = crate::ui::get_drawable_text(graphics, titlebar_size, &modal.title);
@@ -144,7 +141,10 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
 
     //Content
     //Window + margin for window + margin for icon
-    let content_pos = LogicalPosition::new(window_position.x + MARGIN + PADDING, window_position.y + MARGIN + titlebar_size + PADDING); 
+    let content_pos = LogicalPosition::new(
+        window_position.x + MARGIN + PADDING,
+        window_position.y + MARGIN + titlebar_size + PADDING,
+    );
     let content_rect = Rect::new(content_pos, content_pos + content_size);
     modal.content.render(content_rect, graphics);
 

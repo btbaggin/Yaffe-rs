@@ -1,18 +1,18 @@
 use crate::{Actions, LogicalPosition, Rect};
 use speedy2d::color::Color;
 
-mod text_box;
 mod checkbox;
-mod list;
 mod container;
 mod image;
 mod label;
-pub use text_box::TextBox;
-pub use checkbox::CheckBox;
-pub use list::{List, ListItem};
-pub use container::Container;
+mod list;
+mod text_box;
 pub use self::image::Image;
+pub use checkbox::CheckBox;
+pub use container::Container;
 pub use label::Label;
+pub use list::{List, ListItem};
+pub use text_box::TextBox;
 
 pub const MARGIN: f32 = 10.;
 pub const TITLE_SIZE: f32 = 36.;
@@ -48,13 +48,11 @@ pub fn change_brightness(color: &Color, factor: f32) -> Color {
     Color::from_rgba(r, g, b, a)
 }
 
-pub fn rgba_string(c: &(f32, f32, f32, f32)) -> String {
-    format!("{},{},{},{}", c.0, c.1, c.2, c.3)
-}
+pub fn rgba_string(c: &(f32, f32, f32, f32)) -> String { format!("{},{},{},{}", c.0, c.1, c.2, c.3) }
 
 fn draw_label_and_box(graphics: &mut crate::Graphics, pos: &LogicalPosition, size: f32, label: &str) -> Rect {
     let font_size = graphics.font_size();
-    graphics.simple_text(*pos, label); 
+    graphics.simple_text(*pos, label);
 
     let min = LogicalPosition::new(pos.x + LABEL_SIZE, pos.y);
     let max = LogicalPosition::new(pos.x + LABEL_SIZE + size, pos.y + font_size);
@@ -63,6 +61,6 @@ fn draw_label_and_box(graphics: &mut crate::Graphics, pos: &LogicalPosition, siz
     let base = graphics.accent_color();
     let factor = graphics.dark_shade_factor();
     graphics.draw_rectangle(control, change_brightness(&base, factor));
-    
+
     control
 }

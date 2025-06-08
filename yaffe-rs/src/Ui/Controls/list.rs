@@ -1,13 +1,11 @@
-use crate::{Rect, LogicalSize, Actions};
+use crate::{Actions, LogicalSize, Rect};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;
 }
 
 impl ListItem for String {
-    fn to_display(&self) -> String {
-        self.to_string()
-    }
+    fn to_display(&self) -> String { self.to_string() }
 }
 
 /// Allow displaying a list of items that can be selected
@@ -18,24 +16,28 @@ pub struct List<T: ListItem> {
     first_index: std::cell::RefCell<usize>,
 }
 impl<T: ListItem> List<T> {
-    pub fn new(items: Vec<T>) -> List<T> {
-        List {
-            items,
-            index: 0,
-            first_index: std::cell::RefCell::new(0),
-        }
-    }
+    pub fn new(items: Vec<T>) -> List<T> { List { items, index: 0, first_index: std::cell::RefCell::new(0) } }
 
-    pub fn get_selected(&self) -> &T {
-        &self.items[self.index]
-    }
+    pub fn get_selected(&self) -> &T { &self.items[self.index] }
 }
 
 impl<T: ListItem> List<T> {
     pub fn update(&mut self, action: &Actions) -> bool {
         match action {
-            Actions::Down => if self.index < self.items.len() - 1 { self.index += 1; } else { self.index = 0; }
-            Actions::Up => if self.index > 0 { self.index -= 1; } else { self.index = self.items.len() - 1; }
+            Actions::Down => {
+                if self.index < self.items.len() - 1 {
+                    self.index += 1;
+                } else {
+                    self.index = 0;
+                }
+            }
+            Actions::Up => {
+                if self.index > 0 {
+                    self.index -= 1;
+                } else {
+                    self.index = self.items.len() - 1;
+                }
+            }
             _ => return false,
         }
 

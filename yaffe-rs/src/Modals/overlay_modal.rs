@@ -1,10 +1,10 @@
-use speedy2d::color::Color;
-use crate::Rect;
-use crate::{Actions, LogicalSize};
-use crate::modals::{ModalResult, ModalContent, ModalSize};
 use crate::logger::LogEntry;
+use crate::modals::{ModalContent, ModalResult, ModalSize};
 use crate::os::get_and_update_volume;
 use crate::ui::LABEL_SIZE;
+use crate::Rect;
+use crate::{Actions, LogicalSize};
+use speedy2d::color::Color;
 
 const VOLUME_STEP: f32 = 0.05;
 
@@ -31,18 +31,18 @@ impl ModalContent for OverlayModal {
             Actions::Left => {
                 self.volume = get_and_update_volume(-VOLUME_STEP).log("Unable to get system volume");
                 ModalResult::None
-            },
+            }
             Actions::Right => {
                 self.volume = get_and_update_volume(VOLUME_STEP).log("Unable to get system volume");
                 ModalResult::None
-            },
+            }
             Actions::Accept => ModalResult::Ok,
-            _ => ModalResult::None
+            _ => ModalResult::None,
         }
     }
 
     fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
-        graphics.simple_text(*rect.top_left(), "Volume:"); 
+        graphics.simple_text(*rect.top_left(), "Volume:");
 
         //Background rectangle
         let rect = Rect::from_tuples((rect.left() + LABEL_SIZE, rect.top()), (rect.right(), rect.bottom()));

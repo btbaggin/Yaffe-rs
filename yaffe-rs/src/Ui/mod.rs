@@ -1,24 +1,23 @@
-use crate::{YaffeState, Graphics, Actions, LogicalPosition, LogicalSize, Rect};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect, YaffeState};
 
 mod animations;
-mod utils;
-mod deferred_action;
-mod widget_tree;
 mod controls;
+mod deferred_action;
 mod modal;
+mod utils;
+mod widget_tree;
 pub use animations::{AnimationManager, FieldOffset};
-pub use widget_tree::{WidgetTree, ContainerAlignment};
-pub use deferred_action::DeferredAction;
-pub use utils::*;
 pub use controls::*;
+pub use deferred_action::DeferredAction;
 pub use modal::*;
+pub use utils::*;
+pub use widget_tree::{ContainerAlignment, WidgetTree};
 
 #[repr(u8)]
 enum FocusType {
     Revert,
     Focus(WidgetId),
 }
-
 
 pub trait UiElement {
     fn layout(&self) -> Rect;
@@ -36,7 +35,9 @@ pub trait Widget: FocusableWidget {
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
 
     /// Called when a user action occurs
-    fn action(&mut self, _: &mut YaffeState, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction) -> bool { false }
+    fn action(&mut self, _: &mut YaffeState, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction) -> bool {
+        false
+    }
 
     /// Called when the control gets focus
     fn got_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
@@ -58,15 +59,15 @@ macro_rules! widget {
         $($element:ident: $ty:ty = $value:expr),*
     }) => {
         #[allow(unused_variables)]
-        pub struct $name { 
+        pub struct $name {
             position: $crate::LogicalPosition,
             size: $crate::LogicalSize,
-            $($element: $ty),* 
+            $($element: $ty),*
         }
         impl $crate::ui::UiElement for $name {
             fn layout(&self) -> $crate::Rect { $crate::Rect::new(self.position, self.position + self.size) }
-            fn set_layout(&mut self, layout: $crate::Rect) { 
-                self.position = *layout.top_left(); 
+            fn set_layout(&mut self, layout: $crate::Rect) {
+                self.position = *layout.top_left();
                 self.size = layout.size();
             }
         }
@@ -75,7 +76,7 @@ macro_rules! widget {
         }
         impl $name {
             pub fn new() -> $name {
-                $name { 
+                $name {
                     position: $crate::LogicalPosition::new(0., 0.),
                     size: $crate::LogicalSize::new(0., 0.),
                     $($element: $value),*
@@ -98,15 +99,15 @@ impl WidgetContainer {
         WidgetContainer::new(widget, LogicalSize::new(1.0, 1.0), ContainerAlignment::Left)
     }
     fn new(widget: impl Widget + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer {
-         WidgetContainer {
-            children: vec!(),
-            widget: Box::new(widget),
-            ratio,
-            alignment,
-         }
+        WidgetContainer { children: vec![], widget: Box::new(widget), ratio, alignment }
     }
 
-    pub fn add_child(&mut self, widget: impl Widget + 'static, size: LogicalSize, alignment: ContainerAlignment) -> &mut Self {
+    pub fn add_child(
+        &mut self,
+        widget: impl Widget + 'static,
+        size: LogicalSize,
+        alignment: ContainerAlignment,
+    ) -> &mut Self {
         self.children.push(WidgetContainer::new(widget, size, alignment));
         self
     }
@@ -118,13 +119,24 @@ impl WidgetContainer {
         &mut self.children[count - 1]
     }
 
-    pub fn action(&mut self, state: &mut YaffeState, animations: &mut AnimationManager, action: &Actions, current_focus: &WidgetId, handler: &mut DeferredAction) -> bool {
+    pub fn action(
+        &mut self,
+        state: &mut YaffeState,
+        animations: &mut AnimationManager,
+        action: &Actions,
+        current_focus: &WidgetId,
+        handler: &mut DeferredAction,
+    ) -> bool {
         //Only send action to currently focused widget
         let handled = current_focus == &self.widget.get_id() && self.widget.action(state, animations, action, handler);
-        if handled { return true; }
+        if handled {
+            return true;
+        }
 
         for i in self.children.iter_mut() {
-            if i.action(state, animations, action, current_focus, handler) { return true; }
+            if i.action(state, animations, action, current_focus, handler) {
+                return true;
+            }
         }
 
         false
@@ -149,19 +161,19 @@ impl WidgetContainer {
                 ContainerAlignment::Left => {
                     origin = LogicalPosition::new(rect.left() + left_stack, rect.top());
                     left_stack += size.x;
-                },
+                }
                 ContainerAlignment::Right => {
                     origin = LogicalPosition::new(rect.right() - (size.x + right_stack), rect.top());
                     right_stack += size.x;
-                },
+                }
                 ContainerAlignment::Top => {
                     origin = LogicalPosition::new(rect.left(), rect.top() + top_stack);
                     top_stack += size.y;
-                },
+                }
                 ContainerAlignment::Bottom => {
                     origin = LogicalPosition::new(rect.left(), rect.bottom() - (size.y + bottom_stack));
                     bottom_stack += size.y;
-                },
+                }
             };
 
             let offset = i.widget.offset();
@@ -175,11 +187,15 @@ impl WidgetContainer {
 
     fn find_widget_mut(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer> {
         let id = self.widget.get_id();
-        if widget == id { return Some(self) }
+        if widget == id {
+            return Some(self);
+        }
 
         for i in self.children.iter_mut() {
             let widget = i.find_widget_mut(widget);
-            if widget.is_some() { return widget; }
+            if widget.is_some() {
+                return widget;
+            }
         }
         None
     }

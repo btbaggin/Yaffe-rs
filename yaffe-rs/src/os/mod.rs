@@ -18,53 +18,31 @@ pub enum StartupError {
 }
 
 impl From<std::io::Error> for StartupError {
-    fn from(v: std::io::Error) -> Self {
-        StartupError::File(v)
-    }
+    fn from(v: std::io::Error) -> Self { StartupError::File(v) }
 }
 
 impl From<String> for StartupError {
-   fn from(v: String) -> Self {
-        StartupError::Other(v)
-    }
+    fn from(v: String) -> Self { StartupError::Other(v) }
 }
 
 type StartupResult<T> = Result<T, StartupError>;
 type ShutdownResult = std::io::Result<()>;
 type VolumeResult<T> = Result<T, StartupError>;
 
-pub fn lib_ext() -> &'static str {
-    os_impl::lib_ext()
-}
+pub fn lib_ext() -> &'static str { os_impl::lib_ext() }
 
-pub fn app_ext() -> &'static str {
-    os_impl::app_ext()
-}
+pub fn app_ext() -> &'static str { os_impl::app_ext() }
 
-pub fn shutdown() -> ShutdownResult {
-    os_impl::shutdown()
-}
+pub fn shutdown() -> ShutdownResult { os_impl::shutdown() }
 
-pub fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> {
-    os_impl::set_run_at_startup(task, value)
-}
+pub fn set_run_at_startup(task: &str, value: bool) -> StartupResult<()> { os_impl::set_run_at_startup(task, value) }
 
-pub fn get_run_at_startup(task: &str) -> StartupResult<bool> {
-    os_impl::get_run_at_startup(task)
-}
+pub fn get_run_at_startup(task: &str) -> StartupResult<bool> { os_impl::get_run_at_startup(task) }
 
-pub fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
-    os_impl::get_and_update_volume(delta)
-}
+pub fn get_and_update_volume(delta: f32) -> VolumeResult<f32> { os_impl::get_and_update_volume(delta) }
 
-pub fn initialize_gamepad() -> Result<impl PlatformGamepad, i32> {
-    os_impl::initialize_gamepad()
-}
+pub fn initialize_gamepad() -> Result<impl PlatformGamepad, i32> { os_impl::initialize_gamepad() }
 
-pub fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
-    os_impl::get_clipboard(window)
-}
+pub fn get_clipboard(window: &glutin::window::Window) -> Option<String> { os_impl::get_clipboard(window) }
 
-pub fn sanitize_file(file: &str) -> String {
-    os_impl::sanitize_file(file)
-}
+pub fn sanitize_file(file: &str) -> String { os_impl::sanitize_file(file) }

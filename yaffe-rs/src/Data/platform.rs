@@ -1,7 +1,7 @@
+use super::{execute_select, execute_select_once, execute_update, QueryResult, YaffeConnection};
 use crate::{create_statement, get_column};
-use super::{YaffeConnection, execute_update, execute_select, execute_select_once, QueryResult};
 
-crate::table_struct! (
+crate::table_struct!(
     pub struct PlatformInfo {
         pub id: i64,
         pub platform: String,
@@ -11,7 +11,7 @@ crate::table_struct! (
 );
 impl PlatformInfo {
     pub fn new(id: i64, platform: String, path: String, args: String) -> PlatformInfo {
-        PlatformInfo { id, platform, path, args, }
+        PlatformInfo { id, platform, path, args }
     }
 
     /// Adds a new platform
@@ -25,7 +25,8 @@ impl PlatformInfo {
         crate::logger::info!("Inserting new platform into database {}", platform.platform);
 
         let con = YaffeConnection::new();
-        let stmt = create_statement!(con, QS_ADD_PLATFORM, platform.id, &*platform.platform, &*platform.path, &*platform.args);
+        let stmt =
+            create_statement!(con, QS_ADD_PLATFORM, platform.id, &*platform.platform, &*platform.path, &*platform.args);
 
         execute_update(stmt)
     }
@@ -38,7 +39,7 @@ impl PlatformInfo {
         let stmt = create_statement!(con, QS_UPDATE_PLATFORM, exe, args, platform);
         execute_update(stmt)
     }
-    
+
     /// Gets the name of a platform
     pub fn get_name(platform: i64) -> QueryResult<String> {
         const QS_GET_PLATFORM_NAME: &str = "SELECT platform FROM Platforms WHERE id = @ID";
@@ -66,20 +67,15 @@ impl PlatformInfo {
         crate::logger::info!("Loading all platforms from database");
 
         let con = YaffeConnection::new();
-        let stmt = create_statement!(con, QS_GET_ALL_PLATFORMS, );
+        let stmt = create_statement!(con, QS_GET_ALL_PLATFORMS,);
 
-        let mut result = vec!();
+        let mut result = vec![];
         execute_select(stmt, |r| {
             let id = get_column!(r, i64, "id");
             let platform = get_column!(r, String, "platform");
             let path = get_column!(r, String, "path");
             let args = get_column!(r, String, "args");
-            result.push(PlatformInfo {
-                id,
-                platform,
-                path,
-                args,
-            });
+            result.push(PlatformInfo { id, platform, path, args });
         });
 
         result

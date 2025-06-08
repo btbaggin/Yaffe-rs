@@ -1,10 +1,10 @@
-use crate::state::ExternalProcess;
-use crate::Graphics;
 use crate::logger::LogEntry;
-use crate::ui::{Modal, ModalResult, AnimationManager, WidgetContainer};
+use crate::state::ExternalProcess;
+use crate::ui::{AnimationManager, Modal, ModalResult, WidgetContainer};
 use crate::windowing::WindowHelper;
-use std::rc::Rc;
+use crate::Graphics;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Contains information needed to process and render
 /// the Yaffe game overlay
@@ -13,7 +13,7 @@ pub struct OverlayWindow {
     process: Option<Box<dyn ExternalProcess>>,
     showing: bool,
     settings: crate::settings::SettingsFile,
-    root: WidgetContainer
+    root: WidgetContainer,
 }
 impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
@@ -23,20 +23,16 @@ impl OverlayWindow {
             process: None,
             showing: false,
             settings,
-            root
+            root,
         };
-  
+
         Rc::new(RefCell::new(overlay))
     }
 
-    pub fn is_active(&self) -> bool {
-        self.process.is_some()
-    }
+    pub fn is_active(&self) -> bool { self.process.is_some() }
 
     /// Sets the currently running process
-    pub fn set_process(&mut self, process: Box<dyn ExternalProcess>) {
-        self.process = Some(process);
-    }
+    pub fn set_process(&mut self, process: Box<dyn ExternalProcess>) { self.process = Some(process); }
 
     /// Checks if a process is currently running
     /// If if has been killed in the background it will set
@@ -76,19 +72,19 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         true
     }
 
-    fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool {
-        !self.process_is_running(helper)
-    }
+    fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool { !self.process_is_running(helper) }
 
     fn on_input(&mut self, _: &mut AnimationManager, helper: &mut WindowHelper, action: &crate::Actions) -> bool {
-        if self.process.is_none() { return false; }
+        if self.process.is_none() {
+            return false;
+        }
         match action {
             crate::Actions::ToggleOverlay => {
                 self.toggle_visibility(helper);
                 true
             }
             _ => {
-                if self.showing { 
+                if self.showing {
                     let result = self.modal.action(action, helper);
                     if let ModalResult::Ok = result {
                         // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
@@ -104,7 +100,5 @@ impl crate::windowing::WindowHandler for OverlayWindow {
         }
     }
 
-    fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer {
-        &mut self.root
-    }
+    fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer { &mut self.root }
 }

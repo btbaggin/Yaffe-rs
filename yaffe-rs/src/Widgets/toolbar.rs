@@ -1,10 +1,12 @@
-use crate::{YaffeState, widget, LogicalPosition};
 use crate::assets::Images;
 use crate::ui::MARGIN;
+use crate::{widget, LogicalPosition, YaffeState};
 
-widget!(pub struct Toolbar {});
+widget!(
+    pub struct Toolbar {}
+);
 impl crate::ui::Widget for Toolbar {
-    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) { 
+    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
         let time = chrono::Local::now();
         let rect = graphics.bounds;
 
@@ -28,7 +30,6 @@ impl crate::ui::Widget for Toolbar {
 
             let text = crate::ui::get_drawable_text(graphics, font_size, "Back");
             crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonB), font_color, text);
-
         } else if state.focused_widget == crate::get_widget_id!(crate::widgets::PlatformList) {
             let platform = state.get_selected_group();
             if platform.kind.allow_edit() {

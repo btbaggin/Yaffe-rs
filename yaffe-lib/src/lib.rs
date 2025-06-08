@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 mod settings;
-pub use settings::{SettingValue, SettingLoadError, SettingsResult};
+pub use settings::{SettingLoadError, SettingValue, SettingsResult};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -25,26 +25,18 @@ pub struct PluginFilter {
 }
 impl PluginFilter {
     pub fn new(name: &str, options: &[&str]) -> PluginFilter {
-        PluginFilter {
-            name: name.to_string(),
-            options: options.iter().map(|o| o.to_string()).collect(),
-        }
+        PluginFilter { name: name.to_string(), options: options.iter().map(|o| o.to_string()).collect() }
     }
 
     pub fn from_range(name: &str, start: &str, end: &str) -> PluginFilter {
-        PluginFilter {
-            name: name.to_string(),
-            options: Self::generate_string_range(start, end),
-        }
+        PluginFilter { name: name.to_string(), options: Self::generate_string_range(start, end) }
     }
-    
+
     fn generate_string_range(start: &str, end: &str) -> Vec<String> {
         let start_ascii = start.chars().next().unwrap() as u8;
         let end_ascii = end.chars().next().unwrap() as u8;
 
-        (start_ascii..=end_ascii)
-            .map(|c| String::from_utf8(vec![c]).unwrap_or_default())
-            .collect()
+        (start_ascii..=end_ascii).map(|c| String::from_utf8(vec![c]).unwrap_or_default()).collect()
     }
 }
 
@@ -58,15 +50,15 @@ pub struct YaffePluginItem {
     pub metadata: HashMap<String, String>,
 }
 impl YaffePluginItem {
-    pub fn new(name: String, path: String, thumbnail: PathType, restricted: bool, description: String, metadata: HashMap<String, String>) -> YaffePluginItem {
-        YaffePluginItem {
-            name,
-            description,
-            path,
-            thumbnail,
-            restricted,
-            metadata
-        }
+    pub fn new(
+        name: String,
+        path: String,
+        thumbnail: PathType,
+        restricted: bool,
+        description: String,
+        metadata: HashMap<String, String>,
+    ) -> YaffePluginItem {
+        YaffePluginItem { name, description, path, thumbnail, restricted, metadata }
     }
 }
 
@@ -86,9 +78,7 @@ pub type LoadResult = Result<Vec<YaffePluginItem>, String>;
 macro_rules! create_plugin {
     ($init:expr) => {
         #[unsafe(no_mangle)]
-        pub extern "C" fn create_plugin() -> Box<dyn YaffePlugin> {
-            Box::new($init)
-        }
+        pub extern "C" fn create_plugin() -> Box<dyn YaffePlugin> { Box::new($init) }
     };
 }
 

@@ -1,13 +1,12 @@
-use crate::YaffeState;
 use crate::logger::PanicLogEntry;
-use crate::state::{TileGroup, Tile, GroupType};
+use crate::state::{GroupType, Tile, TileGroup};
+use crate::YaffeState;
 use std::path::{Path, PathBuf};
-
 
 pub fn get_database_info(state: &mut YaffeState) {
     crate::logger::info!("Refreshing information from database");
 
-    let mut platforms = vec!();
+    let mut platforms = vec![];
     platforms.push(TileGroup::recents(String::from("Recent")));
     for p in crate::data::PlatformInfo::get_all() {
         platforms.push(TileGroup::emulator(p.id, p.platform));
@@ -35,10 +34,9 @@ pub fn scan_new_files(state: &mut YaffeState) {
                 let entry = entry.unwrap();
                 let path = entry.path();
                 if path.is_file() && is_allowed_file_type(&path) {
-                    
                     let file = path.file_name().unwrap().to_string_lossy();
                     crate::logger::info!("Found local game {file}");
-                    
+
                     let exists = crate::data::GameInfo::exists(p.id, &file).log_and_panic();
                     if !exists {
                         let name = path.file_stem().unwrap().to_string_lossy();
@@ -46,7 +44,12 @@ pub fn scan_new_files(state: &mut YaffeState) {
                         let name = name.trim();
 
                         crate::logger::info!("{name} not found in database, performing search");
-                        let job = crate::Job::SearchGame { id: job_id, exe: file.to_string(), name: name.to_string(), platform: p.id };
+                        let job = crate::Job::SearchGame {
+                            id: job_id,
+                            exe: file.to_string(),
+                            name: name.to_string(),
+                            platform: p.id,
+                        };
                         state.start_job(job);
 
                         count += 1;
@@ -67,9 +70,8 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut TileGroup) {
             for g in crate::data::GameInfo::get_all(platform.id) {
                 let boxart = crate::assets::get_asset_path(&platform.name, &g.name);
                 platform.tiles.push(Tile::new_game(&g, platform.id, boxart));
-
             }
-            
+
             platform.tiles.sort_by(|a, b| a.name.cmp(&b.name));
         }
         GroupType::Plugin(_) => {
@@ -81,7 +83,7 @@ fn refresh_executable(state: &mut YaffeState, platform: &mut TileGroup) {
 
             let max = state.settings.get_f32(crate::SettingNames::RecentPageCount);
             platform.tiles = crate::data::GameInfo::get_recent(max as i64);
-        }  
+        }
     }
 }
 
@@ -107,7 +109,8 @@ fn clean_file_name(file: &str) -> String {
                 // Take the string up to this point
                 cleaned_file.push_str(&file[index..i]);
                 // Move past the comma
-                chars.next(); i += 1;
+                chars.next();
+                i += 1;
 
                 // Find the word boundary (or end of string)
                 let ii = match chars.position(|cc| cc == ' ') {
@@ -120,9 +123,13 @@ fn clean_file_name(file: &str) -> String {
                 // Move positions after that word
                 i += ii;
                 index += i;
-            },
-            '(' | '[' => /* These have country or language, ignore eg (USA)*/ break,
-            _ => {},
+            }
+            '(' | '[' =>
+            /* These have country or language, ignore eg (USA)*/
+            {
+                break
+            }
+            _ => {}
         }
         i += 1;
     }
@@ -139,13 +146,19 @@ pub fn insert_platform(state: &mut YaffeState, data: &crate::data::PlatformInfo)
 
     // Create Roms folder
     let path = Path::new("./Roms");
-    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+    if !path.exists() {
+        std::fs::create_dir(path).unwrap();
+    }
     let path = path.join(&data.platform);
-    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+    if !path.exists() {
+        std::fs::create_dir(path).unwrap();
+    }
 
     // Create Assets folder
     let path = Path::new("./Assets").join(&data.platform);
-    if !path.exists() { std::fs::create_dir(path).unwrap(); }
+    if !path.exists() {
+        std::fs::create_dir(path).unwrap();
+    }
 
     crate::data::PlatformInfo::insert(data).log_and_panic();
 
@@ -156,7 +169,7 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
     crate::logger::info!("Inserting new game into database {}", info.name);
 
     crate::data::GameInfo::insert(info).log_and_panic();
-    
+
     let plat_name = crate::data::PlatformInfo::get_name(info.platform()).unwrap();
 
     let file_path = crate::assets::get_asset_path(&plat_name, &info.name);
@@ -164,4 +177,3 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
 
     state.refresh_list = true;
 }
-

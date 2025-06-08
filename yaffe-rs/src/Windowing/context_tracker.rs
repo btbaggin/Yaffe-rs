@@ -12,8 +12,8 @@ impl<T: ContextCurrentState> ContextWrapper<T> {
         }
     }
 
-#[allow(clippy::result_large_err)]
-fn map<T2: ContextCurrentState, FW>(self, fw: FW) -> Result<ContextWrapper<T2>, (Self, ContextError)>
+    #[allow(clippy::result_large_err)]
+    fn map<T2: ContextCurrentState, FW>(self, fw: FW) -> Result<ContextWrapper<T2>, (Self, ContextError)>
     where
         FW: FnOnce(WindowedContext<T>) -> Result<WindowedContext<T2>, (WindowedContext<T>, ContextError)>,
     {
@@ -81,8 +81,9 @@ impl ContextTracker {
             if let Some(old_current) = self.current {
                 unsafe {
                     self.modify(old_current, |ctx| {
-                        ctx.map_possibly(|ctx| { ctx.map(|ctx| Ok(ctx.treat_as_not_current())) })
-                    }).unwrap()
+                        ctx.map_possibly(|ctx| ctx.map(|ctx| Ok(ctx.treat_as_not_current())))
+                    })
+                    .unwrap()
                 }
             }
             self.current = Some(id);
@@ -112,31 +113,26 @@ impl ContextTracker {
         }
     }
 
-    pub fn get_current(
-        &mut self,
-        id: ContextId,
-    ) -> Result<&mut ContextWrapper<PossiblyCurrent>, ContextError> {
+    pub fn get_current(&mut self, id: ContextId) -> Result<&mut ContextWrapper<PossiblyCurrent>, ContextError> {
         unsafe {
             let this_index = self.others.binary_search_by(|(sid, _)| sid.cmp(&id)).unwrap();
             if Some(id) != self.current {
                 let old_current = self.current.take();
 
-                if let Err(err) = self.modify(id, |ctx| {
-                    ctx.map_not(|ctx| { ctx.map(|ctx| ctx.make_current()) })
-                }) {
+                if let Err(err) = self.modify(id, |ctx| ctx.map_not(|ctx| ctx.map(|ctx| ctx.make_current()))) {
                     // Oh noes, something went wrong
                     // Let's at least make sure that no context is current.
                     if let Some(old_current) = old_current {
-                        if let Err(err2) = self.modify(old_current, |ctx| {
-                            ctx.map_possibly(|ctx| { ctx.map(|ctx| ctx.make_not_current()) })
-                        }) {
+                        if let Err(err2) = self
+                            .modify(old_current, |ctx| ctx.map_possibly(|ctx| ctx.map(|ctx| ctx.make_not_current())))
+                        {
                             panic!("Could not `make_current` nor `make_not_current`, {:?}, {:?}", err, err2);
                         }
                     }
 
-                    if let Err(err2) = self.modify(id, |ctx| {
-                        ctx.map_possibly(|ctx| { ctx.map(|ctx| ctx.make_not_current()) })
-                    }) {
+                    if let Err(err2) =
+                        self.modify(id, |ctx| ctx.map_possibly(|ctx| ctx.map(|ctx| ctx.make_not_current())))
+                    {
                         panic!("Could not `make_current` nor `make_not_current`, {:?}, {:?}", err, err2);
                     }
 
@@ -147,7 +143,7 @@ impl ContextTracker {
 
                 if let Some(old_current) = old_current {
                     self.modify(old_current, |ctx| {
-                        ctx.map_possibly(|ctx| { ctx.map(|ctx| Ok(ctx.treat_as_not_current())) })
+                        ctx.map_possibly(|ctx| ctx.map(|ctx| Ok(ctx.treat_as_not_current())))
                     })
                     .unwrap();
                 }

@@ -1,6 +1,6 @@
-use crate::ui::{Control, InputControl, MARGIN};
 use crate::input::Actions;
-use crate::{Rect, LogicalSize};
+use crate::ui::{Control, InputControl, MARGIN};
+use crate::{LogicalSize, Rect};
 use std::collections::HashMap;
 
 enum ContainerDirection {
@@ -10,7 +10,7 @@ enum ContainerDirection {
 
 enum ContainerType {
     Input(Box<dyn InputControl>),
-    Control(Box<dyn Control>)
+    Control(Box<dyn Control>),
 }
 
 pub struct Container {
@@ -18,13 +18,13 @@ pub struct Container {
     controls: Vec<ContainerType>,
     tags: HashMap<String, usize>,
     focus_index: Option<usize>,
-    size: f32
+    size: f32,
 }
 impl Container {
     pub fn horizontal(height: f32) -> Container {
         Container {
             direction: ContainerDirection::Horizontal,
-            controls: vec!(),
+            controls: vec![],
             tags: HashMap::new(),
             focus_index: None,
             size: height,
@@ -33,16 +33,14 @@ impl Container {
     pub fn vertical(width: f32) -> Container {
         Container {
             direction: ContainerDirection::Vertical,
-            controls: vec!(),
+            controls: vec![],
             tags: HashMap::new(),
             focus_index: None,
             size: width,
         }
     }
-    
-    pub fn child_count(&self) -> usize {
-        self.controls.len()
-    }
+
+    pub fn child_count(&self) -> usize { self.controls.len() }
 
     /// Adds a new field to the focus group
     pub fn add_field(&mut self, tag: &str, control: impl InputControl + 'static) {
@@ -63,7 +61,7 @@ impl Container {
                 ContainerType::Input(i) => return Some(&**i),
                 ContainerType::Control(_) => unreachable!(),
             }
-        } 
+        }
         None
     }
 
@@ -72,12 +70,22 @@ impl Container {
         //Try to find current focus
         //Move index based on index and if it exists
         let mut index = match self.focus_index {
-            None => if next { 0 } else { self.child_count() - 1 },
+            None => {
+                if next {
+                    0
+                } else {
+                    self.child_count() - 1
+                }
+            }
             Some(index) => {
                 self.set_focus(index, false);
-                if next { index + 1 } 
-                else if index == 0 { self.child_count() - 1}
-                else { index - 1 }
+                if next {
+                    index + 1
+                } else if index == 0 {
+                    self.child_count() - 1
+                } else {
+                    index - 1
+                }
             }
         };
 
@@ -116,7 +124,7 @@ impl Control for Container {
                 }
 
                 LogicalSize::new(container_size, y - container.top())
-            },
+            }
             ContainerDirection::Horizontal => {
                 let container_size = container.height() * self.size;
                 let mut rect = Rect::point_and_size(top_left, LogicalSize::new(container.width(), container_size));
@@ -129,7 +137,7 @@ impl Control for Container {
                 }
 
                 LogicalSize::new(x - container.left(), container_size)
-            },
+            }
         }
     }
 
@@ -138,11 +146,11 @@ impl Control for Container {
             Actions::Up => {
                 self.move_focus(false);
                 true
-            },
+            }
             Actions::Down => {
                 self.move_focus(true);
                 true
-            },
+            }
             _ => false,
         };
 
@@ -157,11 +165,13 @@ impl Control for Container {
     }
 }
 
-fn render_control(graphics: &mut crate::Graphics,
-                  rect: Rect,
-                  focus_index: Option<usize>,
-                  control: &ContainerType,
-                  current_index: usize) -> crate::LogicalSize {
+fn render_control(
+    graphics: &mut crate::Graphics,
+    rect: Rect,
+    focus_index: Option<usize>,
+    control: &ContainerType,
+    current_index: usize,
+) -> crate::LogicalSize {
     let size = match control {
         ContainerType::Input(i) => i.render(graphics, &rect),
         ContainerType::Control(c) => c.render(graphics, &rect),
@@ -171,7 +181,7 @@ fn render_control(graphics: &mut crate::Graphics,
         if index == current_index {
             let min = *rect.top_left();
             let max = *rect.top_left() + size;
-        
+
             let control = Rect::new(min, max);
             let base = graphics.accent_color();
             let light_factor = graphics.light_shade_factor();

@@ -1,15 +1,13 @@
-use std::fs::{OpenOptions, File};
-use std::sync::Mutex;
 use std::fmt::Debug;
+use std::fs::{File, OpenOptions};
+use std::sync::Mutex;
 
-pub use log::{error, warn, info, trace};
-use log::{Log, Level, LevelFilter, Metadata, Record};
+pub use log::{error, info, trace, warn};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 
 struct YaffeLogger;
 impl Log for YaffeLogger {
-    fn enabled(&self, _: &Metadata) -> bool {
-        true
-    }
+    fn enabled(&self, _: &Metadata) -> bool { true }
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
@@ -28,7 +26,7 @@ impl Log for YaffeLogger {
         }
     }
 
-    fn flush(&self) { }
+    fn flush(&self) {}
 }
 
 pub fn set_log_level(level: &str) {
@@ -82,7 +80,7 @@ impl<T, E: Debug> PanicLogEntry<T> for std::result::Result<T, E> {
     }
 }
 
-impl <T: Default, E: Debug> LogEntry<T> for std::result::Result<T, E> {
+impl<T: Default, E: Debug> LogEntry<T> for std::result::Result<T, E> {
     fn log(self, message: &str) -> T {
         match self {
             Err(e) => {
@@ -140,7 +138,7 @@ impl<T> PanicLogEntry<T> for Option<T> {
         match self {
             Some(t) => t,
             None => {
-                log::error!("None", );
+                log::error!("None",);
                 panic!("encountered unexpected error");
             }
         }

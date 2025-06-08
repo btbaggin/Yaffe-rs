@@ -1,11 +1,11 @@
-use core::ops::Deref;
 use crate::logger::PanicLogEntry;
+use core::ops::Deref;
 
-mod platform;
 mod game;
+mod platform;
 mod schema;
-pub use platform::PlatformInfo;
 pub use game::GameInfo;
+pub use platform::PlatformInfo;
 
 type QueryResult<T> = Result<T, QueryError>;
 #[derive(Debug)]
@@ -20,15 +20,13 @@ pub struct YaffeConnection {
 impl YaffeConnection {
     pub fn new() -> YaffeConnection {
         let connection = sqlite::open("./Yaffe.db").log_and_panic();
-        YaffeConnection { con:  connection }
+        YaffeConnection { con: connection }
     }
 }
 impl Deref for YaffeConnection {
     type Target = sqlite::Connection;
 
-    fn deref(&self) -> &sqlite::Connection {
-        &self.con
-    }
+    fn deref(&self) -> &sqlite::Connection { &self.con }
 }
 
 #[macro_export]
@@ -53,13 +51,14 @@ macro_rules! get_column {
             Ok(v) => v,
             Err(_) => <$ty>::default(),
         }
-
-    }
+    };
 }
 
 /// Runs the provided function for each row returned from the statement
 fn execute_select<F>(mut stmt: sqlite::Statement, mut f: F)
-    where F: FnMut(&sqlite::Statement) {
+where
+    F: FnMut(&sqlite::Statement),
+{
     while let Ok(sqlite::State::Row) = stmt.next() {
         f(&stmt)
     }
@@ -95,9 +94,3 @@ pub fn init_database() -> QueryResult<()> {
 
     Ok(())
 }
-
-
-
-
-
-

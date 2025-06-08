@@ -1,16 +1,16 @@
-use crate::pooled_cache::PooledCache;
-use crate::utils::PhysicalSize;
-use crate::{Rect, LogicalPosition};
-use crate::settings::{SettingsFile, SettingNames};
-use crate::job_system::ThreadSafeJobQueue;
 use crate::assets::{AssetKey, AssetSlot};
-use crate::ui::{get_drawable_text, change_brightness};
+use crate::job_system::ThreadSafeJobQueue;
+use crate::pooled_cache::PooledCache;
+use crate::settings::{SettingNames, SettingsFile};
+use crate::ui::{change_brightness, get_drawable_text};
+use crate::utils::PhysicalSize;
+use crate::{LogicalPosition, Rect};
 use speedy2d::color::Color;
-use yaffe_lib::SettingValue;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
+use yaffe_lib::SettingValue;
 
 pub struct Graphics {
     pub graphics_ptr: *mut speedy2d::Graphics2D,
@@ -33,7 +33,13 @@ impl Graphics {
             asset_cache: RefCell::new(PooledCache::new()),
         }
     }
-    pub unsafe fn set_frame(&mut self, graphics: &mut speedy2d::Graphics2D, scale_factor: f32, size: PhysicalSize, delta_time: f32) {
+    pub unsafe fn set_frame(
+        &mut self,
+        graphics: &mut speedy2d::Graphics2D,
+        scale_factor: f32,
+        size: PhysicalSize,
+        delta_time: f32,
+    ) {
         self.graphics_ptr = graphics;
         self.scale_factor = scale_factor;
         self.bounds = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
@@ -48,12 +54,40 @@ impl Graphics {
         }
     }
 
-    pub fn dark_shade_factor(&self) -> f32 { if let SettingValue::F32(c) = self.cached_settings[&SettingNames::DarkShadeFactor] { c } else  { unreachable!() } }
-    pub fn light_shade_factor(&self) -> f32 { if let SettingValue::F32(c) = self.cached_settings[&SettingNames::LightShadeFactor] { c } else  { unreachable!() } }
-    pub fn accent_color(&self) -> Color { if let SettingValue::Color(c) = self.cached_settings[&SettingNames::AccentColor] { Color::from_rgba(c.0, c.1, c.2, c.3) } else  { unreachable!() } }
-    pub fn font_color(&self) -> Color { if let SettingValue::Color(c) = self.cached_settings[&SettingNames::FontColor] { Color::from_rgba(c.0, c.1, c.2, c.3) } else  { unreachable!() } }
+    pub fn dark_shade_factor(&self) -> f32 {
+        if let SettingValue::F32(c) = self.cached_settings[&SettingNames::DarkShadeFactor] {
+            c
+        } else {
+            unreachable!()
+        }
+    }
+    pub fn light_shade_factor(&self) -> f32 {
+        if let SettingValue::F32(c) = self.cached_settings[&SettingNames::LightShadeFactor] {
+            c
+        } else {
+            unreachable!()
+        }
+    }
+    pub fn accent_color(&self) -> Color {
+        if let SettingValue::Color(c) = self.cached_settings[&SettingNames::AccentColor] {
+            Color::from_rgba(c.0, c.1, c.2, c.3)
+        } else {
+            unreachable!()
+        }
+    }
+    pub fn font_color(&self) -> Color {
+        if let SettingValue::Color(c) = self.cached_settings[&SettingNames::FontColor] {
+            Color::from_rgba(c.0, c.1, c.2, c.3)
+        } else {
+            unreachable!()
+        }
+    }
     pub fn font_size(&self) -> f32 {
-        let size = if let SettingValue::F32(s) = self.cached_settings[&SettingNames::InfoFontSize] { s } else  { unreachable!() };
+        let size = if let SettingValue::F32(s) = self.cached_settings[&SettingNames::InfoFontSize] {
+            s
+        } else {
+            unreachable!()
+        };
         size * self.scale_factor
     }
     pub fn font_unfocused_color(&self) -> Color { change_brightness(&self.font_color(), -0.5) }
@@ -63,7 +97,12 @@ impl Graphics {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_rectangle(rect.to_physical(self.scale_factor), color);
     }
-    pub fn draw_text(&mut self, position: LogicalPosition, color: Color, text: &Rc<speedy2d::font::FormattedTextBlock>) {
+    pub fn draw_text(
+        &mut self,
+        position: LogicalPosition,
+        color: Color,
+        text: &Rc<speedy2d::font::FormattedTextBlock>,
+    ) {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_text(position.to_physical(self.scale_factor), color, text);
     }
@@ -76,10 +115,20 @@ impl Graphics {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_line(pos1.to_physical(self.scale_factor), pos2.to_physical(self.scale_factor), width, color);
     }
-    pub fn draw_text_cropped(&mut self, position: LogicalPosition, rect: Rect, color: Color, text: &Rc<speedy2d::font::FormattedTextBlock>) {
+    pub fn draw_text_cropped(
+        &mut self,
+        position: LogicalPosition,
+        rect: Rect,
+        color: Color,
+        text: &Rc<speedy2d::font::FormattedTextBlock>,
+    ) {
         let graphics = unsafe { &mut *self.graphics_ptr };
-        graphics.draw_text_cropped(position.to_physical(self.scale_factor), rect.to_physical(self.scale_factor), color, text);
-
+        graphics.draw_text_cropped(
+            position.to_physical(self.scale_factor),
+            rect.to_physical(self.scale_factor),
+            color,
+            text,
+        );
     }
     pub fn draw_image(&mut self, rect: crate::Rect, image: crate::assets::Images) {
         let graphics = unsafe { &mut *self.graphics_ptr };
@@ -115,12 +164,8 @@ impl Graphics {
 }
 impl Deref for Graphics {
     type Target = speedy2d::Graphics2D;
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.graphics_ptr }
-    }
+    fn deref(&self) -> &Self::Target { unsafe { &*self.graphics_ptr } }
 }
 impl DerefMut for Graphics {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.graphics_ptr }
-    }
+    fn deref_mut(&mut self) -> &mut Self::Target { unsafe { &mut *self.graphics_ptr } }
 }

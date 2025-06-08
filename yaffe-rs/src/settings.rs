@@ -1,11 +1,10 @@
+use crate::ui::rgba_string;
 use std::collections::HashMap;
-use std::path::Path;
-use std::time::SystemTime;
 use std::convert::AsRef;
 use std::io::Write;
-use crate::ui::rgba_string;
-pub use yaffe_lib::{SettingValue, SettingsResult, SettingLoadError};
-
+use std::path::Path;
+use std::time::SystemTime;
+pub use yaffe_lib::{SettingLoadError, SettingValue, SettingsResult};
 
 macro_rules! stringy_enum {
     (pub enum $name:ident {
@@ -14,7 +13,7 @@ macro_rules! stringy_enum {
         #[derive(Copy, Clone, Hash, PartialEq, Eq)]
         pub enum $name {
             $($value,)+
-        } 
+        }
         const SETTINGS: &[&str] = &[$($display,)+];
 
         impl $name {
@@ -56,8 +55,8 @@ macro_rules! settings_get {
         pub fn $name(&self, setting: crate::settings::SettingNames) -> $ty {
             let key = crate::settings::SettingNames::to_string(setting);
 
-            let value = if let Some(value) = self.settings.get(key) { value.clone() }
-                        else { SettingNames::get_default(key) };
+            let value =
+                if let Some(value) = self.settings.get(key) { value.clone() } else { SettingNames::get_default(key) };
 
             if let $setting(value) = value {
                 return value.clone();
@@ -69,26 +68,29 @@ macro_rules! settings_get {
 
 #[derive(Clone)]
 pub struct SettingsFile {
-    settings: HashMap<String, SettingValue>, 
+    settings: HashMap<String, SettingValue>,
     path: std::path::PathBuf,
     last_write: SystemTime,
 }
 impl SettingsFile {
     pub fn default() -> SettingsFile {
-        SettingsFile { 
-            settings: HashMap::default(), 
-            path: std::path::PathBuf::default(), 
+        SettingsFile {
+            settings: HashMap::default(),
+            path: std::path::PathBuf::default(),
             last_write: SystemTime::now(),
         }
     }
 
     /// Returns all possible settings that can be set and their current (or default) values
     pub fn get_full_settings(&self) -> Vec<(String, SettingValue)> {
-        let mut result = vec!();
+        let mut result = vec![];
         for name in SETTINGS {
             //Get configured value if it exists, otherwise default
-            let value = if let Some(value) = self.settings.get(*name) { value.clone() }
-                        else { SettingNames::get_default(name) };
+            let value = if let Some(value) = self.settings.get(*name) {
+                value.clone()
+            } else {
+                SettingNames::get_default(name)
+            };
 
             result.push((name.to_string(), value));
         }
@@ -100,11 +102,15 @@ impl SettingsFile {
 
         let setting = SettingNames::get_default(name);
         let value = setting_from_string(&setting, value, true)?;
-        match value { 
+        match value {
             //Add or insert new value
-            Some(v) => { self.settings.entry(name.to_string()).and_modify(|e| { *e = v.clone() }).or_insert(v); },
+            Some(v) => {
+                self.settings.entry(name.to_string()).and_modify(|e| *e = v.clone()).or_insert(v);
+            }
             //Value was either removed or the default, don't add it
-            None => { self.settings.remove(name); },
+            None => {
+                self.settings.remove(name);
+            }
         }
         Ok(())
     }
@@ -136,44 +142,59 @@ impl SettingsFile {
     }
 }
 
-pub fn setting_from_string(setting: &SettingValue, value: &str, allow_clear: bool) -> SettingsResult<Option<SettingValue>> {
-    if value.is_empty() { return Ok(None); }
+pub fn setting_from_string(
+    setting: &SettingValue,
+    value: &str,
+    allow_clear: bool,
+) -> SettingsResult<Option<SettingValue>> {
+    if value.is_empty() {
+        return Ok(None);
+    }
 
     let value = match setting {
         SettingValue::Color(c) => {
             let v = color_from_string(value)?;
-            if &v == c && allow_clear { None }
-            else { Some(SettingValue::Color(v)) }
-        },
+            if &v == c && allow_clear {
+                None
+            } else {
+                Some(SettingValue::Color(v))
+            }
+        }
         SettingValue::F32(f) => {
-            let v = value.parse::<f32>()?; 
-            if &v == f && allow_clear { None }
-            else { Some(SettingValue::F32(v)) }
-        },
+            let v = value.parse::<f32>()?;
+            if &v == f && allow_clear {
+                None
+            } else {
+                Some(SettingValue::F32(v))
+            }
+        }
         SettingValue::I32(i) => {
-            let v = value.parse::<i32>()?; 
-            if &v == i && allow_clear { None }
-            else { Some(SettingValue::I32(v)) }
-        },
+            let v = value.parse::<i32>()?;
+            if &v == i && allow_clear {
+                None
+            } else {
+                Some(SettingValue::I32(v))
+            }
+        }
         SettingValue::String(s) => {
-            if s == value && allow_clear { None }
-            else { Some(SettingValue::String(value.to_string())) }
-        },
+            if s == value && allow_clear {
+                None
+            } else {
+                Some(SettingValue::String(value.to_string()))
+            }
+        }
     };
     Ok(value)
 }
 
-
 /// Loads settings from a file path
 pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<SettingsFile> {
-    let mut path_buf = std::path::PathBuf::new(); path_buf.push(path.clone());
+    let mut path_buf = std::path::PathBuf::new();
+    path_buf.push(path.clone());
     let last_write = std::fs::metadata(path_buf.clone())?.modified();
-    
-    let settings = SettingsFile { 
-        settings: load_settings_from_path(path)?, 
-        path: path_buf, 
-        last_write: last_write.unwrap(), 
-    };
+
+    let settings =
+        SettingsFile { settings: load_settings_from_path(path)?, path: path_buf, last_write: last_write.unwrap() };
 
     Ok(settings)
 }
@@ -197,14 +218,14 @@ pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<bool> {
 
 /// Loads settings from a file path
 pub fn load_settings_from_path<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<HashMap<String, SettingValue>> {
-    let mut path_buf = std::path::PathBuf::new(); path_buf.push(path);
+    let mut path_buf = std::path::PathBuf::new();
+    path_buf.push(path);
     let data = std::fs::read_to_string(path_buf.clone())?;
-    
+
     let mut current_settings = HashMap::new();
     for line in data.lines() {
         //# denotes a comment
         if !line.starts_with('#') && !line.is_empty() {
-
             let (key, type_value) = line.split_at(line.find(':').ok_or(SettingLoadError::IncorrectFormat)?);
             let (ty, value) = type_value.split_at(type_value.find('=').ok_or(SettingLoadError::IncorrectFormat)?);
 
@@ -226,8 +247,10 @@ pub fn load_settings_from_path<P: Clone + AsRef<Path>>(path: P) -> SettingsResul
 
 pub fn color_from_string(value: &str) -> SettingsResult<(f32, f32, f32, f32)> {
     let values: Vec<&str> = value.split(',').collect();
-    Ok((values[0].trim().parse::<f32>()?, 
-                values[1].trim().parse::<f32>()?, 
-                values[2].trim().parse::<f32>()?, 
-                values[3].trim().parse::<f32>()?))
+    Ok((
+        values[0].trim().parse::<f32>()?,
+        values[1].trim().parse::<f32>()?,
+        values[2].trim().parse::<f32>()?,
+        values[3].trim().parse::<f32>()?,
+    ))
 }

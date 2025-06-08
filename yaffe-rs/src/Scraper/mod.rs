@@ -1,9 +1,9 @@
+use crate::data::{GameInfo, PlatformInfo};
+use crate::logger::{error, LogEntry};
+use reqwest::blocking::{Client, RequestBuilder, Response};
 use serde_json::Value;
-use reqwest::blocking::{Response, RequestBuilder, Client};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use crate::data::{GameInfo, PlatformInfo};
-use crate::logger::{LogEntry, error};
 
 type ServiceResult<T> = Result<T, ServiceError>;
 
@@ -13,15 +13,12 @@ const GOOGLE_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_byte
 mod games_db;
 pub use games_db::{search_game, search_platform};
 
-
 pub struct GameScrapeResult {
     pub info: GameInfo,
     pub boxart: PathBuf,
 }
 impl crate::ui::ListItem for GameScrapeResult {
-    fn to_display(&self) -> String {
-        self.info.name.clone()
-    }
+    fn to_display(&self) -> String { self.info.name.clone() }
 }
 
 pub struct PlatformScrapeResult {
@@ -30,9 +27,7 @@ pub struct PlatformScrapeResult {
     pub boxart: PathBuf,
 }
 impl crate::ui::ListItem for PlatformScrapeResult {
-    fn to_display(&self) -> String {
-        self.info.platform.clone()
-    }
+    fn to_display(&self) -> String { self.info.platform.clone() }
 }
 
 pub struct ServiceResponse<T> {
@@ -45,29 +40,17 @@ pub struct ServiceResponse<T> {
 
 impl<T> ServiceResponse<T> {
     fn new(id: u64, request: String, count: usize, exact_index: Option<usize>) -> ServiceResponse<T> {
-        ServiceResponse {
-            id,
-            request,
-            count,
-            exact_index,
-            results: vec!(),
-        }
+        ServiceResponse { id, request, count, exact_index, results: vec![] }
     }
 
     fn no_results(id: u64) -> ServiceResponse<T> {
-        ServiceResponse {
-            id,
-            request: String::new(),
-            count: 0,
-            exact_index: None,
-            results: vec!()
-        }
+        ServiceResponse { id, request: String::new(), count: 0, exact_index: None, results: vec![] }
     }
 
     pub fn get_exact(&self) -> Option<&T> {
         if let Some(i) = self.exact_index {
             Some(&self.results[i])
-        } else { 
+        } else {
             None
         }
     }
@@ -90,9 +73,12 @@ impl From<serde_json::Error> for ServiceError {
     fn from(_: serde_json::Error) -> Self { ServiceError::InvalidFormat }
 }
 
-
 fn get_null_string<'a>(value: &'a Value, element: &'a str) -> &'a str {
-    if value[element].is_null() { "" } else { value[element].as_str().unwrap() }
+    if value[element].is_null() {
+        ""
+    } else {
+        value[element].as_str().unwrap()
+    }
 }
 
 #[macro_export]
@@ -122,12 +108,12 @@ pub fn send_request<T: serde::ser::Serialize + ?Sized>(url: &str, parms: Option<
 fn send_and_return(builder: RequestBuilder) -> Result<Response, ServiceError> {
     match builder.send() {
         Ok(resp) => {
-            if resp.status().is_success() { 
+            if resp.status().is_success() {
                 return Ok(resp);
             }
             Err(ServiceError::BadStatus(resp.status()))
         }
-        Err(e) => { Err(ServiceError::NetworkError(e)) }
+        Err(e) => Err(ServiceError::NetworkError(e)),
     }
 }
 
@@ -166,11 +152,13 @@ pub fn check_for_updates() -> ServiceResult<bool> {
             return Err(ServiceError::Other("yaffe-rs.exe not found in remote repository"));
         }
 
-        let url = Path::new("https://www.googleapis.com/drive/v3/files/").join(exe_file.unwrap()).join(format!("?alt=media&key={GOOGLE_API_KEY}"));
+        let url = Path::new("https://www.googleapis.com/drive/v3/files/")
+            .join(exe_file.unwrap())
+            .join(format!("?alt=media&key={GOOGLE_API_KEY}"));
         let file = Path::new(crate::UPDATE_FILE_PATH);
         download_file(url, file.to_owned());
 
-        return Ok(true)
+        return Ok(true);
     }
 
     Ok(false)

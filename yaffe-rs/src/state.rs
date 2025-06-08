@@ -1,23 +1,22 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Mutex;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 use crate::assets::AssetKey;
+use crate::data::GameInfo;
+use crate::get_widget_id;
+use crate::job_system::ThreadSafeJobQueue;
+use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
 use crate::overlay::OverlayWindow;
 use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
-use crate::ui::{WidgetId, Modal};
-use crate::widgets::{PlatformList};
-use crate::job_system::ThreadSafeJobQueue;
 use crate::settings::SettingsFile;
-use crate::data::GameInfo;
-use crate::get_widget_id;
-use yaffe_lib::{PluginFilter, SelectedAction, YaffePluginItem};
+use crate::ui::{Modal, WidgetId};
+use crate::widgets::PlatformList;
 use crate::DeferredAction;
-use crate::logger::{PanicLogEntry, LogEntry, UserMessage};
-
+use yaffe_lib::{PluginFilter, SelectedAction, YaffePluginItem};
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum GroupType {
@@ -26,13 +25,9 @@ pub enum GroupType {
     Recents,
 }
 impl GroupType {
-    pub fn allow_edit(&self) -> bool {
-        matches!(self, GroupType::Emulator)
-    }
+    pub fn allow_edit(&self) -> bool { matches!(self, GroupType::Emulator) }
 
-    pub fn show_count(&self) -> bool {
-        matches!(self, GroupType::Emulator | GroupType::Recents)
-    }
+    pub fn show_count(&self) -> bool { matches!(self, GroupType::Emulator | GroupType::Recents) }
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +35,7 @@ pub struct MetadataSearch {
     pub name: String,
     pub options: Vec<String>,
     pub mask: usize,
-    pub selected: Option<usize>
+    pub selected: Option<usize>,
 }
 impl MetadataSearch {
     pub fn new(name: &str, options: &[&str]) -> MetadataSearch {
@@ -53,12 +48,7 @@ impl MetadataSearch {
     }
 
     pub fn from_filter(filter: &PluginFilter) -> MetadataSearch {
-        MetadataSearch {
-            name: filter.name.to_string(),
-            options: filter.options.clone(),
-            mask: 0,
-            selected: None,
-        }
+        MetadataSearch { name: filter.name.to_string(), options: filter.options.clone(), mask: 0, selected: None }
     }
 
     pub fn from_range(name: &str, start: &str, end: &str) -> MetadataSearch {
@@ -70,11 +60,9 @@ impl MetadataSearch {
         }
     }
 
-    pub fn get_selected(&self) -> Option<String> {
-        self.selected.map(|i| self.options[i].clone())
-    }
+    pub fn get_selected(&self) -> Option<String> { self.selected.map(|i| self.options[i].clone()) }
 
-    pub fn set_mask(&mut self,  tiles: &[Tile]) {
+    pub fn set_mask(&mut self, tiles: &[Tile]) {
         let mut mask = 0usize;
         for tile in tiles.iter() {
             if let Some(m) = tile.get_metadata(&self.name) {
@@ -92,11 +80,7 @@ impl MetadataSearch {
     }
 
     pub fn increment_index(&mut self, amount: isize) {
-        let mut i = if let Some(i) = self.selected {
-            i as isize
-        } else {
-            -1
-        };
+        let mut i = if let Some(i) = self.selected { i as isize } else { -1 };
         //self.index must be assigned in all paths of this loop
         //this loop is guaranteed to end because either the index will hit -1 or self.end
         loop {
@@ -115,18 +99,17 @@ impl MetadataSearch {
     }
 
     pub fn item_is_visible(&self, tile: &Tile) -> bool {
-        if let Some(i) = self.selected { 
+        if let Some(i) = self.selected {
             if let Some(m) = tile.get_metadata(&self.name) {
                 let m = m.to_ascii_lowercase();
 
                 let o = self.options[i].to_ascii_lowercase();
                 if m.starts_with(&o) || m == o {
-                            return true;
+                    return true;
                 }
             }
             false
-        }
-        else { 
+        } else {
             true
         }
     }
@@ -135,9 +118,7 @@ impl MetadataSearch {
         let start_ascii = start.chars().next().unwrap() as u8;
         let end_ascii = end.chars().next().unwrap() as u8;
 
-        (start_ascii..=end_ascii)
-            .map(|c| String::from_utf8(vec![c]).unwrap_or_default())
-            .collect()
+        (start_ascii..=end_ascii).map(|c| String::from_utf8(vec![c]).unwrap_or_default()).collect()
     }
 }
 
@@ -146,56 +127,49 @@ pub struct TileGroup {
     pub name: String,
     pub tiles: Vec<Tile>,
     pub kind: GroupType,
-    pub search: Vec<MetadataSearch>
+    pub search: Vec<MetadataSearch>,
 }
 impl TileGroup {
     pub fn emulator(id: i64, name: String) -> TileGroup {
         super::TileGroup {
             id,
             name,
-            tiles: vec!(),
+            tiles: vec![],
             kind: GroupType::Emulator,
-            search: vec!(
+            search: vec![
                 MetadataSearch::from_range("Players", "1", "4"),
-                MetadataSearch::new("Rating", &[
-                    "E - Everyone",
-                    "E10+ - Everyone 10+",
-                    "T - Teen",
-                    "M - Mature 17+",
-                    "AO - Adult Only 18+",
-                    "RP - Rating Pending",
-                    "Not Rated",
-                    "Restricted"
-                ]),
-            ),
+                MetadataSearch::new(
+                    "Rating",
+                    &[
+                        "E - Everyone",
+                        "E10+ - Everyone 10+",
+                        "T - Teen",
+                        "M - Mature 17+",
+                        "AO - Adult Only 18+",
+                        "RP - Rating Pending",
+                        "Not Rated",
+                        "Restricted",
+                    ],
+                ),
+            ],
         }
     }
 
     pub fn recents(name: String) -> TileGroup {
-        super::TileGroup {
-            id: -1,
-            name,
-            tiles: vec!(),
-            kind: GroupType::Recents,
-            search: vec!(),
-        }
+        super::TileGroup { id: -1, name, tiles: vec![], kind: GroupType::Recents, search: vec![] }
     }
 
     pub fn plugin(plugin_index: usize, name: String, filters: &[PluginFilter]) -> TileGroup {
         super::TileGroup {
             id: plugin_index as i64,
             name,
-            tiles: vec!(),
+            tiles: vec![],
             kind: GroupType::Plugin(plugin_index),
-            search: filters.iter()
-                .map(MetadataSearch::from_filter)
-                .collect(),
+            search: filters.iter().map(MetadataSearch::from_filter).collect(),
         }
     }
 
-    pub fn get_rom_path(&self) -> std::path::PathBuf {
-        std::path::Path::new("./Roms").join(&self.name)
-    }
+    pub fn get_rom_path(&self) -> std::path::PathBuf { std::path::Path::new("./Roms").join(&self.name) }
 }
 
 pub struct Tile {
@@ -215,7 +189,7 @@ impl Tile {
             yaffe_lib::PathType::File(s) => {
                 let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
                 crate::assets::AssetKey::File(canon)
-            },
+            }
         };
 
         Self {
@@ -235,7 +209,8 @@ impl Tile {
         metadata.insert(String::from("Rating"), info.rating.clone());
         metadata.insert(String::from("Released"), info.released.clone());
 
-        let restricted =  matches!(info.rating.as_str(), "M - Mature 17+" | "Restricted" | "Not Rated" | "AO - Adult Only 18+");
+        let restricted =
+            matches!(info.rating.as_str(), "M - Mature 17+" | "Restricted" | "Not Rated" | "AO - Adult Only 18+");
         Self {
             file: info.filename.clone(),
             name: info.name.clone(),
@@ -261,12 +236,16 @@ impl Tile {
             if let Some(Some(process)) = child.display_failure_deferred("Unable to start process", handler) {
                 let mut overlay = state.overlay.borrow_mut();
                 overlay.set_process(process);
-                //We could refresh so our recent games page updates, but I dont think that's desirable   
+                //We could refresh so our recent games page updates, but I dont think that's desirable
             }
         }
     }
 
-    fn get_tile_process(&self, state: &YaffeState, group: &TileGroup) -> Result<Option<Box<dyn ExternalProcess>>, Box<dyn std::error::Error>> {
+    fn get_tile_process(
+        &self,
+        state: &YaffeState,
+        group: &TileGroup,
+    ) -> Result<Option<Box<dyn ExternalProcess>>, Box<dyn std::error::Error>> {
         let child: Box<dyn ExternalProcess> = match group.kind {
             GroupType::Plugin(index) => {
                 let plugin = &state.plugins[index];
@@ -276,17 +255,15 @@ impl Tile {
                         // TODO
                         // handler.load_plugin();
                         // return None;
-                        return Ok(None)
-                    },
+                        return Ok(None);
+                    }
                     SelectedAction::Webview(site) => {
                         let child = crate::utils::yaffe_helper("webview", &[&site]);
                         Box::new(child?) as Box<dyn ExternalProcess>
-                    },
-                    SelectedAction::Process(mut p) => {
-                        Box::new(p.spawn()?) as Box<dyn ExternalProcess>
                     }
+                    SelectedAction::Process(mut p) => Box::new(p.spawn()?) as Box<dyn ExternalProcess>,
                 }
-            },
+            }
             GroupType::Emulator | GroupType::Recents => {
                 let id = group.id;
                 //This should never fail since we got it from the database
@@ -297,7 +274,9 @@ impl Tile {
                 let exe_path = group.get_rom_path().join(&self.file);
 
                 process = process.arg(exe_path.to_str().unwrap());
-                if !args.is_empty() { process = process.args(args.split(' ')); }
+                if !args.is_empty() {
+                    process = process.args(args.split(' '));
+                }
                 Box::new(process.spawn()?) as Box<dyn ExternalProcess>
             }
         };
@@ -310,15 +289,10 @@ pub struct SelectedItem {
     pub tile_index: usize,
 }
 impl SelectedItem {
-    pub fn new() -> SelectedItem {
-        SelectedItem {
-            group_index: 0,
-            tile_index: 0,
-        }
-    }
+    pub fn new() -> SelectedItem { SelectedItem { group_index: 0, tile_index: 0 } }
 
     pub fn prev_platform(&mut self) {
-        if self.group_index > 0 { 
+        if self.group_index > 0 {
             self.group_index -= 1;
             self.tile_index = 0;
             // handler.load_plugin(crate::plugins::NavigationAction::Load);
@@ -326,7 +300,7 @@ impl SelectedItem {
     }
 
     pub fn next_platform(&mut self, max: usize) {
-        if self.group_index < max - 1 { 
+        if self.group_index < max - 1 {
             self.group_index += 1;
             self.tile_index = 0;
             // handler.load_plugin(crate::plugins::NavigationAction::Load);
@@ -340,7 +314,7 @@ pub trait ExternalProcess {
 }
 impl ExternalProcess for std::process::Child {
     fn is_running(&mut self) -> bool {
-        match self.try_wait() { 
+        match self.try_wait() {
             Ok(None) => true,
             Ok(Some(_)) => false,
             Err(_) => {
@@ -350,9 +324,7 @@ impl ExternalProcess for std::process::Child {
             }
         }
     }
-    fn kill(&mut self) -> std::io::Result<()> {
-        self.kill()
-    }
+    fn kill(&mut self) -> std::io::Result<()> { self.kill() }
 }
 // impl<T> ExternalProcess for WebView<'_, T> {
 //     fn is_running(&mut self) -> bool {
@@ -384,18 +356,16 @@ pub struct YaffeState {
     pub running: bool,
 }
 impl YaffeState {
-    pub fn new(overlay: Rc<RefCell<OverlayWindow>>, 
-           settings: SettingsFile, 
-           queue: ThreadSafeJobQueue) -> YaffeState {
+    pub fn new(overlay: Rc<RefCell<OverlayWindow>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
         YaffeState {
             overlay,
             selected: SelectedItem::new(),
-            groups: vec!(),
-            plugins: vec!(),
+            groups: vec![],
+            plugins: vec![],
             filter: None,
             focused_widget: get_widget_id!(PlatformList),
             restricted_mode: RestrictedMode::Off,
-            modals: Mutex::new(vec!()),
+            modals: Mutex::new(vec![]),
             toasts: HashMap::new(),
             queue,
             refresh_list: true,
@@ -404,21 +374,17 @@ impl YaffeState {
         }
     }
 
-    pub fn get_selected_group(&self) -> &TileGroup {
-        &self.groups[self.selected.group_index]
-    }
+    pub fn get_selected_group(&self) -> &TileGroup { &self.groups[self.selected.group_index] }
 
     pub fn get_selected_tile(&self) -> Option<&Tile> {
         let p = &self.get_selected_group();
-        if p.tiles.len() > self.selected.tile_index { 
+        if p.tiles.len() > self.selected.tile_index {
             return Some(&p.tiles[self.selected.tile_index]);
         }
         None
     }
 
-    pub fn find_group(&self, id: i64) -> Option<&TileGroup> {
-        self.groups.iter().find(|p| p.id == id)
-    }
+    pub fn find_group(&self, id: i64) -> Option<&TileGroup> { self.groups.iter().find(|p| p.id == id) }
 
     pub fn start_job(&self, job: crate::Job) {
         let lock = self.queue.lock().log_and_panic();

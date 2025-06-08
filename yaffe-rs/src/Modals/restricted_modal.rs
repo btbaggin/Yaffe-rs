@@ -1,25 +1,21 @@
-use crate::{Actions, LogicalPosition, LogicalSize, Rect};
-use crate::modals::{ModalResult, ModalContent};
+use crate::modals::{ModalContent, ModalResult};
 use crate::restrictions::RestrictedPasscode;
-use crate::ui::{MARGIN, ModalSize};
+use crate::ui::{ModalSize, MARGIN};
+use crate::{Actions, LogicalPosition, LogicalSize, Rect};
 use std::hash::{Hash, Hasher};
 
 pub struct SetRestrictedModal {
     pass: RestrictedPasscode,
 }
 impl SetRestrictedModal {
-    pub fn new() -> SetRestrictedModal {
-        SetRestrictedModal { pass: RestrictedPasscode::default(), }
-    }
+    pub fn new() -> SetRestrictedModal { SetRestrictedModal { pass: RestrictedPasscode::default() } }
 
-    pub fn get_passcode(&self) -> RestrictedPasscode {
-        self.pass
-    }
+    pub fn get_passcode(&self) -> RestrictedPasscode { self.pass }
 }
 
 impl ModalContent for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize { 
+    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
         let height = graphics.font_size() + MARGIN;
         LogicalSize::new(Self::modal_width(rect, ModalSize::Third), height)
     }
@@ -29,7 +25,7 @@ impl ModalContent for SetRestrictedModal {
             Actions::Accept => return ModalResult::Ok,
             Actions::Back => return ModalResult::Cancel,
             Actions::KeyPress(crate::input::InputType::Char(code)) => *code,
-            _ => action_to_char(action)
+            _ => action_to_char(action),
         };
         self.pass.add_digit(code);
         ModalResult::None
@@ -40,7 +36,11 @@ impl ModalContent for SetRestrictedModal {
 
         let item_label = crate::ui::get_drawable_text(graphics, font_size, "*");
         for i in 0..self.pass.len() {
-            graphics.draw_text(LogicalPosition::new(rect.left() + i as f32 * font_size, rect.top()), graphics.font_color(), &item_label);
+            graphics.draw_text(
+                LogicalPosition::new(rect.left() + i as f32 * font_size, rect.top()),
+                graphics.font_color(),
+                &item_label,
+            );
         }
     }
 }

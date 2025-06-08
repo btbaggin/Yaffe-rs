@@ -1,7 +1,6 @@
-
+use std::cmp::Eq;
 use std::collections::hash_map::Keys;
 use std::collections::{HashMap, LinkedList};
-use std::cmp::Eq;
 use std::hash::Hash;
 use std::mem::MaybeUninit;
 use std::sync::Mutex;
@@ -10,22 +9,19 @@ pub type PooledCacheIndex = (usize, usize);
 
 struct CachePool<const C: usize, T: Sized> {
     count: usize,
-    data: [Option<T>; C]
+    data: [Option<T>; C],
 }
 impl<const C: usize, T: Sized> CachePool<C, T> {
     fn new(item: T) -> CachePool<C, T> {
         let mut data: [MaybeUninit<Option<T>>; C] = unsafe { MaybeUninit::uninit().assume_init() };
-        
+
         for p in &mut data[..] {
             p.write(None);
         }
         let elem = &mut data[0];
         *elem = MaybeUninit::new(Some(item));
 
-        CachePool { 
-            count: 1, 
-            data: unsafe { MaybeUninit::array_assume_init(data) },
-        }
+        CachePool { count: 1, data: unsafe { MaybeUninit::array_assume_init(data) } }
     }
 
     fn add(&mut self, item: T) -> usize {
@@ -47,11 +43,7 @@ pub struct PooledCache<const C: usize, K: Eq + Hash, T> {
 }
 impl<const C: usize, K: Eq + Hash, T> PooledCache<C, K, T> {
     pub fn new() -> PooledCache<C, K, T> {
-        PooledCache { 
-            map: HashMap::new(),
-            data: LinkedList::new(),
-            lock: Mutex::new(()),
-        }
+        PooledCache { map: HashMap::new(), data: LinkedList::new(), lock: Mutex::new(()) }
     }
 
     pub fn get(&self, file: &K) -> Option<&T> {

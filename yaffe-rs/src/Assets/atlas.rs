@@ -1,23 +1,29 @@
-use std::convert::TryInto;
-use std::rc::Rc;
-use speedy2d::image::ImageHandle;
+use super::{AssetKey, AssetSlot, Images, YaffeTexture};
+use crate::logger::PanicLogEntry;
 use crate::pooled_cache::PooledCache;
 use crate::PhysicalRect;
-use crate::logger::PanicLogEntry;
-use super::{AssetSlot, YaffeTexture, AssetKey, Images};
+use speedy2d::image::ImageHandle;
+use std::convert::TryInto;
+use std::rc::Rc;
 
 macro_rules! read_type {
     ($ty:ty, $file:expr, $index:expr) => {{
-            let size = std::mem::size_of::<$ty>();
-            let value = <$ty>::from_le_bytes($file[$index..($index + size)].try_into().unwrap());
-            $index += size;
-            value
-        }};
+        let size = std::mem::size_of::<$ty>();
+        let value = <$ty>::from_le_bytes($file[$index..($index + size)].try_into().unwrap());
+        $index += size;
+        value
+    }};
 }
 
-pub fn load_texture_atlas<F>(map: &mut PooledCache<32, AssetKey, AssetSlot>, image: Rc<ImageHandle>, path: &str, image_path: &str, image_map: F)
-    where F: Fn(&str) -> Images {
-
+pub fn load_texture_atlas<F>(
+    map: &mut PooledCache<32, AssetKey, AssetSlot>,
+    image: Rc<ImageHandle>,
+    path: &str,
+    image_path: &str,
+    image_map: F,
+) where
+    F: Fn(&str) -> Images,
+{
     let file = std::fs::read(path).log_and_panic();
     let mut index = 0;
     let total_width = read_type!(i32, file, index) as f32;
@@ -28,7 +34,9 @@ pub fn load_texture_atlas<F>(map: &mut PooledCache<32, AssetKey, AssetSlot>, ima
         let mut name = String::from("");
         loop {
             let c = read_type!(u8, file, index);
-            if c == 0 || index >= file.len() { break; }
+            if c == 0 || index >= file.len() {
+                break;
+            }
 
             name.push(c as char);
         }

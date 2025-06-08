@@ -1,8 +1,8 @@
+use super::{execute_select, execute_select_once, execute_update, QueryError, QueryResult, YaffeConnection};
 use crate::create_statement;
-use super::{YaffeConnection, QueryResult, QueryError, execute_select, execute_select_once, execute_update};
-use crate::{Tile, get_column};
+use crate::{get_column, Tile};
 
-crate::table_struct! (
+crate::table_struct!(
     pub struct GameInfo {
         id: i64,
         pub name: String,
@@ -17,9 +17,16 @@ crate::table_struct! (
 );
 impl GameInfo {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(id: i64, name: String, overview: String, players: i64,
-               rating: String, released: String,
-               filename: String, platform: i64) -> GameInfo {
+    pub fn new(
+        id: i64,
+        name: String,
+        overview: String,
+        players: i64,
+        rating: String,
+        released: String,
+        filename: String,
+        platform: i64,
+    ) -> GameInfo {
         GameInfo { id, name, overview, players, filename, rating, released, platform, lastrun: 0 }
     }
 
@@ -43,12 +50,10 @@ impl GameInfo {
 
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_ALL_GAMES, platform);
-    
-        let mut result = vec!();
-        execute_select(stmt, |r| {
-            result.push(GameInfo::from_row(r, platform))
-        });
-    
+
+        let mut result = vec![];
+        execute_select(stmt, |r| result.push(GameInfo::from_row(r, platform)));
+
         result
     }
 
@@ -74,7 +79,7 @@ impl GameInfo {
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_GET_RECENT_GAMES, max);
 
-        let mut result = vec!();
+        let mut result = vec![];
         execute_select(stmt, |r| {
             let name = get_column!(r, String, "name");
             let platform_name = get_column!(r, String, "platform");
@@ -99,7 +104,17 @@ impl GameInfo {
         crate::logger::info!("Inserting new game into database {}", game.name);
 
         let con = YaffeConnection::new();
-        let stmt = create_statement!(con, QS_ADD_GAME, game.id, game.platform, &*game.name, &*game.overview, game.players, &*game.rating, &*game.filename);
+        let stmt = create_statement!(
+            con,
+            QS_ADD_GAME,
+            game.id,
+            game.platform,
+            &*game.name,
+            &*game.overview,
+            game.players,
+            &*game.rating,
+            &*game.filename
+        );
 
         execute_update(stmt)
     }
@@ -115,7 +130,7 @@ impl GameInfo {
 
         let con = YaffeConnection::new();
         let stmt = create_statement!(con, QS_UPDATE_GAME_LAST_RUN, id, file);
-        
+
         execute_update(stmt)
     }
 }

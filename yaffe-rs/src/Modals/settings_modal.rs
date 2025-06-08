@@ -1,8 +1,8 @@
-use crate::{YaffeState, Actions, Rect};
+use crate::logger::{LogEntry, UserMessage};
 use crate::modals::*;
-use crate::ui::{Container, TextBox, Control, rgba_string, CheckBox};
-use crate::logger::{UserMessage, LogEntry};
-use crate::settings::{SettingsFile, SettingValue};
+use crate::settings::{SettingValue, SettingsFile};
+use crate::ui::{rgba_string, CheckBox, Container, Control, TextBox};
+use crate::{Actions, Rect, YaffeState};
 use std::str::FromStr;
 
 const STARTUP_TASK: &str = "Yaffe";
@@ -18,7 +18,7 @@ impl SettingsModal {
         let set = crate::os::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
         controls.add_field("run_at_startup", CheckBox::new("run_at_startup".to_string(), set));
 
-        let mut names = vec!();
+        let mut names = vec![];
         names.push("run_at_startup".to_string());
 
         setting_names.sort_by(|x, y| x.0.cmp(&y.0));
@@ -45,9 +45,7 @@ impl ModalContent for SettingsModal {
         LogicalSize::new(Self::modal_width(rect, ModalSize::Half), height)
     }
 
-    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
-        self.settings.render(graphics, &rect);
-    }
+    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) { self.settings.render(graphics, &rect); }
 
     fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
         self.settings.action(action);
@@ -55,7 +53,12 @@ impl ModalContent for SettingsModal {
     }
 }
 
-pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
+pub fn on_settings_close(
+    state: &mut YaffeState,
+    result: ModalResult,
+    content: &dyn ModalContent,
+    _: &mut crate::DeferredAction,
+) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<SettingsModal>().unwrap();
 
@@ -67,12 +70,14 @@ pub fn on_settings_close(state: &mut YaffeState, result: ModalResult, content: &
                 "run_at_startup" => {
                     let value = bool::from_str(control.value()).unwrap();
                     crate::os::set_run_at_startup(STARTUP_TASK, value).display_failure("Unable to save settings", state)
-                },
+                }
                 "logging_level" => {
                     crate::logger::set_log_level(control.value());
                     state.settings.set_setting(name, control.value()).display_failure("Unable to save settings", state)
-                },
-                _ => state.settings.set_setting(name, control.value()).display_failure("Unable to save settings", state),
+                }
+                _ => {
+                    state.settings.set_setting(name, control.value()).display_failure("Unable to save settings", state)
+                }
             };
         }
 

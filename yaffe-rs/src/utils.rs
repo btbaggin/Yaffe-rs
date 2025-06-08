@@ -1,9 +1,8 @@
-
 use std::process::Stdio;
 
 use speedy2d::dimen::Vector2;
 
-pub type LogicalSize  = LogicalPosition;
+pub type LogicalSize = LogicalPosition;
 pub type PhysicalSize = PhysicalPosition;
 
 #[derive(Clone, Copy, Debug)]
@@ -14,9 +13,7 @@ pub struct LogicalPosition {
 
 impl LogicalPosition {
     #[inline]
-    pub const fn new(x: f32, y: f32) -> Self {
-        LogicalSize { x, y }
-    }
+    pub const fn new(x: f32, y: f32) -> Self { LogicalSize { x, y } }
 }
 impl LogicalPosition {
     #[inline]
@@ -29,30 +26,22 @@ impl LogicalPosition {
 impl std::ops::Add for LogicalPosition {
     type Output = LogicalPosition;
 
-    fn add(self, other: LogicalPosition) -> Self {
-        LogicalPosition::new(self.x + other.x, self.y + other.y)
-    }
+    fn add(self, other: LogicalPosition) -> Self { LogicalPosition::new(self.x + other.x, self.y + other.y) }
 }
 impl std::ops::Sub for LogicalPosition {
     type Output = LogicalPosition;
 
-    fn sub(self, other: LogicalPosition) -> Self {
-        LogicalPosition::new(self.x - other.x, self.y - other.y)
-    }
+    fn sub(self, other: LogicalPosition) -> Self { LogicalPosition::new(self.x - other.x, self.y - other.y) }
 }
 impl std::ops::Div<f32> for LogicalPosition {
     type Output = LogicalPosition;
     #[inline]
-    fn div(self, rhs: f32) -> Self::Output {
-        LogicalPosition::new(self.x / rhs, self.y / rhs)
-    }
+    fn div(self, rhs: f32) -> Self::Output { LogicalPosition::new(self.x / rhs, self.y / rhs) }
 }
 impl std::ops::Mul<f32> for LogicalPosition {
     type Output = LogicalPosition;
     #[inline]
-    fn mul(self, rhs: f32) -> Self::Output {
-        LogicalPosition::new(self.x * rhs, self.y * rhs)
-    }
+    fn mul(self, rhs: f32) -> Self::Output { LogicalPosition::new(self.x * rhs, self.y * rhs) }
 }
 
 #[derive(Clone, Copy)]
@@ -63,16 +52,14 @@ pub struct PhysicalPosition {
 
 impl PhysicalPosition {
     #[inline]
-    pub const fn new(x: f32, y: f32) -> Self {
-        PhysicalPosition { x, y }
-    }
+    pub const fn new(x: f32, y: f32) -> Self { PhysicalPosition { x, y } }
 }
 impl PhysicalPosition {
     #[inline]
     pub fn from_logical<T: Into<LogicalPosition>>(logical: T, scale_factor: f32) -> Self {
         logical.into().to_physical(scale_factor)
     }
-    
+
     #[inline]
     pub fn to_logical(self, scale_factor: f32) -> LogicalPosition {
         let x = self.x / scale_factor;
@@ -81,9 +68,7 @@ impl PhysicalPosition {
     }
 }
 impl From<PhysicalPosition> for Vector2<f32> {
-    fn from(other: PhysicalPosition) -> Self {
-        Vector2::new(other.x, other.y)
-    }
+    fn from(other: PhysicalPosition) -> Self { Vector2::new(other.x, other.y) }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -105,12 +90,10 @@ impl Rect {
     pub fn height(&self) -> f32 { self.bottom_right.y - self.top_left.y }
     pub fn size(&self) -> LogicalSize { LogicalSize::new(self.width(), self.height()) }
 
-    pub fn new(top_left: LogicalPosition, bottom_right: LogicalPosition) -> Rect {
-        Rect { top_left, bottom_right }
-    }
+    pub fn new(top_left: LogicalPosition, bottom_right: LogicalPosition) -> Rect { Rect { top_left, bottom_right } }
     pub fn from_tuples(top_left: (f32, f32), bottom_right: (f32, f32)) -> Rect {
-        Rect { 
-            top_left: LogicalPosition::new(top_left.0, top_left.1), 
+        Rect {
+            top_left: LogicalPosition::new(top_left.0, top_left.1),
             bottom_right: LogicalPosition::new(bottom_right.0, bottom_right.1),
         }
     }
@@ -135,9 +118,7 @@ pub trait Transparent {
     fn with_alpha(&self, alpha: f32) -> Self;
 }
 impl Transparent for speedy2d::color::Color {
-    fn with_alpha(&self, alpha: f32) -> Self {
-        speedy2d::color::Color::from_rgba(self.r(), self.g(), self.b(), alpha)
-    }
+    fn with_alpha(&self, alpha: f32) -> Self { speedy2d::color::Color::from_rgba(self.r(), self.g(), self.b(), alpha) }
 }
 
 pub trait ScaleFactor {
@@ -145,12 +126,8 @@ pub trait ScaleFactor {
     fn to_physical(&self, graphics: &crate::Graphics) -> f32;
 }
 impl ScaleFactor for f32 {
-    fn to_logical(&self, graphics: &crate::Graphics) -> f32 {
-        self / graphics.scale_factor
-    }
-    fn to_physical(&self, graphics: &crate::Graphics) -> f32 {
-        self * graphics.scale_factor
-    }
+    fn to_logical(&self, graphics: &crate::Graphics) -> f32 { self / graphics.scale_factor }
+    fn to_physical(&self, graphics: &crate::Graphics) -> f32 { self * graphics.scale_factor }
 }
 
 pub fn yaffe_helper(action: &str, args: &[&str]) -> std::io::Result<std::process::Child> {

@@ -1,4 +1,4 @@
-use super::{execute_select, execute_update, YaffeConnection, QueryResult};
+use super::{execute_select, execute_update, QueryResult, YaffeConnection};
 use std::collections::HashMap;
 
 pub struct ColumnInfo {
@@ -53,7 +53,7 @@ pub fn create_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     let mut create = String::from("CREATE TABLE \"");
     create.push_str(table);
     create.push_str("\" (");
-    
+
     for c in &columns {
         let t = TYPE_MAPPING.get(&c.data_type[..]).unwrap();
         create.push('"');
@@ -65,7 +65,7 @@ pub fn create_schema(table: &str, data: impl Schema) -> QueryResult<()> {
 
     create.pop();
     create.push(')');
-    let stmt = crate::create_statement!(con, create, );
+    let stmt = crate::create_statement!(con, create,);
     execute_update(stmt)?;
     Ok(())
 }
@@ -78,16 +78,16 @@ pub fn update_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     for c in &columns {
         let t = TYPE_MAPPING.get(&c.data_type[..]).unwrap();
         if !table_columns.iter().any(|t| t.name == c.name) {
-           let stmt = crate::create_statement!(con, format!("ALTER TABLE {} ADD COLUMN {} {}", table, c.name, t), );
-           execute_update(stmt)?;
+            let stmt = crate::create_statement!(con, format!("ALTER TABLE {} ADD COLUMN {} {}", table, c.name, t),);
+            execute_update(stmt)?;
         }
         // SQLite doesn't have a method to modify a column type and we shouldn't really need that
     }
 
     for t in &table_columns {
         if !columns.iter().any(|c| c.name == t.name) {
-           let stmt = crate::create_statement!(con, format!("ALTER TABLE {} DROP COLUMN {}", table, t.name), );
-           execute_update(stmt)?;
+            let stmt = crate::create_statement!(con, format!("ALTER TABLE {} DROP COLUMN {}", table, t.name),);
+            execute_update(stmt)?;
         }
     }
 
@@ -96,9 +96,9 @@ pub fn update_schema(table: &str, data: impl Schema) -> QueryResult<()> {
 
 fn get_table_columns(table: &str) -> Vec<ColumnInfo> {
     let con = YaffeConnection::new();
-    let stmt = crate::create_statement!(con, format!("PRAGMA table_info({table});"), );
+    let stmt = crate::create_statement!(con, format!("PRAGMA table_info({table});"),);
 
-    let mut table = vec!();
+    let mut table = vec![];
     execute_select(stmt, |r| {
         let name = r.read::<String, _>(1).unwrap();
         let data_type = r.read::<String, _>(2).unwrap();

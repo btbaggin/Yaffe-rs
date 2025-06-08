@@ -1,18 +1,13 @@
-use std::hash::Hash;
 use glutin::event::VirtualKeyCode;
 use std::collections::HashMap;
+use std::hash::Hash;
 
 pub struct InputMap<A: Eq + Hash, B: Eq + Hash, T: Clone> {
     keys: HashMap<A, T>,
     cont: HashMap<B, T>,
 }
 impl<A: Eq + Hash, B: Eq + Hash, T: Clone> InputMap<A, B, T> {
-    fn new() -> InputMap<A, B, T> {
-        InputMap {
-            keys: HashMap::new(),
-            cont: HashMap::new(),
-        }
-    }
+    fn new() -> InputMap<A, B, T> { InputMap { keys: HashMap::new(), cont: HashMap::new() } }
 
     fn insert(&mut self, code: A, button: B, action: T) {
         self.keys.insert(code, action.clone());
@@ -86,7 +81,10 @@ pub trait PlatformGamepad {
     fn get_gamepad(&mut self) -> Vec<ControllerInput>;
 }
 
-pub fn input_to_action(input_map: &InputMap<VirtualKeyCode, ControllerInput, Actions>, input: &mut dyn PlatformGamepad) -> std::collections::HashSet<Actions> {
+pub fn input_to_action(
+    input_map: &InputMap<VirtualKeyCode, ControllerInput, Actions>,
+    input: &mut dyn PlatformGamepad,
+) -> std::collections::HashSet<Actions> {
     let mut result = std::collections::HashSet::new();
     for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {

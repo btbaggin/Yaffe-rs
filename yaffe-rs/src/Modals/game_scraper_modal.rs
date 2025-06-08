@@ -1,21 +1,16 @@
-
-use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
-use crate::scraper::GameScrapeResult;
-use crate::input::Actions;
 use crate::assets::AssetKey;
-use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
-
+use crate::input::Actions;
+use crate::scraper::GameScrapeResult;
+use crate::ui::{Container, Control, Image, Label, List, ModalContent, ModalResult, ModalSize};
+use crate::{LogicalPosition, LogicalSize, Rect, YaffeState};
 
 pub struct GameScraperModal {
     list: List<GameScrapeResult>,
-    details: Container
+    details: Container,
 }
 impl GameScraperModal {
     pub fn new(items: Vec<GameScrapeResult>) -> GameScraperModal {
-        GameScraperModal {
-            details: build_container(&items[0]),
-            list: List::new(items),
-        }
+        GameScraperModal { details: build_container(&items[0]), list: List::new(items) }
     }
 }
 
@@ -56,11 +51,16 @@ fn build_container(item: &GameScrapeResult) -> Container {
     top.add(details);
     main.add(top);
     main.add(Label::wrapping(item.info.overview.clone(), None));
-    
+
     main
 }
 
-pub fn on_game_found_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
+pub fn on_game_found_close(
+    state: &mut YaffeState,
+    result: ModalResult,
+    content: &dyn ModalContent,
+    _: &mut crate::DeferredAction,
+) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<GameScraperModal>().unwrap();
 

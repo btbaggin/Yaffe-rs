@@ -1,8 +1,8 @@
-use crate::{YaffeState, Rect, LogicalSize, LogicalPosition};
-use crate::scraper::PlatformScrapeResult;
-use crate::input::Actions;
 use crate::assets::AssetKey;
-use crate::ui::{List, Label, Image, Container, Control, ModalResult, ModalContent, ModalSize};
+use crate::input::Actions;
+use crate::scraper::PlatformScrapeResult;
+use crate::ui::{Container, Control, Image, Label, List, ModalContent, ModalResult, ModalSize};
+use crate::{LogicalPosition, LogicalSize, Rect, YaffeState};
 
 pub struct PlatformScraperModal {
     list: List<PlatformScrapeResult>,
@@ -10,16 +10,13 @@ pub struct PlatformScraperModal {
 }
 impl PlatformScraperModal {
     pub fn new(items: Vec<PlatformScrapeResult>) -> PlatformScraperModal {
-        PlatformScraperModal { 
-            details: build_container(&items[0]),
-            list: List::new(items),
-        }
+        PlatformScraperModal { details: build_container(&items[0]), list: List::new(items) }
     }
 }
 
 impl ModalContent for PlatformScraperModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self,rect: Rect, _: &crate::Graphics) -> LogicalSize {
+    fn size(&self, rect: Rect, _: &crate::Graphics) -> LogicalSize {
         LogicalSize::new(Self::modal_width(rect, ModalSize::Full), rect.height())
     }
 
@@ -48,11 +45,16 @@ fn build_container(item: &PlatformScrapeResult) -> Container {
     main.add(Label::new(item.info.platform.clone(), Some(crate::ui::TITLE_SIZE)));
     main.add(top);
     main.add(Label::wrapping(item.overview.clone(), None));
-    
+
     main
 }
 
-pub fn on_platform_found_close(state: &mut YaffeState, result: ModalResult, content: &dyn ModalContent, _: &mut crate::DeferredAction) {
+pub fn on_platform_found_close(
+    state: &mut YaffeState,
+    result: ModalResult,
+    content: &dyn ModalContent,
+    _: &mut crate::DeferredAction,
+) {
     if let ModalResult::Ok = result {
         let content = content.as_any().downcast_ref::<PlatformScraperModal>().unwrap();
 

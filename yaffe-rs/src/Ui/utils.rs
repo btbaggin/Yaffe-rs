@@ -1,8 +1,8 @@
-use speedy2d::color::Color;
-use speedy2d::font::{FormattedTextBlock, TextLayout, TextOptions, TextAlignment};
-use crate::{LogicalPosition, LogicalSize, ScaleFactor, Rect};
-use crate::assets::{Images, Fonts, AssetKey};
+use crate::assets::{AssetKey, Fonts, Images};
 use crate::graphics::Graphics;
+use crate::{LogicalPosition, LogicalSize, Rect, ScaleFactor};
+use speedy2d::color::Color;
+use speedy2d::font::{FormattedTextBlock, TextAlignment, TextLayout, TextOptions};
 
 //
 // Text helper methods
@@ -10,7 +10,13 @@ use crate::graphics::Graphics;
 /// Draws text that is right aligned to parameter `right`
 /// If an image is passed it will be drawn to the left of the text
 /// Returns the new right-most position
-pub fn right_aligned_text(graphics: &mut crate::Graphics, right: LogicalPosition, image: Option<crate::assets::Images>, color: Color, text: std::rc::Rc<FormattedTextBlock>) -> LogicalPosition {
+pub fn right_aligned_text(
+    graphics: &mut crate::Graphics,
+    right: LogicalPosition,
+    image: Option<crate::assets::Images>,
+    color: Color,
+    text: std::rc::Rc<FormattedTextBlock>,
+) -> LogicalPosition {
     let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));
     let mut right = LogicalPosition::new(right.x - size.x, right.y);
 
@@ -33,7 +39,12 @@ pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> std:
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
-pub fn get_drawable_text_with_wrap(graphics: &mut Graphics,size: f32, text: &str, width: f32) -> std::rc::Rc<FormattedTextBlock> {
+pub fn get_drawable_text_with_wrap(
+    graphics: &mut Graphics,
+    size: f32,
+    text: &str,
+    width: f32,
+) -> std::rc::Rc<FormattedTextBlock> {
     let font = graphics.request_font(Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);
@@ -43,7 +54,7 @@ pub fn get_drawable_text_with_wrap(graphics: &mut Graphics,size: f32, text: &str
 /// Scales an image to the largest size that can fit in the smallest dimension
 pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &LogicalSize) -> LogicalSize {
     let bitmap_size = if let Some(i) = graphics.request_asset_image(slot) {
-            i.size()
+        i.size()
     } else {
         graphics.request_image(Images::Placeholder).unwrap().size()
     };
@@ -75,7 +86,7 @@ pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &Logica
 macro_rules! is_focused {
     ($state:ident) => {
         $state.focused_widget == $crate::get_widget_id!(Self)
-    }
+    };
 }
 
 pub fn outline_rectangle(graphics: &mut crate::Graphics, rect: &Rect, size: f32, color: speedy2d::color::Color) {

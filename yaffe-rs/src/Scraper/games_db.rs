@@ -1,23 +1,36 @@
-use super::{ServiceResult, ServiceResponse, GameScrapeResult, get_null_string};
-use crate::{data::{PlatformInfo, GameInfo}, scraper::PlatformScrapeResult};
+use super::{get_null_string, GameScrapeResult, ServiceResponse, ServiceResult};
+use crate::{
+    data::{GameInfo, PlatformInfo},
+    scraper::PlatformScrapeResult,
+};
 use std::path::Path;
 
 const GAMESDB_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../api_key.txt")) };
 
-pub fn search_game(id: u64, name: &str, exe: String, platform: i64) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
+pub fn search_game(
+    id: u64,
+    name: &str,
+    exe: String,
+    platform: i64,
+) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
     crate::logger::info!("Searching for game {name}");
 
-    let resp = crate::json_request!("https://api.thegamesdb.net/v1.1/Games/ByGameName", 
-                     &[("name", name), 
-                     ("fields", "name,overview,rating,genres"),
-                     ("include", "boxart"),
-                     ("filter[platform]", &platform.to_string()),
-                     ("apikey", GAMESDB_API_KEY)]);
-
+    let resp = crate::json_request!(
+        "https://api.thegamesdb.net/v1.1/Games/ByGameName",
+        &[
+            ("name", name),
+            ("fields", "name,overview,rating,genres"),
+            ("include", "boxart"),
+            ("filter[platform]", &platform.to_string()),
+            ("apikey", GAMESDB_API_KEY)
+        ]
+    );
 
     assert!(resp["data"]["games"].is_array());
     let array = resp["data"]["games"].as_array().unwrap();
-    if array.is_empty() { return Ok(ServiceResponse::no_results(id)); }
+    if array.is_empty() {
+        return Ok(ServiceResponse::no_results(id));
+    }
 
     let base_url = resp["include"]["boxart"]["base_url"]["medium"].as_str().unwrap();
     let images = resp["include"]["boxart"]["data"].as_object().unwrap();
@@ -56,17 +69,24 @@ pub fn search_game(id: u64, name: &str, exe: String, platform: i64) -> ServiceRe
     Ok(result)
 }
 
-pub fn search_platform(id: u64, name: &str, path: String, args: String) -> ServiceResult<ServiceResponse<PlatformScrapeResult>> {
+pub fn search_platform(
+    id: u64,
+    name: &str,
+    path: String,
+    args: String,
+) -> ServiceResult<ServiceResponse<PlatformScrapeResult>> {
     crate::logger::info!("Searching for platform {name}");
-    
-    let resp = crate::json_request!("https://api.thegamesdb.net/v1/Platforms/ByPlatformName",
-                                    &[("name", name),
-                                      ("fields", "overview"),
-                                      ("apikey", GAMESDB_API_KEY)]);
+
+    let resp = crate::json_request!(
+        "https://api.thegamesdb.net/v1/Platforms/ByPlatformName",
+        &[("name", name), ("fields", "overview"), ("apikey", GAMESDB_API_KEY)]
+    );
 
     assert!(resp["data"]["platforms"].is_array());
     let array = resp["data"]["platforms"].as_array().unwrap();
-    if array.is_empty() { return Ok(ServiceResponse::no_results(id)); }
+    if array.is_empty() {
+        return Ok(ServiceResponse::no_results(id));
+    }
 
     let (count, exact) = get_count_and_exact(array, "name", name);
     let mut result = ServiceResponse::new(id, String::from(name), count, exact);
@@ -78,8 +98,10 @@ pub fn search_platform(id: u64, name: &str, path: String, args: String) -> Servi
         crate::logger::info!("Getting all images for game {name}");
 
         //Get the image data for the games
-        let resp = crate::json_request!("https://api.thegamesdb.net/v1/Platforms/Images", 
-                                        &[("platforms_id", &*ids), ("filter[type]", "boxart"), ("apikey", GAMESDB_API_KEY)]);
+        let resp = crate::json_request!(
+            "https://api.thegamesdb.net/v1/Platforms/Images",
+            &[("platforms_id", &*ids), ("filter[type]", "boxart"), ("apikey", GAMESDB_API_KEY)]
+        );
 
         let base_url = resp["data"]["base_url"]["medium"].as_str().unwrap();
 
@@ -96,7 +118,7 @@ pub fn search_platform(id: u64, name: &str, path: String, args: String) -> Servi
 
             let name = String::from(platform["name"].as_str().unwrap());
             let overview = String::from(get_null_string(platform, "overview"));
-    
+
             let info = PlatformInfo::new(id, name, path.clone(), args.clone());
             result.results.push(PlatformScrapeResult { info, overview, boxart: Path::new(base_url).join(boxart) });
         }
@@ -112,7 +134,7 @@ fn get_count_and_exact(value: &Vec<serde_json::Value>, element: &str, name: &str
     for i in value {
         assert!(i[element].is_string());
 
-        if i[element].as_str().unwrap() == name && exact_index.is_none() { 
+        if i[element].as_str().unwrap() == name && exact_index.is_none() {
             exact_index = Some(count);
         }
         count += 1;

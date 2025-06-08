@@ -1,12 +1,12 @@
+use super::{AssetData, AssetKey, AssetSlot, ASSET_STATE_LOADED};
+use crate::graphics::Graphics;
+use crate::logger::{info, warn, PanicLogEntry};
+use crate::pooled_cache::PooledCache;
+use crate::{PhysicalRect, PhysicalSize};
 use speedy2d::{image::*, Graphics2D};
 use std::rc::Rc;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
-use crate::{PhysicalSize, PhysicalRect};
-use crate::logger::{PanicLogEntry, warn, info};
-use crate::pooled_cache::PooledCache;
-use crate::graphics::Graphics;
-use super::{AssetData, ASSET_STATE_LOADED, AssetKey, AssetSlot};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum Images {
@@ -29,7 +29,7 @@ pub enum Images {
     ErsbEveryone10,
     ErsbTeen,
     ErsbMature,
-    ErsbAdultOnly
+    ErsbAdultOnly,
 }
 
 #[derive(Clone)]
@@ -38,9 +38,7 @@ pub struct YaffeTexture {
     pub bounds: Option<PhysicalRect>,
 }
 impl YaffeTexture {
-    pub fn new(image: Rc<ImageHandle>, bounds: Option<PhysicalRect>) -> YaffeTexture {
-        YaffeTexture { image, bounds }
-    }
+    pub fn new(image: Rc<ImageHandle>, bounds: Option<PhysicalRect>) -> YaffeTexture { YaffeTexture { image, bounds } }
 
     pub fn size(&self) -> PhysicalSize {
         let size = self.image.size();
@@ -55,11 +53,18 @@ impl Graphics {
             if slot.state.load(Ordering::Acquire) == ASSET_STATE_LOADED {
                 if let AssetData::Raw((data, dimensions)) = &slot.data {
                     let graphics = unsafe { &mut *self.graphics_ptr };
-                    let image = graphics.create_image_from_raw_pixels(ImageDataType::RGBA, ImageSmoothingMode::Linear, *dimensions, data).log_and_panic();
+                    let image = graphics
+                        .create_image_from_raw_pixels(
+                            ImageDataType::RGBA,
+                            ImageSmoothingMode::Linear,
+                            *dimensions,
+                            data,
+                        )
+                        .log_and_panic();
                     slot.data = AssetData::Image(YaffeTexture { image: Rc::new(image), bounds: None });
                 }
             }
-        
+
             return if let AssetData::Image(image) = &slot.data {
                 slot.last_request = Instant::now();
                 Some(image.clone())
@@ -75,17 +80,15 @@ impl Graphics {
     }
 }
 
-
-
 pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec<u8>, (u32, u32))> {
     info!("Loading image asynchronously {path:?}");
 
     let data = match &key {
         AssetKey::File(_) | AssetKey::Static(_) => std::fs::read(path).log_and_panic(),
-        AssetKey::Url(_) =>  {
+        AssetKey::Url(_) => {
             let image = reqwest::blocking::get(path.to_str().unwrap()).unwrap().bytes().log_and_panic();
             image.to_vec()
-        },
+        }
     };
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(data));
@@ -96,14 +99,19 @@ pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec
             let buffer = image.into_rgba8();
             let dimensions = buffer.dimensions();
             let data = buffer.into_vec();
-            return Some((data, dimensions))
-        },
+            return Some((data, dimensions));
+        }
         Err(e) => warn!("Error loading {key:?}: {e:?}"),
     }
     None
 }
 
-pub fn preload_image(graphics: &mut Graphics2D, path: &'static str, image_name: Images, map: &mut  PooledCache<32, AssetKey, AssetSlot>) {
+pub fn preload_image(
+    graphics: &mut Graphics2D,
+    path: &'static str,
+    image_name: Images,
+    map: &mut PooledCache<32, AssetKey, AssetSlot>,
+) {
     let data = graphics.create_image_from_file_path(None, ImageSmoothingMode::Linear, path).log_and_panic();
     let image = Rc::new(data);
     let texture = YaffeTexture::new(image, None);
