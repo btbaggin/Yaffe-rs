@@ -15,7 +15,7 @@ pub fn right_aligned_text(
     right: LogicalPosition,
     image: Option<crate::assets::Images>,
     color: Color,
-    text: std::rc::Rc<FormattedTextBlock>,
+    text: FormattedTextBlock,
 ) -> LogicalPosition {
     let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));
     let mut right = LogicalPosition::new(right.x - size.x, right.y);
@@ -30,7 +30,7 @@ pub fn right_aligned_text(
 }
 
 /// Simple helper method to get a text object
-pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> std::rc::Rc<FormattedTextBlock> {
+pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> FormattedTextBlock {
     let font = graphics.request_font(Fonts::Regular);
     font.layout_text(text, size, TextOptions::new())
 }
@@ -41,7 +41,7 @@ pub fn get_drawable_text_with_wrap(
     size: f32,
     text: &str,
     width: f32,
-) -> std::rc::Rc<FormattedTextBlock> {
+) -> FormattedTextBlock {
     let font = graphics.request_font(Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);

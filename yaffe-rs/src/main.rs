@@ -1,15 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![feature(maybe_uninit_array_assume_init)]
+#![feature(maybe_uninit_array_assume_init, step_trait)]
 use crate::logger::{error, PanicLogEntry};
 use crate::utils::append_app_ext;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 /*
  * TODO
  * Search bar doesnt work well on plugins
- * on_frame_end? on_window_init?
  * render navigation stack
 */
 
@@ -74,9 +72,8 @@ fn main() {
     };
     logger::set_log_level(&settings.get_str(SettingNames::LoggingLevel));
 
-    let q = Arc::new(Mutex::new(RefCell::new(queue)));
     let overlay = overlay::OverlayWindow::new(build_overlay_tree(), settings.clone());
-    let state = YaffeState::new(overlay.clone(), settings, q.clone());
+    let state = YaffeState::new(overlay.clone(), settings, queue.clone());
 
     let mut ui = ui::WidgetTree::new(build_main_tree(), state, ui::WidgetId::of::<PlatformList>());
 
@@ -84,7 +81,7 @@ fn main() {
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
 
     plugins::load_plugins(&mut ui.data, "./plugins");
-    windowing::create_yaffe_windows(notify, q, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
+    windowing::create_yaffe_windows(notify, queue, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
 fn build_main_tree() -> ui::WidgetContainer {

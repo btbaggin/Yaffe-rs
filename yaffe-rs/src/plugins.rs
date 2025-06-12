@@ -76,7 +76,7 @@ pub fn load_plugin_items(state: &mut YaffeState, index: usize) {
     };
 
     if let Some(items) = state.plugins[index].load_tiles(&query).display_failure("Error loading plugin items", state) {
-        let group = &mut state.groups[state.selected.group_index];
+        let group = &mut state.groups[state.selected.group_index()];
         for i in items {
             group.tiles.push(crate::Tile::plugin_item(group.id, i));
         }

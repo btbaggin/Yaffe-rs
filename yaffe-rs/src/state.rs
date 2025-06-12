@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::iter::Step;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Mutex;
 
@@ -49,7 +50,7 @@ impl MetadataSearch {
         MetadataSearch { name: filter.name.to_string(), options: filter.options.clone(), mask: 0, selected: None }
     }
 
-    pub fn from_range(name: &str, start: &str, end: &str) -> MetadataSearch {
+    pub fn from_range<T: Step + ToString + PartialOrd + Copy>(name: &str, start: T, end: T) -> MetadataSearch {
         MetadataSearch {
             name: name.to_string(),
             options: Self::generate_string_range(start, end),
@@ -112,11 +113,18 @@ impl MetadataSearch {
         }
     }
 
-    fn generate_string_range(start: &str, end: &str) -> Vec<String> {
-        let start_ascii = start.chars().next().unwrap() as u8;
-        let end_ascii = end.chars().next().unwrap() as u8;
-
-        (start_ascii..=end_ascii).map(|c| String::from_utf8(vec![c]).unwrap_or_default()).collect()
+    fn generate_string_range<T: Step + ToString + PartialOrd + Copy>(start: T, end: T) -> Vec<String> {
+        let mut v = Vec::new();
+        let mut current = start;
+        while current <= end {
+            v.push(current.to_string());
+            if let Some(next) = Step::forward_checked(current, 1) {
+                current = next;
+            } else {
+                break;
+            }
+        }
+        v
     }
 }
 
@@ -135,7 +143,7 @@ impl TileGroup {
             tiles: vec![],
             kind: GroupType::Emulator,
             search: vec![
-                MetadataSearch::from_range("Players", "1", "4"),
+                MetadataSearch::from_range("Players", 1, 4),
                 MetadataSearch::new(
                     "Rating",
                     &[
@@ -167,7 +175,7 @@ impl TileGroup {
         }
     }
 
-    pub fn get_rom_path(&self) -> std::path::PathBuf { std::path::Path::new("./Roms").join(&self.name) }
+    pub fn get_rom_path(&self) -> PathBuf { Path::new("./Roms").join(&self.name) }
 }
 
 pub struct Tile {
@@ -184,10 +192,10 @@ pub struct Tile {
 impl Tile {
     pub fn plugin_item(group_id: i64, item: YaffePluginItem) -> Self {
         let boxart = match item.thumbnail {
-            yaffe_lib::PathType::Url(s) => crate::assets::AssetKey::Url(s),
+            yaffe_lib::PathType::Url(s) => AssetKey::Url(s),
             yaffe_lib::PathType::File(s) => {
-                let canon = std::fs::canonicalize(std::path::Path::new("./plugins").join(s)).unwrap();
-                crate::assets::AssetKey::File(canon)
+                let canon = std::fs::canonicalize(Path::new("./plugins").join(s)).unwrap();
+                AssetKey::File(canon)
             }
         };
 
@@ -293,11 +301,13 @@ impl Tile {
 }
 
 pub struct SelectedItem {
-    pub group_index: usize,
+    group_index: usize,
     pub tile_index: usize,
 }
 impl SelectedItem {
     pub fn new() -> SelectedItem { SelectedItem { group_index: 0, tile_index: 0 } }
+
+    pub fn group_index(&self) -> usize { self.group_index }
 
     pub fn prev_platform(&mut self) {
         if self.group_index > 0 {

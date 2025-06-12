@@ -9,7 +9,6 @@ use speedy2d::color::Color;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 use yaffe_lib::SettingValue;
 
 pub struct Graphics {
@@ -101,7 +100,7 @@ impl Graphics {
         &mut self,
         position: LogicalPosition,
         color: Color,
-        text: &Rc<speedy2d::font::FormattedTextBlock>,
+        text: &speedy2d::font::FormattedTextBlock,
     ) {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_text(position.to_physical(self.scale_factor), color, text);
@@ -120,7 +119,7 @@ impl Graphics {
         position: LogicalPosition,
         rect: Rect,
         color: Color,
-        text: &Rc<speedy2d::font::FormattedTextBlock>,
+        text: &speedy2d::font::FormattedTextBlock,
     ) {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_text_cropped(

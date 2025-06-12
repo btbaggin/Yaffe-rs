@@ -10,7 +10,7 @@ widget!(
         active_search: usize = 0,
         highlight_offset: f32 = 0.,
         cached_platform: i64 = -1,
-        searches: Vec<MetadataSearch> = vec!(MetadataSearch::from_range("Name", "A", "Z")),
+        searches: Vec<MetadataSearch> = vec!(MetadataSearch::from_range("Name", 'A', 'Z')),
         offset: LogicalPosition = LogicalPosition::new(0., -1.)
     }
 );

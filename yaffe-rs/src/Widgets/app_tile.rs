@@ -73,7 +73,7 @@ impl AppTile {
             let physical_width = target_size.x.to_physical(graphics);
             let options_width = info.width() + run.width() + font_size * 2. + 5. * 2.;
 
-            let lines: Vec<&std::rc::Rc<speedy2d::font::FormattedTextLine>> = name.iter_lines().collect();
+            let lines: Vec<&speedy2d::font::FormattedTextLine> = name.iter_lines().collect();
             let line_count = lines.len();
             for (line_number, line) in lines.into_iter().enumerate() {
                 let line_height = line.height().to_logical(graphics);

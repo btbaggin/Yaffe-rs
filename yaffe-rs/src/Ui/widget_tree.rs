@@ -63,7 +63,7 @@ impl WidgetTree {
         //items
         let state = &mut self.data;
         if state.navigation_stack.borrow_mut().pop().is_some() {
-            if let crate::state::GroupType::Plugin(index) = state.groups[state.selected.group_index].kind {
+            if let crate::state::GroupType::Plugin(index) = state.get_selected_group().kind {
                 crate::plugins::load_plugin_items(state, index);
             }
             return;

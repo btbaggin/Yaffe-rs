@@ -61,7 +61,7 @@ impl Widget for PlatformList {
 
         let font_size = graphics.font_size();
 
-        let selected_index = state.selected.group_index;
+        let selected_index = state.selected.group_index();
         let right = rect.right();
         let mut y = 10.;
         let mut plat_kind: Option<GroupType> = None;

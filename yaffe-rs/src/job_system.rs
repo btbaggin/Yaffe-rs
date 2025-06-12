@@ -1,7 +1,7 @@
 use rand::Rng;
 use std::cell::RefCell;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::assets::AssetKey;
@@ -10,11 +10,11 @@ use crate::scraper::*;
 
 pub type JobQueue = spmc::Sender<Job>;
 pub type JobResults = std::sync::mpsc::Receiver<JobResult>;
-pub type ThreadSafeJobQueue = Arc<std::sync::Mutex<RefCell<JobQueue>>>;
+pub type ThreadSafeJobQueue = Arc<Mutex<RefCell<JobQueue>>>;
 
 /// Starts a single producer multiple consumer job threading system
 /// Jobs can be sent to this system using the returned JobQueue
-pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<JobResult>) {
+pub fn start_job_system() -> (ThreadSafeJobQueue, std::sync::mpsc::Receiver<JobResult>) {
     const NUM_THREADS: u32 = 8;
 
     let (tx, rx) = spmc::channel();
@@ -25,7 +25,7 @@ pub fn start_job_system() -> (JobQueue, std::sync::mpsc::Receiver<JobResult>) {
         thread::spawn(move || poll_pending_jobs(rx, notify_tx));
     }
 
-    (tx, notify_rx)
+    (Arc::new(Mutex::new(RefCell::new(tx))), notify_rx)
 }
 
 fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender<JobResult>) {
@@ -62,7 +62,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
     }
 }
 
-pub fn generate_job_id() -> u64 { rand::thread_rng().gen::<u64>() }
+pub fn generate_job_id() -> u64 { rand::rng().random::<u64>() }
 
 #[derive(Debug)]
 pub enum Job {
