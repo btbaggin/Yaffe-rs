@@ -6,17 +6,15 @@ use std::sync::Mutex;
 
 use crate::assets::AssetKey;
 use crate::data::GameInfo;
-use crate::get_widget_id;
 use crate::job_system::ThreadSafeJobQueue;
 use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
 use crate::overlay::OverlayWindow;
 use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
 use crate::settings::SettingsFile;
-use crate::ui::{Modal, WidgetId};
-use crate::widgets::PlatformList;
+use crate::ui::Modal;
 use crate::DeferredAction;
-use yaffe_lib::{PluginFilter, SelectedAction, YaffePluginItem};
+use yaffe_lib::{PluginFilter, SelectedAction, TileType, YaffePluginItem};
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum GroupType {
@@ -174,6 +172,7 @@ impl TileGroup {
 
 pub struct Tile {
     pub file: String,
+    pub tile_type: TileType,
     pub name: String,
     pub description: String,
     pub restricted: bool,
@@ -196,6 +195,7 @@ impl Tile {
             file: item.path,
             name: item.name,
             description: item.description,
+            tile_type: item.tile_type,
             metadata: HashMap::new(),
             group_id,
             boxart,
@@ -214,9 +214,10 @@ impl Tile {
         Self {
             file: info.filename.clone(),
             name: info.name.clone(),
+            tile_type: TileType::App,
             description: info.overview.clone(),
             group_id,
-            boxart: crate::assets::AssetKey::File(boxart),
+            boxart: AssetKey::File(boxart),
             metadata,
             restricted,
         }
@@ -241,6 +242,19 @@ impl Tile {
         }
     }
 
+    pub fn get_children(&self, state: &YaffeState, handler: &mut DeferredAction) {
+        if let Some(group) = state.find_group(self.group_id) {
+            match group.kind {
+                GroupType::Emulator | GroupType::Recents => unimplemented!(),
+                GroupType::Plugin(_) => {
+                    handler.load_plugin();
+                    let mut stack = state.navigation_stack.borrow_mut();
+                    stack.push(self.file.clone());
+                }
+            }
+        }
+    }
+
     fn get_tile_process(
         &self,
         state: &YaffeState,
@@ -250,13 +264,7 @@ impl Tile {
             GroupType::Plugin(index) => {
                 let plugin = &state.plugins[index];
 
-                match plugin.select_tile(&self.name, &self.file) {
-                    SelectedAction::Load(p) => {
-                        // TODO
-                        // handler.load_plugin();
-                        // return None;
-                        return Ok(None);
-                    }
+                match plugin.select_tile(&self.name, &self.file, &self.tile_type) {
                     SelectedAction::Webview(site) => {
                         let child = crate::utils::yaffe_helper("webview", &[&site]);
                         Box::new(child?) as Box<dyn ExternalProcess>
@@ -295,7 +303,6 @@ impl SelectedItem {
         if self.group_index > 0 {
             self.group_index -= 1;
             self.tile_index = 0;
-            // handler.load_plugin(crate::plugins::NavigationAction::Load);
         }
     }
 
@@ -303,7 +310,6 @@ impl SelectedItem {
         if self.group_index < max - 1 {
             self.group_index += 1;
             self.tile_index = 0;
-            // handler.load_plugin(crate::plugins::NavigationAction::Load);
         }
     }
 }
@@ -326,26 +332,12 @@ impl ExternalProcess for std::process::Child {
     }
     fn kill(&mut self) -> std::io::Result<()> { self.kill() }
 }
-// impl<T> ExternalProcess for WebView<'_, T> {
-//     fn is_running(&mut self) -> bool {
-//         // WebView does not have a direct way to check if it's running
-//         // Assuming it is always running once created
-//         true
-//     }
-//     fn kill(&mut self) -> std::io::Result<()> {
-//         std::thread::spawn(move || {
-//             self.exit();
-//         });
-//         Ok(())
-//     }
-// }
 
 pub struct YaffeState {
-    pub overlay: Rc<RefCell<OverlayWindow>>,
+    overlay: Rc<RefCell<OverlayWindow>>,
     pub selected: SelectedItem,
     pub groups: Vec<TileGroup>,
     pub plugins: Vec<Plugin>,
-    pub focused_widget: WidgetId,
     pub modals: Mutex<Vec<Modal>>,
     pub toasts: HashMap<u64, String>,
     queue: ThreadSafeJobQueue,
@@ -354,6 +346,7 @@ pub struct YaffeState {
     pub refresh_list: bool,
     pub settings: SettingsFile,
     pub running: bool,
+    pub navigation_stack: RefCell<Vec<String>>,
 }
 impl YaffeState {
     pub fn new(overlay: Rc<RefCell<OverlayWindow>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
@@ -363,7 +356,6 @@ impl YaffeState {
             groups: vec![],
             plugins: vec![],
             filter: None,
-            focused_widget: get_widget_id!(PlatformList),
             restricted_mode: RestrictedMode::Off,
             modals: Mutex::new(vec![]),
             toasts: HashMap::new(),
@@ -371,6 +363,7 @@ impl YaffeState {
             refresh_list: true,
             settings,
             running: true,
+            navigation_stack: RefCell::new(Vec::new()),
         }
     }
 
@@ -391,4 +384,12 @@ impl YaffeState {
         let mut queue = lock.borrow_mut();
         queue.send(job).unwrap();
     }
+
+    pub fn display_toast(&mut self, id: u64, toast: &str) { self.toasts.insert(id, toast.to_string()); }
+
+    pub fn remove_toast(&mut self, id: &u64) { self.toasts.remove(id); }
+
+    pub fn exit(&mut self) { self.running = false; }
+
+    pub fn is_overlay_showing(&self) -> bool { self.overlay.borrow().is_active() }
 }

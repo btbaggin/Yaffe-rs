@@ -1,6 +1,8 @@
-use crate::ui::{AnimationManager, Widget};
-use crate::widgets::AppTile;
-use crate::{widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, YaffeState};
+use crate::ui::{AnimationManager, Widget, WidgetId};
+use crate::widgets::{AppTile, InfoPane, SearchBar};
+use crate::{
+    widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
+};
 use std::collections::HashMap;
 
 const MARGIN: f32 = 0.1;
@@ -26,12 +28,12 @@ impl Widget for AppList {
     ) -> bool {
         match action {
             Actions::Up => {
-                let apps = state.settings.get_i32(crate::SettingNames::MaxRows);
+                let apps = state.settings.get_i32(SettingNames::MaxRows);
                 self.update_position(state, apps, false, handler, animations);
                 true
             }
             Actions::Down => {
-                let apps = state.settings.get_i32(crate::SettingNames::MaxRows);
+                let apps = state.settings.get_i32(SettingNames::MaxRows);
                 self.update_position(state, apps, true, handler, animations);
                 true
             }
@@ -52,11 +54,11 @@ impl Widget for AppList {
                 true
             }
             Actions::Info => {
-                handler.focus_widget(crate::get_widget_id!(crate::widgets::InfoPane));
+                handler.focus_widget::<InfoPane>();
                 true
             }
             Actions::Filter => {
-                handler.focus_widget(crate::get_widget_id!(crate::widgets::SearchBar));
+                handler.focus_widget::<SearchBar>();
                 true
             }
             Actions::Back => {
@@ -73,13 +75,13 @@ impl Widget for AppList {
         animations.animate_f32(self, offset, 1., crate::widgets::app_tile::ANIMATION_TIME);
     }
 
-    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
+    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState, current_focus: &WidgetId) {
         self.update(state, graphics);
 
         let plat = state.get_selected_group();
 
         //Height needs to be based on image aspect * width
-        let focused = crate::is_focused!(state);
+        let focused = current_focus.is_focused::<Self>();
         for i in 0..plat.tiles.len() {
             if i == state.selected.tile_index && focused {
                 continue;
@@ -309,6 +311,9 @@ impl AppList {
 
 fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
     if let Some(exe) = state.get_selected_tile() {
-        exe.run(state, handler);
+        match exe.tile_type {
+            yaffe_lib::TileType::App => exe.run(state, handler),
+            yaffe_lib::TileType::Folder => exe.get_children(state, handler),
+        }
     }
 }

@@ -1,5 +1,6 @@
 use crate::state::MetadataSearch;
-use crate::ui::{AnimationManager, MENU_BACKGROUND};
+use crate::ui::{AnimationManager, Widget, WidgetId, MENU_BACKGROUND};
+use crate::widgets::AppList;
 use crate::{widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState};
 
 const NAME_WIDTH: f32 = 175.;
@@ -13,7 +14,7 @@ widget!(
         offset: LogicalPosition = LogicalPosition::new(0., -1.)
     }
 );
-impl crate::ui::Widget for SearchBar {
+impl Widget for SearchBar {
     fn offset(&self) -> LogicalPosition { self.offset }
 
     fn action(
@@ -30,7 +31,7 @@ impl crate::ui::Widget for SearchBar {
                 true
             }
             Actions::Accept => {
-                handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
+                handler.focus_widget::<AppList>();
                 let filter = self.searches[self.active_search].clone();
 
                 //If our current item is no longer visible because it was filtered out
@@ -104,7 +105,7 @@ impl crate::ui::Widget for SearchBar {
         }
     }
 
-    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
+    fn render(&mut self, graphics: &mut crate::Graphics, _: &YaffeState, current_focus: &WidgetId) {
         let current_search = &self.searches[self.active_search];
         let rect = graphics.bounds;
         let filter_start = rect.left() + NAME_WIDTH;
@@ -115,7 +116,7 @@ impl crate::ui::Widget for SearchBar {
 
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
         let focused_color =
-            if crate::is_focused!(state) { graphics.font_color() } else { graphics.font_unfocused_color() };
+            if current_focus.is_focused::<Self>() { graphics.font_color() } else { graphics.font_unfocused_color() };
 
         //Filter option name
         let filter_rect =

@@ -1,4 +1,4 @@
-use crate::ui::{AnimationManager, FocusType, WidgetId, WidgetTree};
+use crate::ui::{AnimationManager, FocusType, WidgetTree};
 
 pub struct DeferredAction {
     focus: Option<FocusType>,
@@ -7,7 +7,7 @@ pub struct DeferredAction {
 }
 impl DeferredAction {
     pub fn new() -> DeferredAction { DeferredAction { focus: None, load_plugin: false, message: None } }
-    pub fn focus_widget(&mut self, widget: WidgetId) { self.focus = Some(FocusType::Focus(widget)); }
+    pub fn focus_widget<T: 'static>(&mut self) { self.focus = Some(FocusType::Focus(crate::ui::WidgetId::of::<T>())); }
     pub fn revert_focus(&mut self) { self.focus = Some(FocusType::Revert); }
     pub fn load_plugin(&mut self) { self.load_plugin = true; }
     pub fn display_message(&mut self, message: String) { self.message = Some(message); }

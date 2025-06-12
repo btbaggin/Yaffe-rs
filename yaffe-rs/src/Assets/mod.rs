@@ -103,48 +103,39 @@ pub fn preload_assets(graphics: &mut Graphics) {
     //TODO this sucks
     let g = unsafe { &mut *graphics.graphics_ptr };
     let mut map = graphics.asset_cache.borrow_mut();
-    if !map.exists(&AssetKey::image(Images::Error)) {
-        let data =
-            g.create_image_from_file_path(None, ImageSmoothingMode::Linear, "./Assets/packed.png").log_and_panic();
-        let image = Rc::new(data);
+    let data = g.create_image_from_file_path(None, ImageSmoothingMode::Linear, "./Assets/packed.png").log_and_panic();
+    let image = Rc::new(data);
 
-        load_texture_atlas(&mut map, image, "./Assets/atlas.tex", "./Assets/packed.png", |image| match image {
-            "error.png" => Images::Error,
-            "question.png" => Images::Question,
-            "arrow_up.png" => Images::ArrowUp,
-            "arrow_down.png" => Images::ArrowDown,
-            "button_a.png" => Images::ButtonA,
-            "button_b.png" => Images::ButtonB,
-            "button_x.png" => Images::ButtonX,
-            "button_y.png" => Images::ButtonY,
-            "apps.png" => Images::App,
-            "emulator.png" => Images::Emulator,
-            "recents.png" => Images::Recent,
-            "speaker.png" => Images::Speaker,
-            "settings.png" => Images::Settings,
-            "everyone.png" => Images::ErsbEveryone,
-            "everyone10.png" => Images::ErsbEveryone10,
-            "teen.png" => Images::ErsbTeen,
-            "mature.png" => Images::ErsbMature,
-            "adults.png" => Images::ErsbAdultOnly,
-            _ => panic!("Unknown image found in texture atlas"),
-        });
-    }
+    load_texture_atlas(&mut map, image, "./Assets/atlas.tex", "./Assets/packed.png", |image| match image {
+        "error.png" => Images::Error,
+        "question.png" => Images::Question,
+        "arrow_up.png" => Images::ArrowUp,
+        "arrow_down.png" => Images::ArrowDown,
+        "button_a.png" => Images::ButtonA,
+        "button_b.png" => Images::ButtonB,
+        "button_x.png" => Images::ButtonX,
+        "button_y.png" => Images::ButtonY,
+        "apps.png" => Images::App,
+        "emulator.png" => Images::Emulator,
+        "recents.png" => Images::Recent,
+        "speaker.png" => Images::Speaker,
+        "settings.png" => Images::Settings,
+        "everyone.png" => Images::ErsbEveryone,
+        "everyone10.png" => Images::ErsbEveryone10,
+        "teen.png" => Images::ErsbTeen,
+        "mature.png" => Images::ErsbMature,
+        "adults.png" => Images::ErsbAdultOnly,
+        _ => panic!("Unknown image found in texture atlas"),
+    });
 
-    if map.get_mut(&AssetKey::image(Images::Placeholder)).is_none() {
-        preload_image(g, "./Assets/placeholder.jpg", Images::Placeholder, &mut map);
-    }
+    preload_image(g, "./Assets/placeholder.jpg", Images::Placeholder, &mut map);
 
-    if !map.exists(&AssetKey::image(Images::Background)) {
-        map.insert(
-            AssetKey::image(Images::Background),
-            AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()),
-        );
-    }
+    map.insert(
+        AssetKey::image(Images::Background),
+        AssetSlot::new(Path::new(r"./Assets/background.jpg").to_path_buf()),
+    );
 
-    if !map.exists(&AssetKey::Static(AssetTypes::Font(Fonts::Regular))) {
-        map.insert(AssetKey::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
-    }
+    map.insert(AssetKey::Static(AssetTypes::Font(Fonts::Regular)), AssetSlot::font("./Assets/Roboto-Regular.ttf"));
 }
 
 pub fn get_asset_slot<'a>(map: &'a mut PooledCache<32, AssetKey, AssetSlot>, asset: &AssetKey) -> &'a mut AssetSlot {

@@ -23,13 +23,19 @@ pub trait UiElement {
     fn layout(&self) -> Rect;
     fn set_layout(&mut self, layout: Rect);
 }
-pub type WidgetId = std::any::TypeId;
+#[derive(Copy, Clone, PartialEq)]
+pub struct WidgetId(std::any::TypeId);
+impl WidgetId {
+    pub fn of<T: 'static>() -> WidgetId { WidgetId(std::any::TypeId::of::<T>()) }
+    pub fn is_focused<T: 'static>(&self) -> bool { self == &WidgetId::of::<T>() }
+}
+
 pub trait FocusableWidget: UiElement {
     fn get_id(&self) -> WidgetId;
 }
 pub trait Widget: FocusableWidget {
     /// Update and draw
-    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState);
+    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState, current_focus: &WidgetId);
 
     /// Offset from initial placement to move. Percentage based on widget size
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
@@ -46,12 +52,12 @@ pub trait Widget: FocusableWidget {
     fn lost_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
 }
 
-#[macro_export]
-macro_rules! get_widget_id {
-    ($widget:ty) => {
-        std::any::TypeId::of::<$widget>()
-    };
-}
+// #[macro_export]
+// macro_rules! get_widget_id {
+//     ($widget:ty) => {
+//         std::any::TypeId::of::<$widget>()
+//     };
+// }
 
 #[macro_export]
 macro_rules! widget {
@@ -72,7 +78,7 @@ macro_rules! widget {
             }
         }
         impl $crate::ui::FocusableWidget for $name {
-            fn get_id(&self) -> $crate::ui::WidgetId { std::any::TypeId::of::<$name>() }
+            fn get_id(&self) -> $crate::ui::WidgetId { $crate::ui::WidgetId::of::<$name>() }
         }
         impl $name {
             pub fn new() -> $name {
@@ -142,7 +148,7 @@ impl WidgetContainer {
         false
     }
 
-    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics) {
+    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics, current_focus: &WidgetId) {
         //These measure the offset from the edges to begin or end rendering
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
@@ -151,7 +157,7 @@ impl WidgetContainer {
 
         let rect = self.widget.layout();
         graphics.bounds = rect;
-        self.widget.render(graphics, state);
+        self.widget.render(graphics, state, current_focus);
 
         for i in self.children.iter_mut() {
             let size = LogicalSize::new(rect.width() * i.ratio.x, rect.height() * i.ratio.y);
@@ -181,7 +187,7 @@ impl WidgetContainer {
             let r = Rect::new(origin, origin + size);
             i.widget.set_layout(r);
 
-            i.render(state, graphics);
+            i.render(state, graphics, current_focus);
         }
     }
 

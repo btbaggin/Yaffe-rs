@@ -51,7 +51,7 @@ impl WindowHelper {
 
 pub(crate) trait WindowHandler {
     fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool;
-    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>);
+    fn on_frame_begin(&mut self, _: &mut Graphics, _: &mut Vec<JobResult>) {}
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
     fn on_input(
         &mut self,
@@ -59,6 +59,7 @@ pub(crate) trait WindowHandler {
         helper: &mut WindowHelper,
         action: &crate::Actions,
     ) -> bool;
+    fn on_init(&mut self, graphics: &mut Graphics);
     fn on_stop(&mut self) {}
     fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer;
 }
@@ -70,6 +71,7 @@ struct YaffeWindow {
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
     graphics: RefCell<Graphics>,
     animations: RefCell<AnimationManager>,
+    first_frame: RefCell<bool>,
 }
 
 fn create_best_context(
@@ -133,6 +135,7 @@ fn create_window(
         handler,
         graphics: RefCell::new(Graphics::new(queue)),
         animations: RefCell::new(AnimationManager::new()),
+        first_frame: RefCell::new(true),
     };
     windows.insert(id, window);
     size
@@ -280,9 +283,15 @@ pub(crate) fn create_yaffe_windows(
                     let size = PhysicalSize::new(window.size.x, window.size.y);
                     let mut handle = window.handler.borrow_mut();
                     let mut window_graphics = window.graphics.borrow_mut();
+                    let mut first_frame = window.first_frame.borrow_mut();
                     window.renderer.draw_frame(|graphics| {
                         unsafe {
                             window_graphics.set_frame(graphics, scale, size, delta_time);
+                        }
+
+                        if *first_frame {
+                            handle.on_init(&mut window_graphics);
+                            *first_frame = false;
                         }
 
                         handle.on_frame_begin(&mut window_graphics, &mut finished_jobs);

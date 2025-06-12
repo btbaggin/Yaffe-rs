@@ -14,7 +14,12 @@ pub enum PathType {
 pub enum SelectedAction {
     Process(std::process::Command),
     Webview(String),
-    Load(String),
+}
+
+#[repr(C)]
+pub enum TileType {
+    Folder,
+    App,
 }
 
 #[repr(C)]
@@ -43,14 +48,15 @@ impl PluginFilter {
 #[repr(C)]
 pub struct YaffePluginItem {
     pub name: String,
-    pub description: String,
     pub path: String,
+    pub tile_type: TileType,
+    pub description: String,
     pub thumbnail: PathType,
     pub restricted: bool,
     pub metadata: HashMap<String, String>,
 }
 impl YaffePluginItem {
-    pub fn new(
+    pub fn folder(
         name: String,
         path: String,
         thumbnail: PathType,
@@ -58,7 +64,18 @@ impl YaffePluginItem {
         description: String,
         metadata: HashMap<String, String>,
     ) -> YaffePluginItem {
-        YaffePluginItem { name, description, path, thumbnail, restricted, metadata }
+        YaffePluginItem { name, path, tile_type: TileType::Folder, description, thumbnail, restricted, metadata }
+    }
+
+    pub fn app(
+        name: String,
+        path: String,
+        thumbnail: PathType,
+        restricted: bool,
+        description: String,
+        metadata: HashMap<String, String>,
+    ) -> YaffePluginItem {
+        YaffePluginItem { name, path, tile_type: TileType::App, description, thumbnail, restricted, metadata }
     }
 }
 
@@ -86,7 +103,7 @@ pub trait YaffePlugin: Send + Sync {
     fn name(&self) -> &str;
     fn initialize(&mut self, settings: &HashMap<String, SettingValue>) -> InitializeResult;
     fn load_tiles(&mut self, query: &TileQuery) -> LoadResult;
-    fn select_tile(&self, name: &str, path: &str) -> SelectedAction;
+    fn select_tile(&self, name: &str, path: &str, tile_type: &TileType) -> SelectedAction;
 }
 
 pub fn try_get_str(settings: &HashMap<String, SettingValue>, name: &str) -> Option<String> {

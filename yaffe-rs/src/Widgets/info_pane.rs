@@ -1,5 +1,6 @@
 use crate::ui::{
-    get_drawable_text_with_wrap, AnimationManager, Container, Control, Image, Label, Widget, MARGIN, MODAL_BACKGROUND,
+    get_drawable_text_with_wrap, AnimationManager, Container, Control, Image, Label, Widget, WidgetId, MARGIN,
+    MODAL_BACKGROUND,
 };
 use crate::{widget, Actions, DeferredAction, Graphics, LogicalPosition, Rect, ScaleFactor, YaffeState};
 
@@ -50,7 +51,7 @@ impl Widget for InfoPane {
         animations.animate_f32(self, offset, 1., 0.2);
     }
 
-    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState) {
+    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState, _: &WidgetId) {
         let bounds = graphics.bounds;
         graphics.draw_rectangle(bounds, MODAL_BACKGROUND);
 

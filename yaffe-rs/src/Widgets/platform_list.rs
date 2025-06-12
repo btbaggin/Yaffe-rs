@@ -1,5 +1,6 @@
 use crate::modals::{on_update_platform_close, PlatformDetailModal};
-use crate::ui::{display_modal, AnimationManager, MARGIN, MENU_BACKGROUND};
+use crate::ui::{display_modal, AnimationManager, Widget, WidgetId, MARGIN, MENU_BACKGROUND};
+use crate::widgets::AppList;
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
 };
@@ -7,7 +8,7 @@ use crate::{
 widget!(
     pub struct PlatformList {}
 );
-impl crate::ui::Widget for PlatformList {
+impl Widget for PlatformList {
     fn action(
         &mut self,
         state: &mut YaffeState,
@@ -25,7 +26,7 @@ impl crate::ui::Widget for PlatformList {
                 true
             }
             Actions::Accept => {
-                handler.focus_widget(crate::get_widget_id!(crate::widgets::AppList));
+                handler.focus_widget::<AppList>();
                 handler.load_plugin();
 
                 true
@@ -42,7 +43,7 @@ impl crate::ui::Widget for PlatformList {
         }
     }
 
-    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState) {
+    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState, current_focus: &WidgetId) {
         //Background
         let rect = graphics.bounds;
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
@@ -56,7 +57,7 @@ impl crate::ui::Widget for PlatformList {
         );
 
         let text_color =
-            if crate::is_focused!(state) { graphics.font_color() } else { graphics.font_unfocused_color() };
+            if current_focus.is_focused::<Self>() { graphics.font_color() } else { graphics.font_unfocused_color() };
 
         let font_size = graphics.font_size();
 
@@ -79,11 +80,12 @@ impl crate::ui::Widget for PlatformList {
             if i == selected_index {
                 let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
-                if crate::is_focused!(state) {
-                    graphics.draw_rectangle(rect, graphics.accent_color());
+                let color = if current_focus.is_focused::<Self>() {
+                    graphics.accent_color()
                 } else {
-                    graphics.draw_rectangle(rect, graphics.accent_unfocused_color());
-                }
+                    graphics.accent_unfocused_color()
+                };
+                graphics.draw_rectangle(rect, color);
             }
 
             //Label

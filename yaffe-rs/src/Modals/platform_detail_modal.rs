@@ -68,7 +68,7 @@ pub fn on_add_platform_close(
         };
         state.start_job(job);
 
-        state.toasts.insert(job_id, String::from("Searching for platform information..."));
+        state.display_toast(job_id, "Searching for platform information...");
     }
 }
 

@@ -11,20 +11,19 @@ use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
 
 impl WindowHandler for WidgetTree {
-    fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool {
-        //Clear any assets that haven't been requested in a long time
+    fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
+    fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool {
         //Check for any updates to the settings file
         crate::settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
 
     fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>) {
-        crate::assets::preload_assets(graphics);
         process_jobs(&mut self.data, graphics, jobs);
     }
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
-        if !self.data.overlay.borrow().is_active() {
+        if !self.data.is_overlay_showing() {
             let window_rect = graphics.bounds;
 
             //Update the platform and emulator list from database
@@ -34,7 +33,6 @@ impl WindowHandler for WidgetTree {
             }
 
             graphics.cache_settings(&self.data.settings);
-            self.data.focused_widget = *self.focus.last().unwrap();
             self.render_all(graphics);
 
             //Render modal last, on top of everything
@@ -59,23 +57,24 @@ impl WindowHandler for WidgetTree {
     }
 
     fn on_input(&mut self, animations: &mut AnimationManager, helper: &mut WindowHelper, action: &Actions) -> bool {
-        if self.data.overlay.borrow().is_active() {
+        if self.data.is_overlay_showing() {
             return false;
         }
 
         match action {
             Actions::ShowMenu => {
                 if !crate::ui::is_modal_open(&self.data) {
-                    let mut items = vec![];
-                    items.push(String::from("Scan For New Roms"));
-                    items.push(String::from("Add Emulator"));
-                    match self.data.restricted_mode {
-                        RestrictedMode::On(_) => items.push(String::from("Disable Restricted Mode")),
-                        RestrictedMode::Off => items.push(String::from("Enable Restricted Mode")),
-                    }
-                    items.push(String::from("Settings"));
-                    items.push(String::from("Exit Yaffe"));
-                    items.push(String::from("Shut Down"));
+                    let items = vec![
+                        "Scan For New Roms".to_string(),
+                        "Add Emulator".to_string(),
+                        match self.data.restricted_mode {
+                            RestrictedMode::On(_) => "Disable Restricted Mode".to_string(),
+                            RestrictedMode::Off => "Enable Restricted Mode".to_string(),
+                        },
+                        "Settings".to_string(),
+                        "Exit Yaffe".to_string(),
+                        "Shut Down".to_string(),
+                    ];
 
                     let list = Box::new(crate::modals::ListModal::new(items));
                     crate::ui::display_modal(&mut self.data, "Menu", None, list, Some(on_menu_close));
@@ -126,19 +125,15 @@ fn on_menu_close(
                 let content = Box::new(SettingsModal::new(&state.settings));
                 display_modal(state, "Settings", Some("Confirm"), content, Some(on_settings_close));
             }
-            "Disable Restricted Mode" => {
-                let content = Box::new(SetRestrictedModal::new());
-                display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(on_restricted_modal_close))
-            }
-            "Enable Restricted Mode" => {
+            "Disable Restricted Mode" | "Enable Restricted Mode" => {
                 let content = Box::new(SetRestrictedModal::new());
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(on_restricted_modal_close))
             }
             "Scan For New Roms" => crate::platform::scan_new_files(state),
-            "Exit Yaffe" => state.running = false,
+            "Exit Yaffe" => state.exit(),
             "Shut Down" => {
                 if crate::os::shutdown().display_failure("Failed to shut down", state).is_some() {
-                    state.running = false;
+                    state.exit();
                 }
             }
             _ => panic!("Unknown menu option"),
@@ -161,10 +156,7 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: &m
                 if let Some(game) = result.get_exact() {
                     crate::platform::insert_game(state, &game.info, game.boxart.clone());
                 } else if result.count > 0 {
-                    let mut items = vec![];
-                    for i in result.results {
-                        items.push(i);
-                    }
+                    let items = result.results;
 
                     let content = GameScraperModal::new(items);
                     display_modal(
@@ -176,17 +168,14 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: &m
                     );
                 }
 
-                state.toasts.remove(&result.id);
+                state.remove_toast(&result.id);
             }
             JobResult::SearchPlatform(result) => {
                 use crate::modals::PlatformScraperModal;
                 if let Some(platform) = result.get_exact() {
                     crate::platform::insert_platform(state, &platform.info);
                 } else if result.count > 0 {
-                    let mut items = vec![];
-                    for i in result.results {
-                        items.push(i);
-                    }
+                    let items = result.results;
 
                     let content = PlatformScraperModal::new(items);
                     display_modal(
@@ -198,7 +187,7 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: &m
                     );
                 }
 
-                state.toasts.remove(&result.id);
+                state.remove_toast(&result.id);
             }
             _ => {}
         },

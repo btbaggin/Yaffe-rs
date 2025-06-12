@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
  * TODO
  * Search bar doesnt work well on plugins
  * on_frame_end? on_window_init?
+ * render navigation stack
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -77,7 +78,7 @@ fn main() {
     let overlay = overlay::OverlayWindow::new(build_overlay_tree(), settings.clone());
     let state = YaffeState::new(overlay.clone(), settings, q.clone());
 
-    let mut ui = ui::WidgetTree::new(build_main_tree(), state, std::any::TypeId::of::<PlatformList>());
+    let mut ui = ui::WidgetTree::new(build_main_tree(), state, ui::WidgetId::of::<PlatformList>());
 
     let input_map = input::get_input_map();
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");

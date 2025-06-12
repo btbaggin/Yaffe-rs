@@ -60,7 +60,7 @@ pub fn scan_new_files(state: &mut YaffeState) {
     }
 
     if count != 0 {
-        state.toasts.insert(job_id, format!("Found {count} new files, searching for information..."));
+        state.display_toast(job_id, &format!("Found {count} new files, searching for information..."));
     }
 }
 

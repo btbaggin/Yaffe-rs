@@ -24,9 +24,6 @@ pub fn right_aligned_text(
     if let Some(i) = image {
         right.x -= size.y;
         graphics.draw_image(Rect::point_and_size(right, LogicalSize::new(size.y, size.y)), i);
-        // if let Some(i) = crate::assets::request_image(graphics, i) {
-        //     i.render(graphics, Rect::point_and_size(right, LogicalSize::new(size.y, size.y)));
-        // }
     }
 
     right
@@ -80,13 +77,6 @@ pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &Logica
     }
 
     LogicalSize::new(width, height)
-}
-
-#[macro_export]
-macro_rules! is_focused {
-    ($state:ident) => {
-        $state.focused_widget == $crate::get_widget_id!(Self)
-    };
 }
 
 pub fn outline_rectangle(graphics: &mut crate::Graphics, rect: &Rect, size: f32, color: speedy2d::color::Color) {

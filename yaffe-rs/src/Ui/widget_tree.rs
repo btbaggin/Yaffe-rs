@@ -3,6 +3,8 @@ use crate::YaffeState;
 use std::ops::Deref;
 use std::time::Instant;
 
+const INPUT_DELAY: u128 = 200;
+
 #[repr(u8)]
 pub enum ContainerAlignment {
     Left,
@@ -18,16 +20,17 @@ pub struct WidgetTree {
     pub root: WidgetContainer,
     pub focus: Vec<WidgetId>,
     pub data: YaffeState,
-    last_focus: (Option<WidgetId>, Instant),
+    last_focused: Instant,
 }
 impl WidgetTree {
     pub fn new(root: WidgetContainer, data: YaffeState, initial_focus: WidgetId) -> WidgetTree {
-        WidgetTree { root, focus: vec![initial_focus], data, last_focus: (None, Instant::now()) }
+        WidgetTree { root, focus: vec![initial_focus], data, last_focused: Instant::now() }
     }
 
     pub fn render_all(&mut self, graphics: &mut crate::Graphics) {
+        let focused_widget = *self.focus.last().unwrap();
         self.root.widget.set_layout(graphics.bounds);
-        self.root.render(&self.data, graphics);
+        self.root.render(&self.data, graphics, &focused_widget);
     }
 
     fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer) -> Option<&'a mut WidgetContainer> {
@@ -41,7 +44,7 @@ impl WidgetTree {
         //Find current focus so we can notify it is about to lose
         if let Some(lost) = Self::current_focus(&self.focus, &mut self.root) {
             lost.widget.lost_focus(&self.data, animations);
-            self.last_focus = (Some(lost.widget.get_id()), Instant::now());
+            self.last_focused = Instant::now();
         }
 
         //Find new focus
@@ -58,14 +61,21 @@ impl WidgetTree {
         //If we have revert all the way to the last different widget
         //This will allow us to get back to the platform list after going deep in a plugin
         //items
+        let state = &mut self.data;
+        if state.navigation_stack.borrow_mut().pop().is_some() {
+            if let crate::state::GroupType::Plugin(index) = state.groups[state.selected.group_index].kind {
+                crate::plugins::load_plugin_items(state, index);
+            }
+            return;
+        }
+
         let mut last = self.focus.pop();
-        if (now - self.last_focus.1).as_millis() < 200 {
+        if (now - self.last_focused).as_millis() < INPUT_DELAY {
             while last.as_ref() == self.focus.last() {
                 last = self.focus.pop();
             }
         }
-        let different = last != self.last_focus.0;
-        self.last_focus = (last, now);
+        self.last_focused = now;
 
         //Find current focus so we can notify it is about to lose
         if let Some(last) = last {
@@ -77,13 +87,6 @@ impl WidgetTree {
         //Revert to previous focus
         if let Some(got) = Self::current_focus(&self.focus, &mut self.root) {
             got.widget.got_focus(&self.data, animations);
-        }
-
-        if !different {
-            // TODO
-            //The only scenario this could happen is plugins
-            let state = &mut self.data;
-            // crate::plugins::load_plugin_items(state);
         }
     }
 }

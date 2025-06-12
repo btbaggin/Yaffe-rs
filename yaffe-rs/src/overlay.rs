@@ -62,9 +62,7 @@ impl OverlayWindow {
 }
 
 impl crate::windowing::WindowHandler for OverlayWindow {
-    fn on_frame_begin(&mut self, graphics: &mut Graphics, _: &mut Vec<crate::job_system::JobResult>) {
-        crate::assets::preload_assets(graphics);
-    }
+    fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         graphics.cache_settings(&self.settings);
