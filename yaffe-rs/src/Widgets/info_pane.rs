@@ -1,15 +1,13 @@
 use crate::ui::{
     get_drawable_text_with_wrap, AnimationManager, Container, Control, Image, Label, Widget, WidgetId, MARGIN,
-    MODAL_BACKGROUND,
+    MODAL_BACKGROUND, TITLE_SIZE
 };
 use crate::{widget, Actions, DeferredAction, Graphics, LogicalPosition, Rect, ScaleFactor, YaffeState};
 
-const SCROLL_TIMER: f32 = 3.;
-
 widget!(
     pub struct InfoPane {
-    scroll_timer: f32 = 0.,
     y_offset: f32 = 0.,
+    y_offset_max: f32 = 0.,
     container: Container = Container::vertical(1.),
     offset: LogicalPosition = LogicalPosition::new(1., 0.)
 }
@@ -18,7 +16,7 @@ widget!(
 fn build_container(exe: Option<&crate::Tile>) -> Container {
     let mut main = Container::vertical(1.);
     if let Some(exe) = exe {
-        main.add(Label::new(exe.name.clone(), Some(crate::ui::TITLE_SIZE)));
+        main.add(Label::new(exe.name.clone(), Some(TITLE_SIZE)));
 
         let mut top = Container::horizontal(0.15);
         let mut details = Container::vertical(1.);
@@ -38,17 +36,15 @@ impl Widget for InfoPane {
     fn offset(&self) -> LogicalPosition { self.offset }
 
     fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
-        let offset = crate::offset_of!(InfoPane => offset: LogicalPosition => x);
-        animations.animate_f32(self, offset, 0., 0.2);
-        self.scroll_timer = SCROLL_TIMER;
+        animations.animate(self, crate::offset_of!(InfoPane => offset: LogicalPosition => x), 0.).duration(0.2).start();
         self.y_offset = 0.;
+        self.y_offset_max = 0.;
 
-        self.container = build_container(state.get_selected_tile())
+        self.container = build_container(state.get_selected_tile());
     }
 
     fn lost_focus(&mut self, _: &YaffeState, animations: &mut AnimationManager) {
-        let offset = crate::offset_of!(InfoPane => offset: LogicalPosition => x);
-        animations.animate_f32(self, offset, 1., 0.2);
+        animations.animate(self, crate::offset_of!(InfoPane => offset: LogicalPosition => x), 1.).duration(0.2).start();
     }
 
     fn render(&mut self, graphics: &mut Graphics, state: &YaffeState, _: &WidgetId) {
@@ -70,12 +66,7 @@ impl Widget for InfoPane {
 
                 //If the text is too big to completely fit on screen, scroll the text after a set amount of time
                 if name_label.height().to_logical(graphics) + top > bounds.height() {
-                    self.scroll_timer -= graphics.delta_time;
-                    if self.scroll_timer < 0. {
-                        self.y_offset -=
-                            graphics.delta_time * state.settings.get_f32(crate::SettingNames::InfoScrollSpeed);
-                        self.y_offset = f32::max(self.y_offset, bounds.height() - top - name_label.height());
-                    }
+                    self.y_offset_max = bounds.height() - top - name_label.height()
                 }
 
                 //Clip text so when it scrolls it wont render above the banner
@@ -92,7 +83,7 @@ impl Widget for InfoPane {
 
     fn action(
         &mut self,
-        _: &mut YaffeState,
+        state: &mut YaffeState,
         _: &mut AnimationManager,
         action: &Actions,
         handler: &mut DeferredAction,
@@ -100,6 +91,14 @@ impl Widget for InfoPane {
         match action {
             Actions::Back => {
                 handler.revert_focus();
+                true
+            },
+            Actions::Down => {
+                self.y_offset = f32::max(self.y_offset - state.settings.get_f32(crate::SettingNames::InfoScrollSpeed), self.y_offset_max);
+                true
+            },
+            Actions::Up => {
+                self.y_offset = f32::min(self.y_offset + state.settings.get_f32(crate::SettingNames::InfoScrollSpeed), 0.);
                 true
             }
             _ => false,

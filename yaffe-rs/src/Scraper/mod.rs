@@ -13,6 +13,7 @@ const GOOGLE_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_byte
 mod games_db;
 pub use games_db::{search_game, search_platform};
 
+#[derive(Clone)]
 pub struct GameScrapeResult {
     pub info: GameInfo,
     pub boxart: PathBuf,
@@ -21,6 +22,7 @@ impl crate::ui::ListItem for GameScrapeResult {
     fn to_display(&self) -> String { self.info.name.clone() }
 }
 
+#[derive(Clone)]
 pub struct PlatformScrapeResult {
     pub info: PlatformInfo,
     pub overview: String,
@@ -30,6 +32,7 @@ impl crate::ui::ListItem for PlatformScrapeResult {
     fn to_display(&self) -> String { self.info.platform.clone() }
 }
 
+#[derive(Clone)]
 pub struct ServiceResponse<T> {
     pub id: u64,
     pub request: String,

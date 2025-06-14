@@ -36,12 +36,7 @@ pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> Form
 }
 
 /// Simple helper method to get a text object that is wrapped to a certain size
-pub fn get_drawable_text_with_wrap(
-    graphics: &mut Graphics,
-    size: f32,
-    text: &str,
-    width: f32,
-) -> FormattedTextBlock {
+pub fn get_drawable_text_with_wrap(graphics: &mut Graphics, size: f32, text: &str, width: f32) -> FormattedTextBlock {
     let font = graphics.request_font(Fonts::Regular);
     let option = TextOptions::new();
     let option = option.with_wrap_to_width(width, TextAlignment::Left);

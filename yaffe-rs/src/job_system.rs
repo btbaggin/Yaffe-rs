@@ -34,7 +34,7 @@ fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender
     };
 
     while let Ok(msg) = queue.recv() {
-        crate::logger::info!("Processing job {msg:?}");
+        crate::logger::trace!("Processing job {msg:?}");
         match msg {
             Job::LoadImage { key, file } => {
                 if let Some((data, dimensions)) = crate::assets::load_image_async(&key, file) {
@@ -97,6 +97,7 @@ pub enum Job {
     CheckUpdates,
 }
 
+#[derive(Clone)]
 pub enum JobResult {
     None,
     LoadImage { data: Vec<u8>, dimensions: (u32, u32), key: AssetKey },

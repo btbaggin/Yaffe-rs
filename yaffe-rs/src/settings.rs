@@ -38,7 +38,7 @@ stringy_enum! {
         InfoFontSize("info_font_size") = SettingValue::F32(24.),
         LightShadeFactor("light_shade_factor") = SettingValue::F32(0.3),
         DarkShadeFactor("dark_shade_factor") = SettingValue::F32(-0.6),
-        InfoScrollSpeed("info_scroll_speed") = SettingValue::F32(20.),
+        InfoScrollSpeed("info_scroll_speed") = SettingValue::F32(5.),
         MaxRows("max_rows") = SettingValue::I32(4),
         MaxColumns("max_columns") = SettingValue::I32(4),
         FontColor("font_color") = SettingValue::Color((0.95, 0.95, 0.95, 1.)),

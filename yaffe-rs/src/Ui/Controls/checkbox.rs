@@ -1,7 +1,7 @@
 use super::{draw_label_and_box, Control, InputControl};
 use crate::input::{Actions, InputType};
 use crate::utils::Rect;
-use glutin::event::VirtualKeyCode;
+use winit::keyboard::KeyCode;
 
 pub struct CheckBox {
     checked: bool,
@@ -30,7 +30,7 @@ impl Control for CheckBox {
     }
 
     fn action(&mut self, action: &Actions) {
-        if let Actions::KeyPress(InputType::Key(VirtualKeyCode::Space)) = action {
+        if let Actions::KeyPress(InputType::Key(KeyCode::Space, _)) = action {
             self.checked = !self.checked;
         }
     }

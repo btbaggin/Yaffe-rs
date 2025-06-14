@@ -2,10 +2,19 @@ use crate::ui::WidgetId;
 
 pub type FieldOffset = usize;
 
-pub trait Animator {
+pub enum AnimationData {
+    F32 { from: f32, to: f32 },
+}
+
+pub trait Animator: Clone + 'static {
+    fn to_animation_data(from: Self, to: Self) -> AnimationData;
     fn slerp(&self, from: Self, to: Self, amount: f32) -> Self;
 }
 impl Animator for f32 {
+    fn to_animation_data(from: Self, to: Self) -> AnimationData {
+        AnimationData::F32 { from, to }
+    }
+
     fn slerp(&self, from: Self, to: Self, amount: f32) -> Self {
         let delta = to - from;
         self + delta * amount
@@ -20,8 +29,31 @@ struct Animation {
     data: AnimationData,
 }
 
-enum AnimationData {
-    F32 { from: f32, to: f32 },
+pub struct AnimationBuilder<'a, T: Animator> {
+    manager: &'a mut AnimationManager,
+    widget_id: WidgetId,
+    field: FieldOffset,
+    target: T,
+    duration: f32,
+    current_value: T, // Store the current value
+}
+impl<'a, T: Animator> AnimationBuilder<'a, T> {
+    pub fn duration(mut self, duration: f32) -> Self {
+        self.duration = duration;
+        self
+    }
+
+    pub fn start(self) {
+        let data = T::to_animation_data(self.current_value, self.target);
+        let anim = Animation {
+            widget: self.widget_id,
+            duration: self.duration,
+            remaining: self.duration,
+            offset: self.field,
+            data,
+        };
+        self.manager.animations.push(anim);
+    }
 }
 
 pub struct AnimationManager {
@@ -32,17 +64,23 @@ impl AnimationManager {
 
     pub fn is_dirty(&self) -> bool { !self.animations.is_empty() }
 
-    pub fn animate_f32(
-        &mut self,
+    pub fn animate<'a, T: Animator>(
+        &'a mut self,
         widget: &impl crate::ui::FocusableWidget,
         field: FieldOffset,
-        target: f32,
-        duration: f32,
-    ) {
-        let data = AnimationData::F32 { from: *apply(field, widget), to: target };
+        target: T,
+    ) -> AnimationBuilder<'a, T> {
+        // Get current value - you'll need to implement this based on your system
+        let current_value = apply::<_, T>(field, widget).clone();
 
-        let anim = Animation { widget: widget.get_id(), duration, remaining: duration, offset: field, data };
-        self.animations.push(anim);
+        AnimationBuilder {
+            manager: self,
+            widget_id: widget.get_id(),
+            field,
+            target,
+            current_value,
+            duration: 0.3, // Default duration
+        }
     }
 
     /// Processes any widgets that have running animations
@@ -59,6 +97,7 @@ impl AnimationManager {
 
             if let Some(widget) = root.find_widget_mut(animation.widget) {
                 let widget = widget.widget.as_mut();
+
                 match animation.data {
                     AnimationData::F32 { from, to } => {
                         let animator = apply_mut::<dyn crate::ui::Widget, f32>(animation.offset, widget);
@@ -85,10 +124,10 @@ fn apply_ptr_mut<T: ?Sized, U>(offset: FieldOffset, x: *mut T) -> *mut U {
 }
 
 #[inline]
-fn apply_ptr<T, U>(offset: FieldOffset, x: *const T) -> *const U { ((x as usize) + offset) as *const U }
+fn apply_ptr<T: ?Sized, U>(offset: FieldOffset, x: *const T) -> *const U { ((x as *const () as usize) + offset) as *const U }
 
 #[inline]
-fn apply<T, U>(offset: FieldOffset, x: &T) -> &U { unsafe { &*apply_ptr(offset, x) } }
+fn apply<T: ?Sized, U>(offset: FieldOffset, x: &T) -> &U { unsafe { &*apply_ptr(offset, x) } }
 
 #[macro_export]
 macro_rules! offset_of {

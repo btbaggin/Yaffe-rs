@@ -6,10 +6,21 @@ use crate::Graphics;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+pub struct OverlayState {
+    process: Rc<RefCell<Option<Box<dyn ExternalProcess>>>>,
+    showing: bool,
+    settings: crate::settings::SettingsFile,
+}
+impl OverlayState {
+    pub fn new(process: Rc<RefCell<Option<Box<dyn ExternalProcess>>>>, settings: crate::settings::SettingsFile) -> OverlayState {
+        OverlayState { process, showing: false, settings }
+    }
+}
+
 /// Contains information needed to process and render
 /// the Yaffe game overlay
 pub struct OverlayWindow {
-    modal: Modal,
+    // modal: Modal,
     process: Option<Box<dyn ExternalProcess>>,
     showing: bool,
     settings: crate::settings::SettingsFile,
@@ -19,7 +30,7 @@ impl OverlayWindow {
     /// Returns a default `OverlayWindow` instance
     pub fn new(root: WidgetContainer, settings: crate::settings::SettingsFile) -> Rc<RefCell<OverlayWindow>> {
         let overlay = OverlayWindow {
-            modal: Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
+            // modal: Modal::overlay(Box::new(crate::modals::OverlayModal::new())),
             process: None,
             showing: false,
             settings,
@@ -66,7 +77,8 @@ impl crate::windowing::WindowHandler for OverlayWindow {
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         graphics.cache_settings(&self.settings);
-        crate::ui::render_modal(&self.modal, graphics);
+        // self.render_all(graphics);
+        // crate::ui::render_modal(&self.modal, graphics);
         true
     }
 
@@ -83,15 +95,15 @@ impl crate::windowing::WindowHandler for OverlayWindow {
             }
             _ => {
                 if self.showing {
-                    let result = self.modal.action(action, helper);
-                    if let ModalResult::Ok = result {
-                        // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
-                        // see process_is_running
-                        self.process.as_mut().unwrap().kill().log("Unable to kill running process");
-                        self.process = None;
-                        self.hide(helper);
-                        return true;
-                    }
+                    // let result = self.modal.action(action, helper);
+                    // if let ModalResult::Ok = result {
+                    //     // It's safe to unwrap here because we are guaranteed to have a process or this window wouldn't be open
+                    //     // see process_is_running
+                    //     self.process.as_mut().unwrap().kill().log("Unable to kill running process");
+                    //     self.process = None;
+                    //     self.hide(helper);
+                    //     return true;
+                    // }
                 }
                 false
             }

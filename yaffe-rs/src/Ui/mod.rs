@@ -52,13 +52,6 @@ pub trait Widget: FocusableWidget {
     fn lost_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
 }
 
-// #[macro_export]
-// macro_rules! get_widget_id {
-//     ($widget:ty) => {
-//         std::any::TypeId::of::<$widget>()
-//     };
-// }
-
 #[macro_export]
 macro_rules! widget {
     (pub struct $name:ident {

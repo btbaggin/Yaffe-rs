@@ -1,6 +1,6 @@
-use glutin::event::VirtualKeyCode;
 use std::collections::HashMap;
 use std::hash::Hash;
+use winit::keyboard::KeyCode;
 
 pub struct InputMap<A: Eq + Hash, B: Eq + Hash, T: Clone> {
     keys: HashMap<A, T>,
@@ -56,23 +56,22 @@ pub enum ControllerInput {
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum InputType {
-    Char(char),
-    Key(VirtualKeyCode),
+    Key(KeyCode, Option<String>),
     Paste(String),
 }
 
-pub fn get_input_map() -> InputMap<VirtualKeyCode, ControllerInput, Actions> {
+pub fn get_input_map() -> InputMap<KeyCode, ControllerInput, Actions> {
     let mut m = InputMap::new();
-    m.insert(VirtualKeyCode::Key1, ControllerInput::ButtonWest, Actions::Info);
-    m.insert(VirtualKeyCode::Key2, ControllerInput::ButtonNorth, Actions::Filter);
-    m.insert(VirtualKeyCode::Return, ControllerInput::ButtonSouth, Actions::Accept);
-    m.insert(VirtualKeyCode::Escape, ControllerInput::ButtonEast, Actions::Back);
-    m.insert(VirtualKeyCode::Up, ControllerInput::DirectionUp, Actions::Up);
-    m.insert(VirtualKeyCode::Down, ControllerInput::DirectionDown, Actions::Down);
-    m.insert(VirtualKeyCode::Right, ControllerInput::DirectionRight, Actions::Right);
-    m.insert(VirtualKeyCode::Left, ControllerInput::DirectionLeft, Actions::Left);
-    m.insert(VirtualKeyCode::F1, ControllerInput::ButtonStart, Actions::ShowMenu);
-    m.insert(VirtualKeyCode::F2, ControllerInput::ButtonGuide, Actions::ToggleOverlay);
+    m.insert(KeyCode::Digit1, ControllerInput::ButtonWest, Actions::Info);
+    m.insert(KeyCode::Digit2, ControllerInput::ButtonNorth, Actions::Filter);
+    m.insert(KeyCode::Enter, ControllerInput::ButtonSouth, Actions::Accept);
+    m.insert(KeyCode::Escape, ControllerInput::ButtonEast, Actions::Back);
+    m.insert(KeyCode::ArrowUp, ControllerInput::DirectionUp, Actions::Up);
+    m.insert(KeyCode::ArrowDown, ControllerInput::DirectionDown, Actions::Down);
+    m.insert(KeyCode::ArrowRight, ControllerInput::DirectionRight, Actions::Right);
+    m.insert(KeyCode::ArrowLeft, ControllerInput::DirectionLeft, Actions::Left);
+    m.insert(KeyCode::F1, ControllerInput::ButtonStart, Actions::ShowMenu);
+    m.insert(KeyCode::F2, ControllerInput::ButtonGuide, Actions::ToggleOverlay);
     m
 }
 
@@ -82,7 +81,7 @@ pub trait PlatformGamepad {
 }
 
 pub fn input_to_action(
-    input_map: &InputMap<VirtualKeyCode, ControllerInput, Actions>,
+    input_map: &InputMap<KeyCode, ControllerInput, Actions>,
     input: &mut dyn PlatformGamepad,
 ) -> std::collections::HashSet<Actions> {
     let mut result = std::collections::HashSet::new();
@@ -90,7 +89,7 @@ pub fn input_to_action(
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(action.clone());
         } else {
-            result.insert(Actions::KeyPress(InputType::Char(g as u8 as char)));
+            result.insert(Actions::KeyPress(InputType::Key(KeyCode::Backquote, Some((g as u8 as char).to_string()))));
         }
     }
 

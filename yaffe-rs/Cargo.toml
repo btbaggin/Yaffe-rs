@@ -23,7 +23,10 @@ serde_json = "^1"
 serde = { version = "^1", features = ["derive"] }
 reqwest = { version = "^0.11", features = ["blocking", "json"] }
 image = "^0.24"
-glutin = "^0.29"
+glutin = "^0.32"
+winit = "^0.30"
+glutin-winit = "0.5.0"
+raw-window-handle = "0.6"
 takeable-option = "^0.5"
 memoffset = "^0.9"
 libloading = "^0.8"
@@ -34,11 +37,10 @@ rand = "^0.9"
 yaffe-lib = { path = "../yaffe-lib" }
 # webview_official = "0.2.0"
 wry = "^0.51"
-winit = "^0.30"
 
 [target.'cfg(target_os="windows")'.dependencies.winapi]
 version = "0.3.9"
-features = ["libloaderapi", "winerror", "std", "taskschd", "impl-default", "oleauto", "objbase", "xinput", "mmdeviceapi", "endpointvolume", "securitybaseapi", "winbase"]
+features = ["libloaderapi", "winerror", "std", "taskschd", "impl-default", "oleauto", "objbase", "xinput", "mmdeviceapi", "endpointvolume", "securitybaseapi", "winbase", "winuser"]
 
 [target.'cfg(target_os="linux")'.dependencies]
 libc = "0.2.120"

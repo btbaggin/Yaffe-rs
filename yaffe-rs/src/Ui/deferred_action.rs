@@ -1,4 +1,5 @@
 use crate::ui::{display_modal, AnimationManager, FocusType, WidgetId, WidgetTree};
+use crate::state::YaffeState;
 
 pub struct DeferredAction {
     focus: Option<FocusType>,

@@ -3,7 +3,7 @@ use crate::input::InputType;
 use crate::ui::get_drawable_text;
 use crate::utils::Rect;
 use crate::{Actions, LogicalPosition};
-use glutin::event::VirtualKeyCode;
+use winit::keyboard::KeyCode;
 
 pub struct TextBox {
     text: String,
@@ -66,26 +66,31 @@ impl Control for TextBox {
 
     fn action(&mut self, action: &Actions) {
         match action {
-            Actions::KeyPress(InputType::Key(k)) => match k {
-                VirtualKeyCode::Back => {
+            Actions::KeyPress(InputType::Key(k, text)) => match k {
+                KeyCode::Backspace => {
                     if self.caret > 0 {
                         self.text.remove(self.caret - 1);
                         self.caret -= 1;
                     }
                 }
-                VirtualKeyCode::Delete => {
+                KeyCode::Delete => {
                     if self.caret < self.text.len() {
                         self.text.remove(self.caret);
                     }
                 }
-                VirtualKeyCode::Home => self.caret = 0,
-                VirtualKeyCode::End => self.caret = self.text.len(),
-                _ => {}
+                KeyCode::Home => self.caret = 0,
+                KeyCode::End => self.caret = self.text.len(),
+                _ => {
+                    if let Some(text) = text {
+                        self.text.insert_str(self.caret, text);
+                        self.caret += text.chars().count();
+                    }
+                }
             },
-            Actions::KeyPress(InputType::Char(c)) => {
-                self.text.insert(self.caret, *c);
-                self.caret += 1;
-            }
+            // Actions::KeyPress(InputType::Char(c)) => {
+                    // self.text.insert(self.caret, *c);
+                    // self.caret += 1;
+            // }
             Actions::KeyPress(InputType::Paste(t)) => {
                 self.text.insert_str(self.caret, t);
                 self.caret += t.len();

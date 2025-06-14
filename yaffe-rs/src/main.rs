@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(maybe_uninit_array_assume_init, step_trait)]
+#![allow(clippy::new_without_default)]
 use crate::logger::{error, PanicLogEntry};
+use crate::overlay_window::OverlayState;
 use crate::utils::append_app_ext;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -21,7 +23,7 @@ mod job_system;
 mod logger;
 mod modals;
 mod os;
-mod overlay;
+mod overlay_window;
 mod platform;
 mod plugins;
 mod pooled_cache;
@@ -72,10 +74,14 @@ fn main() {
     };
     logger::set_log_level(&settings.get_str(SettingNames::LoggingLevel));
 
-    let overlay = overlay::OverlayWindow::new(build_overlay_tree(), settings.clone());
-    let state = YaffeState::new(overlay.clone(), settings, queue.clone());
+    let process = Rc::new(RefCell::new(None));
 
-    let mut ui = ui::WidgetTree::new(build_main_tree(), state, ui::WidgetId::of::<PlatformList>());
+    let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
+    let overlay_state = OverlayState::new(process.clone(), settings.clone());
+    let overlay = overlay_window::OverlayWindow::new(build_overlay_tree(), settings.clone());
+
+    // let overlay = ui::WidgetTree::new(build_overlay_tree(), overlay_state, ui::WidgetId::of::<OverlayBackground>());
+    let mut ui = ui::WidgetTree::new(build_main_tree(), yaffe_state, ui::WidgetId::of::<PlatformList>());
 
     let input_map = input::get_input_map();
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
@@ -84,7 +90,7 @@ fn main() {
     windowing::create_yaffe_windows(notify, queue, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
 }
 
-fn build_main_tree() -> ui::WidgetContainer {
+pub fn build_main_tree() -> ui::WidgetContainer {
     use ui::ContainerAlignment;
 
     let mut root = ui::WidgetContainer::root(Background::new());
@@ -97,4 +103,6 @@ fn build_main_tree() -> ui::WidgetContainer {
     root
 }
 
-fn build_overlay_tree() -> ui::WidgetContainer { ui::WidgetContainer::root(Background::new()) }
+fn build_overlay_tree() -> ui::WidgetContainer {
+    ui::WidgetContainer::root(OverlayBackground::new())
+}

@@ -21,6 +21,7 @@ use winapi::um::winuser::{
 };
 use winapi::um::xinput::*;
 use winapi::{Class, Interface};
+use winit::window::Window;
 
 use crate::logger::LogEntry;
 use std::convert::TryInto;
@@ -425,7 +426,7 @@ impl crate::input::PlatformGamepad for WindowsInput {
     }
 }
 
-pub(super) fn get_clipboard(_: &glutin::window::Window) -> Option<String> {
+pub(super) fn get_clipboard(_: &Window) -> Option<String> {
     unsafe {
         let mut result = None;
         if OpenClipboard(std::ptr::null_mut()) != 0 {

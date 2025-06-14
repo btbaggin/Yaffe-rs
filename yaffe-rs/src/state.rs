@@ -9,7 +9,7 @@ use crate::assets::AssetKey;
 use crate::data::GameInfo;
 use crate::job_system::ThreadSafeJobQueue;
 use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
-use crate::overlay::OverlayWindow;
+use crate::overlay_window::OverlayWindow;
 use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
 use crate::settings::SettingsFile;
@@ -243,8 +243,8 @@ impl Tile {
         if let Some(group) = state.find_group(self.group_id) {
             let child = self.get_tile_process(state, group);
             if let Some(Some(process)) = child.display_failure_deferred("Unable to start process", handler) {
-                let mut overlay = state.overlay.borrow_mut();
-                overlay.set_process(process);
+                *state.process.borrow_mut() = Some(process);
+                // *overlay.set_process(process);
                 //We could refresh so our recent games page updates, but I dont think that's desirable
             }
         }
@@ -344,7 +344,7 @@ impl ExternalProcess for std::process::Child {
 }
 
 pub struct YaffeState {
-    overlay: Rc<RefCell<OverlayWindow>>,
+    process: Rc<RefCell<Option<Box<dyn ExternalProcess>>>>,
     pub selected: SelectedItem,
     pub groups: Vec<TileGroup>,
     pub plugins: Vec<Plugin>,
@@ -359,9 +359,9 @@ pub struct YaffeState {
     pub navigation_stack: RefCell<Vec<String>>,
 }
 impl YaffeState {
-    pub fn new(overlay: Rc<RefCell<OverlayWindow>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
+    pub fn new(process: Rc<RefCell<Option<Box<dyn ExternalProcess>>>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
         YaffeState {
-            overlay,
+            process,
             selected: SelectedItem::new(),
             groups: vec![],
             plugins: vec![],
@@ -401,5 +401,5 @@ impl YaffeState {
 
     pub fn exit(&mut self) { self.running = false; }
 
-    pub fn is_overlay_showing(&self) -> bool { self.overlay.borrow().is_active() }
+    pub fn is_overlay_active(&self) -> bool { self.process.borrow().is_some() }
 }

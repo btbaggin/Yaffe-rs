@@ -24,7 +24,7 @@ impl ModalContent for SetRestrictedModal {
         let code = match action {
             Actions::Accept => return ModalResult::Ok,
             Actions::Back => return ModalResult::Cancel,
-            Actions::KeyPress(crate::input::InputType::Char(code)) => *code,
+            Actions::KeyPress(crate::input::InputType::Key(code, _)) => *code as u8 as char,
             _ => action_to_char(action),
         };
         self.pass.add_digit(code);

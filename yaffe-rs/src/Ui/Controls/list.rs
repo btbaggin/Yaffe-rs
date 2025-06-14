@@ -30,6 +30,7 @@ impl<T: ListItem> List<T> {
                 } else {
                     self.index = 0;
                 }
+                true
             }
             Actions::Up => {
                 if self.index > 0 {
@@ -37,11 +38,10 @@ impl<T: ListItem> List<T> {
                 } else {
                     self.index = self.items.len() - 1;
                 }
+                true
             }
-            _ => return false,
+            _ => false,
         }
-
-        true
     }
 
     pub fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {

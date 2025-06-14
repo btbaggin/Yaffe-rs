@@ -23,7 +23,7 @@ impl WindowHandler for WidgetTree {
     }
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
-        if !self.data.is_overlay_showing() {
+        if !self.data.is_overlay_active() {
             let window_rect = graphics.bounds;
 
             //Update the platform and emulator list from database
@@ -57,7 +57,7 @@ impl WindowHandler for WidgetTree {
     }
 
     fn on_input(&mut self, animations: &mut AnimationManager, helper: &mut WindowHelper, action: &Actions) -> bool {
-        if self.data.is_overlay_showing() {
+        if self.data.is_overlay_active() {
             return false;
         }
 

@@ -16,7 +16,6 @@ pub struct Graphics {
     pub queue: ThreadSafeJobQueue,
     pub scale_factor: f32,
     pub bounds: Rect,
-    pub delta_time: f32,
     cached_settings: HashMap<SettingNames, SettingValue>,
     pub asset_cache: RefCell<PooledCache<32, AssetKey, AssetSlot>>,
 }
@@ -27,7 +26,6 @@ impl Graphics {
             queue,
             scale_factor: 0.,
             bounds: Rect::from_tuples((0., 0.), (0., 0.)),
-            delta_time: 0.,
             cached_settings: HashMap::new(),
             asset_cache: RefCell::new(PooledCache::new()),
         }
@@ -37,12 +35,10 @@ impl Graphics {
         graphics: &mut speedy2d::Graphics2D,
         scale_factor: f32,
         size: PhysicalSize,
-        delta_time: f32,
     ) {
         self.graphics_ptr = graphics;
         self.scale_factor = scale_factor;
         self.bounds = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
-        self.delta_time = delta_time;
     }
     pub fn cache_settings(&mut self, settings: &SettingsFile) {
         for s in [SettingNames::InfoFontSize, SettingNames::LightShadeFactor, SettingNames::DarkShadeFactor] {
@@ -96,12 +92,7 @@ impl Graphics {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_rectangle(rect.to_physical(self.scale_factor), color);
     }
-    pub fn draw_text(
-        &mut self,
-        position: LogicalPosition,
-        color: Color,
-        text: &speedy2d::font::FormattedTextBlock,
-    ) {
+    pub fn draw_text(&mut self, position: LogicalPosition, color: Color, text: &speedy2d::font::FormattedTextBlock) {
         let graphics = unsafe { &mut *self.graphics_ptr };
         graphics.draw_text(position.to_physical(self.scale_factor), color, text);
     }
