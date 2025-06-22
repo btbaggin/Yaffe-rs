@@ -120,25 +120,8 @@ pub enum Job {
 
 #[derive(Clone)]
 pub enum JobResult {
-    None,
     LoadImage { data: Vec<u8>, dimensions: (u32, u32), key: AssetKey },
     SearchPlatform(ServiceResponse<PlatformScrapeResult>),
     SearchGame(ServiceResponse<GameScrapeResult>),
     CheckUpdates(bool),
-}
-
-// TODO this can probably completely go away?
-pub fn process_results<F, T>(results: &mut Vec<JobResult>, should_process: F, mut process: T)
-where
-    F: Fn(&JobResult) -> bool,
-    T: FnMut(JobResult),
-{
-    for r in results.iter_mut() {
-        if should_process(r) {
-            let result = std::mem::replace(r, JobResult::None);
-            process(result);
-        }
-    }
-
-    results.retain(|r| !matches!(r, JobResult::None))
 }

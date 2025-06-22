@@ -249,7 +249,7 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 self.handled_actions.clear();
-                let mut jobs = self.get_processed_jobs(Some(window_id));
+                let jobs = self.get_processed_jobs(Some(window_id));
                 if let Some(window) = self.windows.get_mut(&window_id) {
                     let scale = window.window.scale_factor() as f32;
                     let size = crate::PhysicalSize::new(window.size.x, window.size.y);
@@ -262,7 +262,7 @@ impl ApplicationHandler for App {
                             window_graphics.set_frame(graphics, scale, size);
                         }
 
-                        handle.on_frame_begin(&mut window_graphics, &mut jobs);
+                        handle.on_frame_begin(&mut window_graphics, jobs);
                         if !handle.on_frame(&mut window_graphics) {
                             event_loop.exit();
                             handle.on_stop();
@@ -296,8 +296,8 @@ impl ApplicationHandler for App {
             self.finished_jobs.push(result);
         }
         // Process our "system" jobs
-        let mut jobs = self.get_processed_jobs(None);
-        process_system_jobs(&mut self.update_timer, &mut jobs);
+        let jobs = self.get_processed_jobs(None);
+        process_system_jobs(&mut self.update_timer, jobs);
 
         let jobs_completed = !self.finished_jobs.is_empty();
 
@@ -322,7 +322,7 @@ impl ApplicationHandler for App {
     }
 }
 
-fn process_system_jobs(timer: &mut f32, job_results: &mut Vec<JobResult>) {
+fn process_system_jobs(timer: &mut f32, job_results: Vec<JobResult>) {
     for r in job_results {
         match r {
             JobResult::CheckUpdates(true) => *timer = f32::MIN,

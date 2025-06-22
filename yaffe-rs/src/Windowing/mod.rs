@@ -57,7 +57,7 @@ pub(crate) trait WindowHandler {
         delta_time: f32,
         helper: &mut WindowHelper,
     ) -> bool;
-    fn on_frame_begin(&mut self, _: &mut Graphics, _: &mut Vec<JobResult>) {}
+    fn on_frame_begin(&mut self, _: &mut Graphics, _: Vec<JobResult>) {}
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
     fn on_input(
         &mut self,

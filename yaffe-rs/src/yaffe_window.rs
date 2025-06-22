@@ -19,7 +19,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
         crate::settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
 
-    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>) {
+    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: Vec<JobResult>) {
         process_jobs(&mut self.data, graphics, jobs);
     }
 
@@ -142,11 +142,9 @@ fn on_menu_close(
     }
 }
 
-fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: &mut Vec<JobResult>) {
-    crate::job_system::process_results(
-        job_results,
-        |j| matches!(j, JobResult::LoadImage { .. } | JobResult::SearchGame(_) | JobResult::SearchPlatform(_)),
-        |result| match result {
+fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Vec<JobResult>) {
+    for r in job_results {
+        match r {
             JobResult::LoadImage { data, dimensions, key } => {
                 let mut map = graphics.asset_cache.borrow_mut();
                 let asset_slot = crate::assets::get_asset_slot(&mut map, &key);
@@ -191,6 +189,6 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: &m
                 state.remove_toast(&result.id);
             }
             _ => {}
-        },
-    );
+        }
+    }
 }

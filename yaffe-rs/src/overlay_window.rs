@@ -10,7 +10,7 @@ use crate::Graphics;
 impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
     fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
-    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>) { process_jobs(graphics, jobs); }
+    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: Vec<JobResult>) { process_jobs(graphics, jobs); }
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         graphics.cache_settings(&self.data.settings);
@@ -62,17 +62,15 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
     }
 }
 
-fn process_jobs(graphics: &mut Graphics, job_results: &mut Vec<JobResult>) {
-    crate::job_system::process_results(
-        job_results,
-        |j| matches!(j, JobResult::LoadImage { .. } | JobResult::SearchGame(_) | JobResult::SearchPlatform(_)),
-        |result| match result {
+fn process_jobs(graphics: &mut Graphics, job_results: Vec<JobResult>) {
+    for r in job_results {
+        match r {
             JobResult::LoadImage { data, dimensions, key } => {
                 let mut map = graphics.asset_cache.borrow_mut();
                 let asset_slot = crate::assets::get_asset_slot(&mut map, &key);
                 asset_slot.set_data(data, dimensions);
             }
             _ => {}
-        },
-    );
+        }
+    }
 }
