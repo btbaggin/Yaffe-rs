@@ -6,7 +6,6 @@ pub struct DeferredAction {
     load_plugin: bool,
     message: Option<String>,
 }
-// TODO make this a type parameter on widget tree?
 impl DeferredAction {
     pub fn new() -> DeferredAction { DeferredAction { focus: None, load_plugin: false, message: None } }
     pub fn focus_widget<T: 'static>(&mut self) { self.focus = Some(FocusType::Focus(WidgetId::of::<T>())); }

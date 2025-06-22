@@ -8,7 +8,6 @@ use std::rc::Rc;
  * TODO
  * Search bar doesnt work well on plugins
  * render navigation stack
- * Have controls handle cut, copy, paste, etc??? (need to include modifiers in key action)
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

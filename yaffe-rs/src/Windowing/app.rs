@@ -145,7 +145,6 @@ impl App {
             let size = crate::PhysicalSize::new(size.width as f32, size.height as f32);
             renderer.draw_frame(|graphics| {
                 unsafe {
-                    // TODO store window id in the graphics and pass along with job requests?
                     window_graphics.set_frame(graphics, 1., size);
                 }
                 handler.on_init(&mut window_graphics);
