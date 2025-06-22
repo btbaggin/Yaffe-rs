@@ -71,7 +71,10 @@ impl Widget<YaffeState, DeferredAction> for AppList {
 
     fn got_focus(&mut self, _: &YaffeState, animations: &mut AnimationManager) {
         self.tile_animation = 0.;
-        animations.animate(self, crate::offset_of!(AppList => tile_animation), 1.).duration(crate::widgets::app_tile::ANIMATION_TIME).start();
+        animations
+            .animate(self, crate::offset_of!(AppList => tile_animation), 1.)
+            .duration(crate::widgets::app_tile::ANIMATION_TIME)
+            .start();
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState, current_focus: &WidgetId) {
@@ -296,7 +299,10 @@ impl AppList {
             *self.first_visible.get_mut(&group_id).unwrap() = visible;
 
             self.tile_animation = 0.;
-            animations.animate(self, crate::offset_of!(AppList => tile_animation), 1.).duration(crate::widgets::app_tile::ANIMATION_TIME).start();
+            animations
+                .animate(self, crate::offset_of!(AppList => tile_animation), 1.)
+                .duration(crate::widgets::app_tile::ANIMATION_TIME)
+                .start();
 
             if let crate::state::GroupType::Plugin(_) = state.get_selected_group().kind {
                 if visible + self.tiles_x * self.tiles_y >= self.tiles.len() {

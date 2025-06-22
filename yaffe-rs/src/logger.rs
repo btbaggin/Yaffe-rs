@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::sync::Mutex;
 
 #[allow(unused_imports)]
-pub use log::{error, info, trace, warn, debug};
+pub use log::{debug, error, info, trace, warn};
 use log::{Level, LevelFilter, Log, Metadata, Record};
 
 struct YaffeLogger;

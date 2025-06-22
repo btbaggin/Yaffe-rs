@@ -20,6 +20,7 @@ mod job_system;
 mod logger;
 mod modals;
 mod os;
+mod overlay_state;
 mod overlay_window;
 mod platform;
 mod plugins;
@@ -28,7 +29,6 @@ mod restrictions;
 mod scraper;
 mod settings;
 mod state;
-mod overlay_state;
 mod ui;
 mod utils;
 mod widgets;
@@ -38,13 +38,14 @@ mod yaffe_window;
 use graphics::Graphics;
 use input::Actions;
 use job_system::Job;
+use logger::{error, PanicLogEntry};
+use overlay_state::OverlayState;
 use settings::SettingNames;
 use state::{Tile, TileGroup, YaffeState};
-use overlay_state::OverlayState;
 use ui::DeferredAction;
-use utils::{Transparent, LogicalPosition, LogicalSize, PhysicalRect, PhysicalSize, Rect, ScaleFactor, append_app_ext};
-use logger::{error, PanicLogEntry};
+use utils::{append_app_ext, LogicalPosition, LogicalSize, PhysicalRect, PhysicalSize, Rect, ScaleFactor, Transparent};
 use widgets::*;
+use winit::window::{WindowAttributes, WindowLevel};
 
 const UPDATE_FILE_PATH: &str = "./yaffe-rs.update";
 
@@ -78,14 +79,35 @@ fn main() {
     let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
     let overlay_state = OverlayState::new(process.clone(), settings.clone());
 
-    let overlay = ui::WidgetTree::<OverlayState, ()>::new(build_overlay_tree(), overlay_state, ui::WidgetId::of::<OverlayBackground>());
-    let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(build_main_tree(), yaffe_state, ui::WidgetId::of::<PlatformList>());
+    let overlay = ui::WidgetTree::<OverlayState, ()>::new(
+        build_overlay_tree(),
+        overlay_state,
+        ui::WidgetId::of::<OverlayBackground>(),
+    );
+    let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(
+        build_main_tree(),
+        yaffe_state,
+        ui::WidgetId::of::<PlatformList>(),
+    );
 
     let input_map = input::get_input_map();
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
 
     plugins::load_plugins(&mut ui.data, "./plugins");
-    windowing::create_yaffe_windows(notify, queue, gamepad, input_map, Rc::new(RefCell::new(ui)), Rc::new(RefCell::new(overlay)));
+
+    let main = WindowAttributes::default().with_title("Yaffe").with_visible(true);
+    let overlay_att = WindowAttributes::default()
+        .with_title("Overlay")
+        .with_visible(false)
+        .with_window_level(WindowLevel::AlwaysOnTop)
+        .with_transparent(true)
+        .with_decorations(false);
+
+    let handlers = vec![
+        windowing::WindowInfo::new(Rc::new(RefCell::new(overlay)), overlay_att, true),
+        windowing::WindowInfo::new(Rc::new(RefCell::new(ui)), main, true),
+    ];
+    windowing::run_app(input_map, queue, handlers, notify, gamepad);
 }
 
 pub fn build_main_tree() -> ui::WidgetContainer<YaffeState, DeferredAction> {
@@ -101,6 +123,4 @@ pub fn build_main_tree() -> ui::WidgetContainer<YaffeState, DeferredAction> {
     root
 }
 
-fn build_overlay_tree() -> ui::WidgetContainer<OverlayState, ()> {
-    ui::WidgetContainer::root(OverlayBackground::new())
-}
+fn build_overlay_tree() -> ui::WidgetContainer<OverlayState, ()> { ui::WidgetContainer::root(OverlayBackground::new()) }

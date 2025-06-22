@@ -1,6 +1,6 @@
 use crate::assets::Images;
-use crate::ui::{WidgetId, Widget};
-use crate::{widget, YaffeState, DeferredAction};
+use crate::ui::{Widget, WidgetId};
+use crate::{widget, DeferredAction, YaffeState};
 
 widget!(
     pub struct Background {}

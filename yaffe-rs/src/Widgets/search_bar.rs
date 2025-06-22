@@ -78,7 +78,10 @@ impl Widget<YaffeState, DeferredAction> for SearchBar {
     }
 
     fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
-        animations.animate(self, crate::offset_of!(SearchBar => offset: LogicalPosition => y), 0.).duration(0.2).start();
+        animations
+            .animate(self, crate::offset_of!(SearchBar => offset: LogicalPosition => y), 0.)
+            .duration(0.2)
+            .start();
 
         // Make sure we always have the name search since thats default
         let group = state.get_selected_group();
@@ -99,7 +102,10 @@ impl Widget<YaffeState, DeferredAction> for SearchBar {
 
     fn lost_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
         if state.filter.is_none() {
-            animations.animate(self, crate::offset_of!(SearchBar => offset: LogicalPosition => y), -1.).duration(0.2).start();
+            animations
+                .animate(self, crate::offset_of!(SearchBar => offset: LogicalPosition => y), -1.)
+                .duration(0.2)
+                .start();
         }
     }
 
@@ -218,11 +224,14 @@ impl SearchBar {
             (self.position.x + self.size.x - filter_start) / self.searches[self.active_search].options.len() as f32;
         self.searches[self.active_search].increment_index(increment);
 
-        animations.animate(
-            self,
-            crate::offset_of!(SearchBar => highlight_offset),
-            self.searches[self.active_search].selected.unwrap_or(0) as f32 * item_size,
-        ).duration(0.1).start();
+        animations
+            .animate(
+                self,
+                crate::offset_of!(SearchBar => highlight_offset),
+                self.searches[self.active_search].selected.unwrap_or(0) as f32 * item_size,
+            )
+            .duration(0.1)
+            .start();
         state.filter = Some(self.searches[self.active_search].clone());
     }
 }

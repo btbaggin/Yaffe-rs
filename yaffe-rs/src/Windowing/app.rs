@@ -17,11 +17,11 @@ use glutin_winit::{DisplayBuilder, GlWindow};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::{KeyCode, PhysicalKey, ModifiersState};
+use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::{Fullscreen, WindowId};
 
-use super::{AnimationManager, InputType, JobResults, WindowHelper, YaffeWindow, WindowInfo};
+use super::{AnimationManager, InputType, JobResults, WindowHelper, WindowInfo, YaffeWindow};
 use crate::input::{Actions, ControllerInput, InputMap, PlatformGamepad};
 use crate::job_system::{JobResult, ThreadSafeJobQueue};
 use crate::logger::LogEntry;
@@ -30,7 +30,7 @@ use crate::Graphics;
 static mut CURRENT_WINDOW_ID: WindowId = WindowId::dummy();
 pub fn get_current_window() -> WindowId {
     #[allow(static_mut_refs)]
-    return unsafe { CURRENT_WINDOW_ID.clone() }
+    return unsafe { CURRENT_WINDOW_ID.clone() };
 }
 
 pub struct App {
@@ -45,7 +45,7 @@ pub struct App {
     last_time: Instant,
     job_results: JobResults,
     gamepad: Box<dyn PlatformGamepad + 'static>,
-    handled_actions: HashSet<Actions>
+    handled_actions: HashSet<Actions>,
 }
 
 impl App {
@@ -72,7 +72,11 @@ impl App {
         }
     }
 
-    fn create_window(event_loop: &ActiveEventLoop, info: WindowInfo, queue: ThreadSafeJobQueue) -> (WindowId, YaffeWindow) {
+    fn create_window(
+        event_loop: &ActiveEventLoop,
+        info: WindowInfo,
+        queue: ThreadSafeJobQueue,
+    ) -> (WindowId, YaffeWindow) {
         for multisampling in &[16, 8, 4, 2, 1, 0] {
             let mut template = ConfigTemplateBuilder::new().with_transparency(true);
 
@@ -151,16 +155,19 @@ impl App {
             });
 
             let window_id = window.id();
-            return (window_id, YaffeWindow {
-                window,
-                gl_context,
-                gl_surface,
-                renderer,
-                size,
-                handler: info.handler.clone(),
-                graphics: RefCell::new(window_graphics),
-                animations: RefCell::new(AnimationManager::new()),
-            });
+            return (
+                window_id,
+                YaffeWindow {
+                    window,
+                    gl_context,
+                    gl_surface,
+                    renderer,
+                    size,
+                    handler: info.handler.clone(),
+                    graphics: RefCell::new(window_graphics),
+                    animations: RefCell::new(AnimationManager::new()),
+                },
+            );
         }
         panic!("Unable to create window")
     }

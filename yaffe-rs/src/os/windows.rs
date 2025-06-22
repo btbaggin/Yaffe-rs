@@ -16,9 +16,7 @@ use winapi::um::winnt::{
     HANDLE, LPWSTR, SE_PRIVILEGE_ENABLED, SE_SHUTDOWN_NAME, SHORT, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES,
     TOKEN_QUERY,
 };
-use winapi::um::winuser::{
-    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
-};
+use winapi::um::winuser::{ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN};
 use winapi::um::xinput::*;
 use winapi::{Class, Interface};
 

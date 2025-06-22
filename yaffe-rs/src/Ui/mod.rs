@@ -41,9 +41,7 @@ pub trait Widget<T, D>: FocusableWidget {
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
 
     /// Called when a user action occurs
-    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut D) -> bool {
-        false
-    }
+    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut D) -> bool { false }
 
     /// Called when the control gets focus
     fn got_focus(&mut self, _: &T, _: &mut AnimationManager) {}
@@ -99,7 +97,11 @@ impl<T, D> WidgetContainer<T, D> {
     pub fn root(widget: impl Widget<T, D> + 'static) -> WidgetContainer<T, D> {
         WidgetContainer::new(widget, LogicalSize::new(1.0, 1.0), ContainerAlignment::Left)
     }
-    fn new(widget: impl Widget<T, D> + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer<T, D> {
+    fn new(
+        widget: impl Widget<T, D> + 'static,
+        ratio: LogicalSize,
+        alignment: ContainerAlignment,
+    ) -> WidgetContainer<T, D> {
         WidgetContainer { children: vec![], widget: Box::new(widget), ratio, alignment }
     }
 

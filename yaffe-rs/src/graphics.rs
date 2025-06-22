@@ -30,12 +30,7 @@ impl Graphics {
             asset_cache: RefCell::new(PooledCache::new()),
         }
     }
-    pub unsafe fn set_frame(
-        &mut self,
-        graphics: &mut speedy2d::Graphics2D,
-        scale_factor: f32,
-        size: PhysicalSize,
-    ) {
+    pub unsafe fn set_frame(&mut self, graphics: &mut speedy2d::Graphics2D, scale_factor: f32, size: PhysicalSize) {
         self.graphics_ptr = graphics;
         self.scale_factor = scale_factor;
         self.bounds = Rect::new(LogicalPosition::new(0., 0.), size.to_logical(scale_factor));
@@ -79,9 +74,7 @@ impl Graphics {
         };
         s * self.scale_factor
     }
-    pub fn title_font_size(&self) -> f32 {
-        self.font_size() * 1.25
-    }
+    pub fn title_font_size(&self) -> f32 { self.font_size() * 1.25 }
     pub fn font_unfocused_color(&self) -> Color { change_brightness(&self.font_color(), -0.5) }
     pub fn accent_unfocused_color(&self) -> Color { change_brightness(&self.accent_color(), -0.3) }
 

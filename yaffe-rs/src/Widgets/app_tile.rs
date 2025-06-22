@@ -1,5 +1,5 @@
 use crate::assets::Images;
-use crate::ui::{MODAL_BACKGROUND, RightAlignment};
+use crate::ui::{RightAlignment, MODAL_BACKGROUND};
 use crate::{LogicalPosition, LogicalSize, PhysicalSize, Rect, ScaleFactor, Transparent, YaffeState};
 
 pub const ANIMATION_TIME: f32 = 0.25;

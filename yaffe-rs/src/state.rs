@@ -9,12 +9,12 @@ use crate::assets::AssetKey;
 use crate::data::GameInfo;
 use crate::job_system::ThreadSafeJobQueue;
 use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
+use crate::overlay_state::{ExternalProcess, YaffeProcess};
 use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
 use crate::settings::SettingsFile;
 use crate::ui::Modal;
 use crate::DeferredAction;
-use crate::overlay_state::{ExternalProcess, YaffeProcess};
 use yaffe_lib::{PluginFilter, SelectedAction, TileType, YaffePluginItem};
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -340,7 +340,11 @@ pub struct YaffeState {
     pub navigation_stack: RefCell<Vec<String>>,
 }
 impl YaffeState {
-    pub fn new(process: Rc<RefCell<Option<YaffeProcess>>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
+    pub fn new(
+        process: Rc<RefCell<Option<YaffeProcess>>>,
+        settings: SettingsFile,
+        queue: ThreadSafeJobQueue,
+    ) -> YaffeState {
         YaffeState {
             process,
             selected: SelectedItem::new(),

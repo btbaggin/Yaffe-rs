@@ -1,19 +1,17 @@
 use crate::{
     graphics::Graphics,
-    input::ControllerInput,
-    input::InputType,
+    input::{ControllerInput, InputMap, InputType, PlatformGamepad},
     job_system::{Job, JobResult, JobResults, ThreadSafeJobQueue},
     ui::AnimationManager,
     Actions, PhysicalSize,
 };
 use std::cell::RefCell;
-use std::rc::Rc;
 
 use glutin::surface::WindowSurface;
 
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::keyboard::KeyCode;
-use winit::window::{Window, WindowId, WindowAttributes, WindowLevel};
+use winit::window::{Window, WindowAttributes, WindowId};
 
 use speedy2d::GLRenderer;
 
@@ -33,9 +31,7 @@ pub struct WindowHelper {
 }
 
 impl WindowHelper {
-    pub fn new() -> WindowHelper {
-        WindowHelper { visible: None }
-    }
+    pub fn new() -> WindowHelper { WindowHelper { visible: None } }
 
     pub fn set_visibility(&mut self, visible: bool) {
         if visible {
@@ -55,7 +51,12 @@ impl WindowHelper {
 }
 
 pub(crate) trait WindowHandler {
-    fn on_fixed_update(&mut self, animations: &mut AnimationManager, delta_time: f32, helper: &mut WindowHelper) -> bool;
+    fn on_fixed_update(
+        &mut self,
+        animations: &mut AnimationManager,
+        delta_time: f32,
+        helper: &mut WindowHelper,
+    ) -> bool;
     fn on_frame_begin(&mut self, _: &mut Graphics, _: &mut Vec<JobResult>) {}
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
     fn on_input(
@@ -79,42 +80,32 @@ struct YaffeWindow {
     animations: RefCell<AnimationManager>,
 }
 
-struct WindowInfo {
+pub struct WindowInfo {
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
     attributes: WindowAttributes,
-    fullscreen: bool
+    fullscreen: bool,
 }
 impl WindowInfo {
-    pub fn new(handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>, attributes: WindowAttributes, fullscreen: bool) -> WindowInfo {
+    pub fn new(
+        handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
+        attributes: WindowAttributes,
+        fullscreen: bool,
+    ) -> WindowInfo {
         WindowInfo { handler, attributes, fullscreen }
     }
 }
 
-pub(crate) fn create_yaffe_windows(
-    job_results: JobResults,
+pub fn run_app(
+    input_map: InputMap<KeyCode, ControllerInput, Actions>,
     queue: ThreadSafeJobQueue,
-    gamepad: impl crate::input::PlatformGamepad + 'static,
-    input_map: crate::input::InputMap<KeyCode, ControllerInput, Actions>,
-    handler: Rc<RefCell<dyn WindowHandler + 'static>>,
-    overlay: Rc<RefCell<dyn WindowHandler + 'static>>,
+    window_infos: Vec<WindowInfo>,
+    job_results: JobResults,
+    gamepad: impl PlatformGamepad + 'static,
 ) {
-
-    // TODO remove this method?
     let el = EventLoop::new().unwrap();
     el.set_control_flow(ControlFlow::Poll);
 
-    let main = WindowAttributes::default().with_title("Yaffe").with_visible(true);
-
-    let overlay_att = WindowAttributes::default()
-        .with_title("Overlay")
-        .with_visible(false)
-        .with_window_level(WindowLevel::AlwaysOnTop)
-        .with_transparent(true)
-        .with_decorations(false);
-
-    let handlers = vec!(WindowInfo::new(overlay, overlay_att, true), WindowInfo::new(handler, main, true));
-
-    let mut app = app::App::new(input_map, queue, handlers, job_results, gamepad);
+    let mut app = app::App::new(input_map, queue, window_infos, job_results, gamepad);
     let _ = el.run_app(&mut app);
 }
 
@@ -133,7 +124,11 @@ fn handle_action(window: &mut YaffeWindow, action: &crate::Actions) -> bool {
     result
 }
 
-fn send_action_to_window(windows: &mut std::collections::HashMap<WindowId, YaffeWindow>, window_id: WindowId, action: &crate::Actions) {
+fn send_action_to_window(
+    windows: &mut std::collections::HashMap<WindowId, YaffeWindow>,
+    window_id: WindowId,
+    action: &crate::Actions,
+) {
     if let Some(window) = windows.get_mut(&window_id) {
         if handle_action(window, action) {
             return;

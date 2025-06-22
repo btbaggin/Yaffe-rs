@@ -1,7 +1,7 @@
+use crate::assets::AssetKey;
+use crate::logger::LogEntry;
 use crate::ui::WindowState;
 use crate::windowing::WindowHelper;
-use crate::logger::LogEntry;
-use crate::assets::AssetKey;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
@@ -81,5 +81,5 @@ impl OverlayState {
     }
 }
 impl WindowState for OverlayState {
-    fn on_revert_focus(&mut self) { }
+    fn on_revert_focus(&mut self) {}
 }

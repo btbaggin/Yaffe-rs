@@ -1,16 +1,14 @@
 use crate::assets::{AssetKey, Fonts, Images};
-use crate::{LogicalPosition, LogicalSize, Rect, ScaleFactor, Graphics};
 use crate::ui::MARGIN;
+use crate::{Graphics, LogicalPosition, LogicalSize, Rect, ScaleFactor};
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextAlignment, TextLayout, TextOptions};
 
 pub struct RightAlignment {
-    right: LogicalPosition
+    right: LogicalPosition,
 }
 impl RightAlignment {
-    pub fn new(start: LogicalPosition) -> RightAlignment {
-        RightAlignment { right: start }
-    }
+    pub fn new(start: LogicalPosition) -> RightAlignment { RightAlignment { right: start } }
     pub fn text(mut self, graphics: &mut Graphics, text: &str) -> Self {
         let text = get_drawable_text(graphics, graphics.font_size(), text);
         let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));

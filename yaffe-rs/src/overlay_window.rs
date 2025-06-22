@@ -1,19 +1,16 @@
+use crate::input::Actions;
+use crate::job_system::JobResult;
 use crate::logger::LogEntry;
 use crate::overlay_state::OverlayState;
-use crate::input::Actions;
 use crate::ui::{AnimationManager, WidgetTree};
 use crate::widgets::OverlayBackground;
 use crate::windowing::WindowHelper;
 use crate::Graphics;
-use crate::job_system::JobResult;
-
 
 impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
     fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
-    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>) {
-        process_jobs(graphics, jobs);
-    }
+    fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: &mut Vec<JobResult>) { process_jobs(graphics, jobs); }
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         graphics.cache_settings(&self.data.settings);
@@ -21,7 +18,12 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
         true
     }
 
-    fn on_fixed_update(&mut self, animations: &mut AnimationManager, delta_time: f32, helper: &mut WindowHelper) -> bool {
+    fn on_fixed_update(
+        &mut self,
+        animations: &mut AnimationManager,
+        delta_time: f32,
+        helper: &mut WindowHelper,
+    ) -> bool {
         animations.process(&mut self.root, delta_time);
         self.data.process_is_running(helper)
     }
@@ -37,7 +39,13 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
             }
             _ => {
                 if self.data.showing {
-                    self.root.action(&mut self.data, animations, action, &crate::ui::WidgetId::of::<OverlayBackground>(), &mut ());
+                    self.root.action(
+                        &mut self.data,
+                        animations,
+                        action,
+                        &crate::ui::WidgetId::of::<OverlayBackground>(),
+                        &mut (),
+                    );
 
                     if let Actions::Accept = action {
                         let mut process = self.data.process.borrow_mut();

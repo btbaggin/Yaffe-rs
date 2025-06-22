@@ -1,13 +1,16 @@
 use rand::Rng;
 use std::cell::RefCell;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, mpsc::{Sender, Receiver}};
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc, Mutex,
+};
 use winit::window::WindowId;
 
 use crate::assets::AssetKey;
-use crate::windowing::get_current_window;
 use crate::logger::*;
 use crate::scraper::*;
+use crate::windowing::get_current_window;
 
 pub type JobQueue = spmc::Sender<(Option<WindowId>, Job)>;
 pub type JobResults = Receiver<(Option<WindowId>, JobResult)>;
@@ -15,9 +18,7 @@ pub type JobResults = Receiver<(Option<WindowId>, JobResult)>;
 #[derive(Clone)]
 pub struct ThreadSafeJobQueue(Arc<Mutex<RefCell<JobQueue>>>);
 impl ThreadSafeJobQueue {
-    pub fn new(queue: JobQueue) -> ThreadSafeJobQueue {
-        ThreadSafeJobQueue(Arc::new(Mutex::new(RefCell::new(queue))))
-    }
+    pub fn new(queue: JobQueue) -> ThreadSafeJobQueue { ThreadSafeJobQueue(Arc::new(Mutex::new(RefCell::new(queue)))) }
 
     pub fn start_job(&self, job: Job) {
         let lock = self.0.lock().log_and_panic();
@@ -26,7 +27,7 @@ impl ThreadSafeJobQueue {
     }
 
     pub fn start_unassociated_job(&self, job: Job) {
-                let lock = self.0.lock().log_and_panic();
+        let lock = self.0.lock().log_and_panic();
         let mut queue = lock.borrow_mut();
         queue.send((None, job)).unwrap();
     }

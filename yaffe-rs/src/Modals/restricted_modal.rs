@@ -1,8 +1,8 @@
+use crate::input::{Actions, InputType};
 use crate::modals::{ModalContent, ModalResult};
 use crate::restrictions::RestrictedPasscode;
 use crate::ui::{ModalSize, MARGIN};
 use crate::{LogicalPosition, LogicalSize, Rect};
-use crate::input::{Actions, InputType};
 use std::hash::{Hash, Hasher};
 
 pub struct SetRestrictedModal {

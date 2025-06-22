@@ -1,6 +1,6 @@
 use crate::ui::{
     get_drawable_text_with_wrap, AnimationManager, Container, Control, Image, Label, Widget, WidgetId, MARGIN,
-    MODAL_BACKGROUND, TITLE_SIZE
+    MODAL_BACKGROUND, TITLE_SIZE,
 };
 use crate::{widget, Actions, DeferredAction, Graphics, LogicalPosition, Rect, ScaleFactor, YaffeState};
 
@@ -92,13 +92,17 @@ impl Widget<YaffeState, DeferredAction> for InfoPane {
             Actions::Back => {
                 handler.revert_focus();
                 true
-            },
+            }
             Actions::Down => {
-                self.y_offset = f32::max(self.y_offset - state.settings.get_f32(crate::SettingNames::InfoScrollSpeed), self.y_offset_max);
+                self.y_offset = f32::max(
+                    self.y_offset - state.settings.get_f32(crate::SettingNames::InfoScrollSpeed),
+                    self.y_offset_max,
+                );
                 true
-            },
+            }
             Actions::Up => {
-                self.y_offset = f32::min(self.y_offset + state.settings.get_f32(crate::SettingNames::InfoScrollSpeed), 0.);
+                self.y_offset =
+                    f32::min(self.y_offset + state.settings.get_f32(crate::SettingNames::InfoScrollSpeed), 0.);
                 true
             }
             _ => false,

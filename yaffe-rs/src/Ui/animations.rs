@@ -11,9 +11,7 @@ pub trait Animator: Clone + 'static {
     fn slerp(&self, from: Self, to: Self, amount: f32) -> Self;
 }
 impl Animator for f32 {
-    fn to_animation_data(from: Self, to: Self) -> AnimationData {
-        AnimationData::F32 { from, to }
-    }
+    fn to_animation_data(from: Self, to: Self) -> AnimationData { AnimationData::F32 { from, to } }
 
     fn slerp(&self, from: Self, to: Self, amount: f32) -> Self {
         let delta = to - from;
@@ -123,7 +121,9 @@ fn apply_ptr_mut<T: ?Sized, U>(offset: FieldOffset, x: *mut T) -> *mut U {
 }
 
 #[inline]
-fn apply_ptr<T: ?Sized, U>(offset: FieldOffset, x: *const T) -> *const U { ((x as *const () as usize) + offset) as *const U }
+fn apply_ptr<T: ?Sized, U>(offset: FieldOffset, x: *const T) -> *const U {
+    ((x as *const () as usize) + offset) as *const U
+}
 
 #[inline]
 fn apply<T: ?Sized, U>(offset: FieldOffset, x: &T) -> &U { unsafe { &*apply_ptr(offset, x) } }

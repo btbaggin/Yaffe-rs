@@ -1,6 +1,6 @@
 use crate::assets::Images;
-use crate::ui::RightAlignment;
 use crate::ui::controls::{change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
+use crate::ui::RightAlignment;
 use crate::{windowing::WindowHelper, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, YaffeState};
 use std::collections::HashMap;
 
@@ -156,10 +156,7 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
         let image_size = LogicalSize::new(graphics.font_size(), graphics.font_size());
         let mut alignment = RightAlignment::new(right);
         for t in [("Cancel", Images::ButtonB), (&s[..], Images::ButtonA)] {
-            alignment = alignment
-                .text(graphics, t.0)
-                .image(graphics, t.1, image_size)
-                .space();
+            alignment = alignment.text(graphics, t.0).image(graphics, t.1, image_size).space();
         }
     }
 }
