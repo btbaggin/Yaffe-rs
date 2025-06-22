@@ -33,7 +33,7 @@ impl WidgetId {
 pub trait FocusableWidget: UiElement {
     fn get_id(&self) -> WidgetId;
 }
-pub trait Widget<T>: FocusableWidget {
+pub trait Widget<T, D>: FocusableWidget {
     /// Update and draw
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId);
 
@@ -41,7 +41,7 @@ pub trait Widget<T>: FocusableWidget {
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
 
     /// Called when a user action occurs
-    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction) -> bool {
+    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut D) -> bool {
         false
     }
 
@@ -87,23 +87,25 @@ macro_rules! widget {
 
 /// Contains an individual widget
 /// Manages ratio sizing and animations
-pub struct WidgetContainer<T> {
-    children: Vec<WidgetContainer<T>>,
-    widget: Box<dyn Widget<T>>,
+/// T is the global state that is persisted across the entire application
+/// D is the per interaction state thats passed down for each interaction
+pub struct WidgetContainer<T, D> {
+    children: Vec<WidgetContainer<T, D>>,
+    widget: Box<dyn Widget<T, D>>,
     ratio: LogicalSize,
     alignment: ContainerAlignment,
 }
-impl<T> WidgetContainer<T> {
-    pub fn root(widget: impl Widget<T> + 'static) -> WidgetContainer<T> {
+impl<T, D> WidgetContainer<T, D> {
+    pub fn root(widget: impl Widget<T, D> + 'static) -> WidgetContainer<T, D> {
         WidgetContainer::new(widget, LogicalSize::new(1.0, 1.0), ContainerAlignment::Left)
     }
-    fn new(widget: impl Widget<T> + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer<T> {
+    fn new(widget: impl Widget<T, D> + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer<T, D> {
         WidgetContainer { children: vec![], widget: Box::new(widget), ratio, alignment }
     }
 
     pub fn add_child(
         &mut self,
-        widget: impl Widget<T> + 'static,
+        widget: impl Widget<T, D> + 'static,
         size: LogicalSize,
         alignment: ContainerAlignment,
     ) -> &mut Self {
@@ -111,7 +113,7 @@ impl<T> WidgetContainer<T> {
         self
     }
 
-    pub fn with_child(&mut self, widget: impl Widget<T> + 'static, size: LogicalSize) -> &mut WidgetContainer<T> {
+    pub fn with_child(&mut self, widget: impl Widget<T, D> + 'static, size: LogicalSize) -> &mut WidgetContainer<T, D> {
         self.children.push(WidgetContainer::new(widget, size, ContainerAlignment::Left));
 
         let count = self.children.len();
@@ -124,7 +126,7 @@ impl<T> WidgetContainer<T> {
         animations: &mut AnimationManager,
         action: &Actions,
         current_focus: &WidgetId,
-        handler: &mut DeferredAction,
+        handler: &mut D,
     ) -> bool {
         //Only send action to currently focused widget
         let handled = current_focus == &self.widget.get_id() && self.widget.action(state, animations, action, handler);
@@ -184,7 +186,7 @@ impl<T> WidgetContainer<T> {
         }
     }
 
-    fn find_widget_mut(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer<T>> {
+    fn find_widget_mut(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer<T, D>> {
         let id = self.widget.get_id();
         if widget == id {
             return Some(self);

@@ -2,9 +2,8 @@ use crate::ui::{AnimationManager, Widget, WidgetId, LABEL_SIZE, MODAL_OVERLAY_CO
 use crate::os::get_and_update_volume;
 use crate::logger::LogEntry;
 use crate::{
-    widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, OverlayState, Graphics
+    widget, Actions, LogicalPosition, LogicalSize, Rect, OverlayState, Graphics
 };
-
 use speedy2d::color::Color;
 
 const VOLUME_STEP: f32 = 0.05;
@@ -14,17 +13,13 @@ widget!(
         volume: f32 = get_and_update_volume(0.).unwrap_or(0.)
     }
 );
-impl Widget<OverlayState> for OverlayBackground {
-    // fn got_focus(&mut self, _: &OverlayState, _: &mut AnimationManager) {
-    //     self.volume = 
-
-    // }
+impl Widget<OverlayState, ()> for OverlayBackground {
     fn action(
         &mut self,
         _: &mut OverlayState,
         _: &mut AnimationManager,
         action: &Actions,
-        handler: &mut DeferredAction,
+        _: &mut (),
     ) -> bool {
         match action {
             Actions::Left => {

@@ -10,7 +10,7 @@ use crate::ui::{display_modal, AnimationManager, DeferredAction, ModalResult, Wi
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
 
-impl WindowHandler for WidgetTree<YaffeState> {
+impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
     fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
     fn on_fixed_update(&mut self, animations: &mut AnimationManager, delta_time: f32, _: &mut WindowHelper) -> bool {

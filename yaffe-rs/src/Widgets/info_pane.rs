@@ -32,7 +32,7 @@ fn build_container(exe: Option<&crate::Tile>) -> Container {
     main
 }
 
-impl Widget<YaffeState> for InfoPane {
+impl Widget<YaffeState, DeferredAction> for InfoPane {
     fn offset(&self) -> LogicalPosition { self.offset }
 
     fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {

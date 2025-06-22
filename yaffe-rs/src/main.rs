@@ -79,8 +79,8 @@ fn main() {
     let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
     let overlay_state = OverlayState::new(process.clone(), settings.clone());
 
-    let overlay = ui::WidgetTree::new(build_overlay_tree(), overlay_state, ui::WidgetId::of::<OverlayBackground>());
-    let mut ui = ui::WidgetTree::new(build_main_tree(), yaffe_state, ui::WidgetId::of::<PlatformList>());
+    let overlay = ui::WidgetTree::<OverlayState, ()>::new(build_overlay_tree(), overlay_state, ui::WidgetId::of::<OverlayBackground>());
+    let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(build_main_tree(), yaffe_state, ui::WidgetId::of::<PlatformList>());
 
     let input_map = input::get_input_map();
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
@@ -89,7 +89,7 @@ fn main() {
     windowing::create_yaffe_windows(notify, queue, gamepad, input_map, Rc::new(RefCell::new(ui)), Rc::new(RefCell::new(overlay)));
 }
 
-pub fn build_main_tree() -> ui::WidgetContainer<YaffeState> {
+pub fn build_main_tree() -> ui::WidgetContainer<YaffeState, DeferredAction> {
     use ui::ContainerAlignment;
 
     let mut root = ui::WidgetContainer::root(Background::new());
@@ -102,6 +102,6 @@ pub fn build_main_tree() -> ui::WidgetContainer<YaffeState> {
     root
 }
 
-fn build_overlay_tree() -> ui::WidgetContainer<OverlayState> {
+fn build_overlay_tree() -> ui::WidgetContainer<OverlayState, ()> {
     ui::WidgetContainer::root(OverlayBackground::new())
 }

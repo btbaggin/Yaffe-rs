@@ -19,15 +19,15 @@ pub trait WindowState {
 /// Container for our widgets that lays them out in the tree
 /// Has higher level management methods to perfrom things
 /// on the entire UI tree
-pub struct WidgetTree<T: WindowState> {
-    pub root: WidgetContainer<T>,
+pub struct WidgetTree<T: WindowState, D> {
+    pub root: WidgetContainer<T, D>,
     pub focus: Vec<WidgetId>,
     pub data: T,
     last_focused: Instant,
 }
-impl<T: WindowState> WidgetTree<T> {
-    pub fn new(root: WidgetContainer<T>, data: T, initial_focus: WidgetId) -> WidgetTree<T> {
-        WidgetTree { root, focus: vec![initial_focus], data, last_focused: Instant::now() }
+impl<T: WindowState, D> WidgetTree<T, D> {
+    pub fn new(root: WidgetContainer<T, D>, data: T, initial_focus: WidgetId) -> WidgetTree<T, D> {
+        WidgetTree::<T, D> { root, focus: vec![initial_focus], data, last_focused: Instant::now() }
     }
 
     pub fn render_all(&mut self, graphics: &mut crate::Graphics) {
@@ -36,7 +36,7 @@ impl<T: WindowState> WidgetTree<T> {
         self.root.render(&self.data, graphics, &focused_widget);
     }
 
-    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer<T>) -> Option<&'a mut WidgetContainer<T>> {
+    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer<T, D>) -> Option<&'a mut WidgetContainer<T, D>> {
         if let Some(last) = focus.last() {
             return root.find_widget_mut(*last);
         }
@@ -88,7 +88,7 @@ impl<T: WindowState> WidgetTree<T> {
     }
 }
 
-impl<T: WindowState> Deref for WidgetTree<T> {
-    type Target = WidgetContainer<T>;
+impl<T: WindowState, D> Deref for WidgetTree<T, D> {
+    type Target = WidgetContainer<T, D>;
     fn deref(&self) -> &Self::Target { &self.root }
 }

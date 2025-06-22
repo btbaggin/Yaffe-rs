@@ -18,7 +18,7 @@ widget!(
 }
 );
 
-impl Widget<YaffeState> for AppList {
+impl Widget<YaffeState, DeferredAction> for AppList {
     fn action(
         &mut self,
         state: &mut YaffeState,

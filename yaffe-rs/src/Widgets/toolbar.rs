@@ -1,11 +1,11 @@
 use crate::assets::Images;
 use crate::ui::{WidgetId, MARGIN, RightAlignment};
-use crate::{widget, LogicalPosition, YaffeState, Graphics, LogicalSize};
+use crate::{widget, LogicalPosition, YaffeState, Graphics, LogicalSize, DeferredAction};
 
 widget!(
     pub struct Toolbar { }
 );
-impl crate::ui::Widget<YaffeState> for Toolbar {
+impl crate::ui::Widget<YaffeState, DeferredAction> for Toolbar {
     fn render(&mut self, graphics: &mut Graphics, state: &YaffeState, current_focus: &WidgetId) {
         let time = chrono::Local::now();
         let rect = graphics.bounds;

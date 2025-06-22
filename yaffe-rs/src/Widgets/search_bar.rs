@@ -14,7 +14,7 @@ widget!(
         offset: LogicalPosition = LogicalPosition::new(0., -1.)
     }
 );
-impl Widget<YaffeState> for SearchBar {
+impl Widget<YaffeState, DeferredAction> for SearchBar {
     fn offset(&self) -> LogicalPosition { self.offset }
 
     fn action(

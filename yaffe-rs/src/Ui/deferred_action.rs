@@ -14,7 +14,7 @@ impl DeferredAction {
     pub fn load_plugin(&mut self) { self.load_plugin = true; }
     pub fn display_message(&mut self, message: String) { self.message = Some(message); }
 
-    pub fn resolve(self, ui: &mut WidgetTree<YaffeState>, animations: &mut AnimationManager) {
+    pub fn resolve(self, ui: &mut WidgetTree<YaffeState, DeferredAction>, animations: &mut AnimationManager) {
         match self.focus {
             None => { /*do nothing*/ }
             Some(FocusType::Revert) => ui.revert_focus(animations),
