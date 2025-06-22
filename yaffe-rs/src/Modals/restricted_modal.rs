@@ -1,7 +1,8 @@
 use crate::modals::{ModalContent, ModalResult};
 use crate::restrictions::RestrictedPasscode;
 use crate::ui::{ModalSize, MARGIN};
-use crate::{Actions, LogicalPosition, LogicalSize, Rect};
+use crate::{LogicalPosition, LogicalSize, Rect};
+use crate::input::{Actions, InputType};
 use std::hash::{Hash, Hasher};
 
 pub struct SetRestrictedModal {
@@ -24,7 +25,8 @@ impl ModalContent for SetRestrictedModal {
         let code = match action {
             Actions::Accept => return ModalResult::Ok,
             Actions::Back => return ModalResult::Cancel,
-            Actions::KeyPress(crate::input::InputType::Key(code, _, _)) => *code as u8 as char,
+            Actions::KeyPress(InputType::Key(code, _, _)) => *code as u8 as char,
+            Actions::KeyPress(InputType::Gamepad(g)) => *g as u8 as char,
             _ => action_to_char(action),
         };
         self.pass.add_digit(code);

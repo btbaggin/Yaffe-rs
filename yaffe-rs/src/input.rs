@@ -57,7 +57,7 @@ pub enum ControllerInput {
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum InputType {
     Key(KeyCode, Option<String>, Option<ModifiersState>),
-    Paste(String),
+    Gamepad(ControllerInput),
 }
 
 pub fn get_input_map() -> InputMap<KeyCode, ControllerInput, Actions> {
@@ -88,11 +88,9 @@ pub fn input_to_action(
     for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(action.clone());
+        } else {
+            result.insert(Actions::KeyPress(InputType::Gamepad(g)));
         }
-        // TODO have GamepadInput?
-        //  else {
-        //     result.insert(Actions::KeyPress(InputType::Key(KeyCode::Backquote, Some((g as u8 as char).to_string()))));
-        // }
     }
 
     result

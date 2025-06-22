@@ -1,6 +1,5 @@
 use crate::input::{ControllerInput, PlatformGamepad};
 use std::convert::From;
-use winit::window::Window;
 
 #[cfg(target_os = "windows")]
 #[path = "windows.rs"]

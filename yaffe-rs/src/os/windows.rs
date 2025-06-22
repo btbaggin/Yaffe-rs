@@ -11,17 +11,16 @@ use winapi::um::reason::SHTDN_REASON_FLAG_PLANNED;
 use winapi::um::securitybaseapi::AdjustTokenPrivileges;
 use winapi::um::taskschd::*;
 use winapi::um::unknwnbase::IUnknown;
-use winapi::um::winbase::{GlobalLock, GlobalUnlock, LookupPrivilegeValueW};
+use winapi::um::winbase::LookupPrivilegeValueW;
 use winapi::um::winnt::{
     HANDLE, LPWSTR, SE_PRIVILEGE_ENABLED, SE_SHUTDOWN_NAME, SHORT, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES,
     TOKEN_QUERY,
 };
 use winapi::um::winuser::{
-    CloseClipboard, ExitWindowsEx, GetClipboardData, OpenClipboard, CF_TEXT, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
+    ExitWindowsEx, EWX_FORCEIFHUNG, EWX_SHUTDOWN,
 };
 use winapi::um::xinput::*;
 use winapi::{Class, Interface};
-use winit::window::Window;
 
 use crate::logger::LogEntry;
 use std::convert::TryInto;

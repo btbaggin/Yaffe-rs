@@ -91,11 +91,6 @@ impl Control for TextBox {
                 _ => if let Some(text) = text {
                     self.insert_text(&text);
                 },
-
-            }
-            Actions::KeyPress(InputType::Paste(t)) => {
-                self.text.insert_str(self.caret, t);
-                self.caret += t.len();
             }
             Actions::Right => if self.caret < self.text.len() {
                 self.caret += 1
