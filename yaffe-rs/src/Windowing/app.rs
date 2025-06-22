@@ -27,13 +27,19 @@ use crate::job_system::{JobResult, ThreadSafeJobQueue};
 use crate::logger::LogEntry;
 use crate::Graphics;
 
+static mut CURRENT_WINDOW_ID: WindowId = WindowId::dummy();
+pub fn get_current_window() -> WindowId {
+    #[allow(static_mut_refs)]
+    return unsafe { CURRENT_WINDOW_ID.clone() }
+}
+
 pub struct App {
     windows: HashMap<WindowId, YaffeWindow>,
     modifiers: Option<ModifiersState>,
     input_map: InputMap<KeyCode, ControllerInput, Actions>,
     queue: ThreadSafeJobQueue,
     window_infos: Vec<WindowInfo>,
-    finished_jobs: Vec<JobResult>,
+    finished_jobs: Vec<(Option<WindowId>, JobResult)>,
     delta_time: f32,
     update_timer: f32,
     last_time: Instant,
@@ -139,6 +145,7 @@ impl App {
             let size = crate::PhysicalSize::new(size.width as f32, size.height as f32);
             renderer.draw_frame(|graphics| {
                 unsafe {
+                    // TODO store window id in the graphics and pass along with job requests?
                     window_graphics.set_frame(graphics, 1., size);
                 }
                 handler.on_init(&mut window_graphics);
@@ -158,6 +165,10 @@ impl App {
         }
         panic!("Unable to create window")
     }
+
+    fn get_processed_jobs(&mut self, window_id: Option<WindowId>) -> Vec<JobResult> {
+        self.finished_jobs.extract_if(.., |(id, _)| *id == window_id).map(|(_, r)| r).collect()
+    }
 }
 
 impl ApplicationHandler for App {
@@ -175,6 +186,7 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+        unsafe { CURRENT_WINDOW_ID = window_id.clone() }
         match event {
             WindowEvent::CloseRequested => {
                 for window in self.windows.values() {
@@ -212,37 +224,16 @@ impl ApplicationHandler for App {
                 if ElementState::Released == event.state {
                     return;
                 }
-                let command = self.modifiers.is_some_and(|m| if cfg!(target_os = "macos") {
-                    m.super_key()
-                } else if cfg!(not(target_os = "macos")) {
-                    m.control_key()
-                } else {
-                    false
-                });
 
-                // Always send a text command to the window, but only to the window it actually occurred for
-                if !command {
-                    let text = event.logical_key.to_text().map(|s| s.to_string());
-                    let action = Actions::KeyPress(InputType::Key(keycode, text));
-                    if let Some(window) = self.windows.get_mut(&window_id) {
-                        super::handle_action(window, &action);
-                    }
+                let text = event.logical_key.to_text().map(|s| s.to_string());
+                let action = Actions::KeyPress(InputType::Key(keycode, text, self.modifiers));
+                if let Some(window) = self.windows.get_mut(&window_id) {
+                    super::handle_action(window, &action);
                 }
 
-                let action = if let Some(action) = self.input_map.get(Some(keycode), None) {
-                    action.clone()
-                } else if matches!(keycode, KeyCode::KeyV) && command {
-                    let Some(window) = self.windows.get_mut(&window_id) else {
-                        return;
-                    };
-                    match crate::os::get_clipboard(&window.window) {
-                        Some(clip) => Actions::KeyPress(InputType::Paste(clip)),
-                        _ => return,
-                    }
-                } else {
+                let Some(action) = self.input_map.get(Some(keycode), None) else {
                     return;
                 };
-
 
                 // Only handle each action once per frame. This fixes issues where the actions will trigger once for overlay and once for main, causing double actions
                 if self.handled_actions.insert(action.clone()) {
@@ -251,14 +242,14 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
+                self.handled_actions.clear();
+                let mut jobs = self.get_processed_jobs(Some(window_id));
                 if let Some(window) = self.windows.get_mut(&window_id) {
                     let scale = window.window.scale_factor() as f32;
                     let size = crate::PhysicalSize::new(window.size.x, window.size.y);
                     let mut handle = window.handler.borrow_mut();
                     let mut window_graphics = window.graphics.borrow_mut();
-                    self.handled_actions.clear();
 
-                    let mut jobs = self.finished_jobs.drain(..).collect();
                     window.gl_context.make_current(&window.gl_surface).unwrap();
                     window.renderer.draw_frame(|graphics| {
                         unsafe {
@@ -279,10 +270,6 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        // for window_data in self.windows.values() {
-        //     window_data.window.request_redraw();
-        // }
-
         // Request redraw for all windows
         //We need to calc delta time here because its always called
         //RedrawRequested is only called conditionally so we could skip many frames
@@ -303,20 +290,9 @@ impl ApplicationHandler for App {
             self.finished_jobs.push(result);
         }
         // Process our "system" jobs
-        let mut updated = false;
-        crate::job_system::process_results(
-            &mut self.finished_jobs,
-            |j| matches!(j, JobResult::CheckUpdates(_)),
-            |result| {
-                if let JobResult::CheckUpdates(applied) = result {
-                    updated = applied;
-                }
-            },
-        );
+        let mut jobs = self.get_processed_jobs(None);
+        process_system_jobs(&mut self.update_timer, &mut jobs);
 
-        if updated {
-            self.update_timer = f32::MIN;
-        }
         let jobs_completed = !self.finished_jobs.is_empty();
 
         for (_, window) in self.windows.iter_mut() {
@@ -325,21 +301,26 @@ impl ApplicationHandler for App {
 
             //Raise fixed update every frame so we can do things even if redraws arent happening
             let mut handle = window.handler.borrow_mut();
+            let mut animations = window.animations.borrow_mut();
 
             // Fixed update
             let mut helper = WindowHelper::new();
-            let fixed_update = handle.on_fixed_update(&mut helper);
+            let fixed_update = handle.on_fixed_update(&mut animations, self.delta_time, &mut helper);
             helper.resolve(&window.window);
 
-            // Process animations
-            let mut animations = window.animations.borrow_mut();
-            let root = handle.get_ui();
-            animations.process(root, self.delta_time);
             let is_dirty = animations.is_dirty();
-
             if fixed_update || jobs_completed || is_dirty {
                 window.window.request_redraw();
             }
+        }
+    }
+}
+
+fn process_system_jobs(timer: &mut f32, job_results: &mut Vec<JobResult>) {
+    for r in job_results {
+        match r {
+            JobResult::CheckUpdates(true) => *timer = f32::MIN,
+            _ => {}
         }
     }
 }

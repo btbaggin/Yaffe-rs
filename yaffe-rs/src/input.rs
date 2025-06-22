@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use winit::keyboard::KeyCode;
+use winit::keyboard::{KeyCode, ModifiersState};
 
 pub struct InputMap<A: Eq + Hash, B: Eq + Hash, T: Clone> {
     keys: HashMap<A, T>,
@@ -56,7 +56,7 @@ pub enum ControllerInput {
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum InputType {
-    Key(KeyCode, Option<String>),
+    Key(KeyCode, Option<String>, Option<ModifiersState>),
     Paste(String),
 }
 
@@ -88,9 +88,11 @@ pub fn input_to_action(
     for g in input.get_gamepad() {
         if let Some(action) = input_map.get(None, Some(g)) {
             result.insert(action.clone());
-        } else {
-            result.insert(Actions::KeyPress(InputType::Key(KeyCode::Backquote, Some((g as u8 as char).to_string()))));
         }
+        // TODO have GamepadInput?
+        //  else {
+        //     result.insert(Actions::KeyPress(InputType::Key(KeyCode::Backquote, Some((g as u8 as char).to_string()))));
+        // }
     }
 
     result

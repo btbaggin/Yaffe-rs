@@ -1,44 +1,43 @@
 use crate::assets::Images;
-use crate::ui::{WidgetId, MARGIN};
-use crate::{widget, LogicalPosition, YaffeState};
+use crate::ui::{WidgetId, MARGIN, RightAlignment};
+use crate::{widget, LogicalPosition, YaffeState, Graphics, LogicalSize};
 
 widget!(
-    pub struct Toolbar {}
+    pub struct Toolbar { }
 );
-impl crate::ui::Widget for Toolbar {
-    fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState, current_focus: &WidgetId) {
+impl crate::ui::Widget<YaffeState> for Toolbar {
+    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState, current_focus: &WidgetId) {
         let time = chrono::Local::now();
         let rect = graphics.bounds;
 
         let font_size = graphics.font_size();
-        let font_color = graphics.font_color();
+        let image_size = LogicalSize::new(font_size, font_size);
+        
+        let mut alignment = RightAlignment::new(LogicalPosition::new(rect.right() - MARGIN, rect.bottom() - font_size - MARGIN));
 
         //Draw time
         let time_string = time.format("%I:%M%p");
-        let text = crate::ui::get_drawable_text(graphics, font_size, &time_string.to_string());
-
-        let mut right = LogicalPosition::new(rect.right() - MARGIN, rect.bottom() - text.height());
-        right = crate::ui::right_aligned_text(graphics, right, None, font_color, text);
-        right = LogicalPosition::new(right.x - MARGIN * 2., right.y);
+        alignment = alignment.text(graphics, &time_string.to_string()).space();
 
         //Draw buttons
         //What actions we can perform depend on what's focused
         if current_focus.is_focused::<crate::widgets::AppList>() {
-            let text = crate::ui::get_drawable_text(graphics, font_size, "Filter");
-            right = crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonY), font_color, text);
-            right = LogicalPosition::new(right.x - MARGIN * 2., right.y);
-
-            let text = crate::ui::get_drawable_text(graphics, font_size, "Back");
-            crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonB), font_color, text);
+            alignment
+                .text(graphics, "Filter")
+                .image(graphics, Images::ButtonB, image_size)
+                .space();
         } else if current_focus.is_focused::<crate::widgets::PlatformList>() {
             let platform = state.get_selected_group();
             if platform.kind.allow_edit() {
-                let text = crate::ui::get_drawable_text(graphics, font_size, "Settings");
-                right = crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonX), font_color, text);
-                right = LogicalPosition::new(right.x - MARGIN * 2., right.y);
+                alignment = alignment
+                    .text(graphics, "Settings")
+                    .image(graphics, Images::ButtonX, image_size)
+                    .space();
             }
-            let text = crate::ui::get_drawable_text(graphics, font_size, "Select");
-            crate::ui::right_aligned_text(graphics, right, Some(Images::ButtonA), font_color, text);
+            alignment
+                .text(graphics, "Select")
+                .image(graphics, Images::ButtonA, image_size)
+                .space();
         }
     }
 }

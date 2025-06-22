@@ -1,33 +1,49 @@
 use crate::assets::{AssetKey, Fonts, Images};
-use crate::graphics::Graphics;
-use crate::{LogicalPosition, LogicalSize, Rect, ScaleFactor};
+use crate::{LogicalPosition, LogicalSize, Rect, ScaleFactor, Graphics};
+use crate::ui::MARGIN;
 use speedy2d::color::Color;
 use speedy2d::font::{FormattedTextBlock, TextAlignment, TextLayout, TextOptions};
+
+pub struct RightAlignment {
+    right: LogicalPosition
+}
+impl RightAlignment {
+    pub fn new(start: LogicalPosition) -> RightAlignment {
+        RightAlignment { right: start }
+    }
+    pub fn text(mut self, graphics: &mut Graphics, text: &str) -> Self {
+        let text = get_drawable_text(graphics, graphics.font_size(), text);
+        let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));
+        self.right.x -= size.x;
+
+        graphics.draw_text(self.right, graphics.font_color(), &text);
+        self
+    }
+
+    pub fn colored_text(mut self, graphics: &mut Graphics, text: &str, color: Color) -> Self {
+        let text = get_drawable_text(graphics, graphics.font_size(), text);
+        let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));
+        self.right.x -= size.x;
+
+        graphics.draw_text(self.right, color, &text);
+        self
+    }
+
+    pub fn image(mut self, graphics: &mut Graphics, image: Images, size: LogicalSize) -> Self {
+        self.right.x -= size.x;
+        graphics.draw_image(Rect::point_and_size(self.right, LogicalSize::new(size.y, size.y)), image);
+        self
+    }
+
+    pub fn space(mut self) -> Self {
+        self.right.x -= MARGIN;
+        self
+    }
+}
 
 //
 // Text helper methods
 //
-/// Draws text that is right aligned to parameter `right`
-/// If an image is passed it will be drawn to the left of the text
-/// Returns the new right-most position
-pub fn right_aligned_text(
-    graphics: &mut crate::Graphics,
-    right: LogicalPosition,
-    image: Option<crate::assets::Images>,
-    color: Color,
-    text: FormattedTextBlock,
-) -> LogicalPosition {
-    let size = LogicalSize::new(text.width().to_logical(graphics), text.height().to_logical(graphics));
-    let mut right = LogicalPosition::new(right.x - size.x, right.y);
-
-    graphics.draw_text(right, color, &text);
-    if let Some(i) = image {
-        right.x -= size.y;
-        graphics.draw_image(Rect::point_and_size(right, LogicalSize::new(size.y, size.y)), i);
-    }
-
-    right
-}
 
 /// Simple helper method to get a text object
 pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> FormattedTextBlock {
@@ -38,8 +54,7 @@ pub fn get_drawable_text(graphics: &mut Graphics, size: f32, text: &str) -> Form
 /// Simple helper method to get a text object that is wrapped to a certain size
 pub fn get_drawable_text_with_wrap(graphics: &mut Graphics, size: f32, text: &str, width: f32) -> FormattedTextBlock {
     let font = graphics.request_font(Fonts::Regular);
-    let option = TextOptions::new();
-    let option = option.with_wrap_to_width(width, TextAlignment::Left);
+    let option = TextOptions::new().with_wrap_to_width(width, TextAlignment::Left);
     font.layout_text(text, size, option)
 }
 

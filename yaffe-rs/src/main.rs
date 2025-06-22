@@ -1,9 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(maybe_uninit_array_assume_init, step_trait)]
 #![allow(clippy::new_without_default)]
-use crate::logger::{error, PanicLogEntry};
-use crate::overlay_window::OverlayState;
-use crate::utils::append_app_ext;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -11,6 +8,7 @@ use std::rc::Rc;
  * TODO
  * Search bar doesnt work well on plugins
  * render navigation stack
+ * Have controls handle cut, copy, paste, etc??? (need to include modifiers in key action)
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -31,6 +29,7 @@ mod restrictions;
 mod scraper;
 mod settings;
 mod state;
+mod overlay_state;
 mod ui;
 mod utils;
 mod widgets;
@@ -42,9 +41,10 @@ use input::Actions;
 use job_system::Job;
 use settings::SettingNames;
 use state::{Tile, TileGroup, YaffeState};
+use overlay_state::OverlayState;
 use ui::DeferredAction;
-use utils::Transparent;
-use utils::{LogicalPosition, LogicalSize, PhysicalRect, PhysicalSize, Rect, ScaleFactor};
+use utils::{Transparent, LogicalPosition, LogicalSize, PhysicalRect, PhysicalSize, Rect, ScaleFactor, append_app_ext};
+use logger::{error, PanicLogEntry};
 use widgets::*;
 
 const UPDATE_FILE_PATH: &str = "./yaffe-rs.update";
@@ -78,19 +78,18 @@ fn main() {
 
     let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
     let overlay_state = OverlayState::new(process.clone(), settings.clone());
-    let overlay = overlay_window::OverlayWindow::new(build_overlay_tree(), settings.clone());
 
-    // let overlay = ui::WidgetTree::new(build_overlay_tree(), overlay_state, ui::WidgetId::of::<OverlayBackground>());
+    let overlay = ui::WidgetTree::new(build_overlay_tree(), overlay_state, ui::WidgetId::of::<OverlayBackground>());
     let mut ui = ui::WidgetTree::new(build_main_tree(), yaffe_state, ui::WidgetId::of::<PlatformList>());
 
     let input_map = input::get_input_map();
     let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
 
     plugins::load_plugins(&mut ui.data, "./plugins");
-    windowing::create_yaffe_windows(notify, queue, gamepad, input_map, Rc::new(RefCell::new(ui)), overlay);
+    windowing::create_yaffe_windows(notify, queue, gamepad, input_map, Rc::new(RefCell::new(ui)), Rc::new(RefCell::new(overlay)));
 }
 
-pub fn build_main_tree() -> ui::WidgetContainer {
+pub fn build_main_tree() -> ui::WidgetContainer<YaffeState> {
     use ui::ContainerAlignment;
 
     let mut root = ui::WidgetContainer::root(Background::new());
@@ -103,6 +102,6 @@ pub fn build_main_tree() -> ui::WidgetContainer {
     root
 }
 
-fn build_overlay_tree() -> ui::WidgetContainer {
+fn build_overlay_tree() -> ui::WidgetContainer<OverlayState> {
     ui::WidgetContainer::root(OverlayBackground::new())
 }

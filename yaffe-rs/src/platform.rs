@@ -50,7 +50,7 @@ pub fn scan_new_files(state: &mut YaffeState) {
                             name: name.to_string(),
                             platform: p.id,
                         };
-                        state.start_job(job);
+                        state.queue.start_job(job);
 
                         count += 1;
                     }
@@ -173,7 +173,7 @@ pub fn insert_game(state: &mut YaffeState, info: &crate::data::GameInfo, boxart:
     let plat_name = crate::data::PlatformInfo::get_name(info.platform()).unwrap();
 
     let file_path = crate::assets::get_asset_path(&plat_name, &info.name);
-    state.start_job(crate::Job::DownloadUrl { url: boxart, file_path });
+    state.queue.start_job(crate::Job::DownloadUrl { url: boxart, file_path });
 
     state.refresh_list = true;
 }

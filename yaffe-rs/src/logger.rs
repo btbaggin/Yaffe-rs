@@ -38,7 +38,7 @@ pub fn set_log_level(level: &str) {
 
 static LOGGER: YaffeLogger = YaffeLogger;
 lazy_static::lazy_static! {
-    pub static ref FILE: Mutex<File> = Mutex::new(OpenOptions::new().create(true).append(true).open("./log.txt").unwrap());
+    pub static ref FILE: Mutex<File> = Mutex::new(OpenOptions::new().write(true).create(true).truncate(true).open("./log.txt").unwrap());
 }
 
 pub fn init() {

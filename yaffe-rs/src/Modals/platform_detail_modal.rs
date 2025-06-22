@@ -66,7 +66,7 @@ pub fn on_add_platform_close(
             path: exe.value().to_string(),
             args: args.value().to_string(),
         };
-        state.start_job(job);
+        state.queue.start_job(job);
 
         state.display_toast(job_id, "Searching for platform information...");
     }

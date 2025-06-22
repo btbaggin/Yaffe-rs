@@ -1,5 +1,5 @@
 use crate::assets::Images;
-use crate::ui::MODAL_BACKGROUND;
+use crate::ui::{MODAL_BACKGROUND, RightAlignment};
 use crate::{LogicalPosition, LogicalSize, PhysicalSize, Rect, ScaleFactor, Transparent, YaffeState};
 
 pub const ANIMATION_TIME: f32 = 0.25;
@@ -101,23 +101,14 @@ impl AppTile {
                 &name,
             );
 
-            //Help
-            menu_position = crate::ui::right_aligned_text(
-                graphics,
-                menu_position,
-                Some(Images::ButtonX),
-                graphics.font_color().with_alpha(alpha),
-                info,
-            );
-            menu_position.x -= 5.;
-
-            crate::ui::right_aligned_text(
-                graphics,
-                menu_position,
-                Some(Images::ButtonA),
-                graphics.font_color().with_alpha(alpha),
-                run,
-            );
+            RightAlignment::new(menu_position)
+                // Help
+                .colored_text(graphics, "Info", graphics.font_color().with_alpha(alpha))
+                .image(graphics, Images::ButtonX, LogicalSize::new(graphics.font_size(), graphics.font_size()))
+                .space()
+                // Start
+                .colored_text(graphics, "Run", graphics.font_color().with_alpha(alpha))
+                .image(graphics, Images::ButtonA, LogicalSize::new(graphics.font_size(), graphics.font_size()));
         }
 
         if graphics.request_asset_image(&exe.boxart.clone()).is_some() {

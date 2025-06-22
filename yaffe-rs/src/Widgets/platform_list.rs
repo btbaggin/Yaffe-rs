@@ -8,7 +8,7 @@ use crate::{
 widget!(
     pub struct PlatformList {}
 );
-impl Widget for PlatformList {
+impl Widget<YaffeState> for PlatformList {
     fn action(
         &mut self,
         state: &mut YaffeState,

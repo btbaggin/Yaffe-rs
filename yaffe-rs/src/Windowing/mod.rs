@@ -3,7 +3,6 @@ use crate::{
     input::ControllerInput,
     input::InputType,
     job_system::{Job, JobResult, JobResults, ThreadSafeJobQueue},
-    logger::{LogEntry, PanicLogEntry},
     ui::AnimationManager,
     Actions, PhysicalSize,
 };
@@ -18,10 +17,8 @@ use winit::window::{Window, WindowId, WindowAttributes, WindowLevel};
 
 use speedy2d::GLRenderer;
 
-// mod context_tracker;
-// use context_tracker::{ContextTracker, ContextWrapper};
-
 mod app;
+pub use app::get_current_window;
 
 const UPDATE_TIMER: f32 = 60. * 60.;
 
@@ -58,7 +55,7 @@ impl WindowHelper {
 }
 
 pub(crate) trait WindowHandler {
-    fn on_fixed_update(&mut self, helper: &mut WindowHelper) -> bool;
+    fn on_fixed_update(&mut self, animations: &mut AnimationManager, delta_time: f32, helper: &mut WindowHelper) -> bool;
     fn on_frame_begin(&mut self, _: &mut Graphics, _: &mut Vec<JobResult>) {}
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
     fn on_input(
@@ -69,7 +66,6 @@ pub(crate) trait WindowHandler {
     ) -> bool;
     fn on_init(&mut self, graphics: &mut Graphics);
     fn on_stop(&mut self) {}
-    fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer;
 }
 
 struct YaffeWindow {
@@ -102,6 +98,8 @@ pub(crate) fn create_yaffe_windows(
     handler: Rc<RefCell<dyn WindowHandler + 'static>>,
     overlay: Rc<RefCell<dyn WindowHandler + 'static>>,
 ) {
+
+    // TODO remove this method?
     let el = EventLoop::new().unwrap();
     el.set_control_flow(ControlFlow::Poll);
 
@@ -109,14 +107,12 @@ pub(crate) fn create_yaffe_windows(
 
     let overlay_att = WindowAttributes::default()
         .with_title("Overlay")
-        // .with_inner_size(PhysicalSize::new(size.x - 1., size.y - 1.))
-        // .with_position(PhysicalPosition::new(1i32, 1i32))
         .with_visible(false)
         .with_window_level(WindowLevel::AlwaysOnTop)
         .with_transparent(true)
         .with_decorations(false);
 
-    let handlers = vec!(WindowInfo::new(handler, main, true), WindowInfo::new(overlay, overlay_att, true));
+    let handlers = vec!(WindowInfo::new(overlay, overlay_att, true), WindowInfo::new(handler, main, true));
 
     let mut app = app::App::new(input_map, queue, handlers, job_results, gamepad);
     let _ = el.run_app(&mut app);
@@ -160,9 +156,7 @@ fn check_for_updates(update_timer: &mut f32, delta_time: f32, queue: &ThreadSafe
         if *update_timer < 0. {
             *update_timer = UPDATE_TIMER;
 
-            let lock = queue.lock().log_and_panic();
-            let mut queue = lock.borrow_mut();
-            queue.send(Job::CheckUpdates).log("Unable to check for updates");
+            queue.start_job(Job::CheckUpdates);
         }
     }
 }

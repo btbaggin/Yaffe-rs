@@ -1,4 +1,4 @@
-use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect, YaffeState};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 
 mod animations;
 mod controls;
@@ -11,7 +11,7 @@ pub use controls::*;
 pub use deferred_action::DeferredAction;
 pub use modal::*;
 pub use utils::*;
-pub use widget_tree::{ContainerAlignment, WidgetTree};
+pub use widget_tree::{ContainerAlignment, WidgetTree, WindowState};
 
 #[repr(u8)]
 enum FocusType {
@@ -33,23 +33,23 @@ impl WidgetId {
 pub trait FocusableWidget: UiElement {
     fn get_id(&self) -> WidgetId;
 }
-pub trait Widget: FocusableWidget {
+pub trait Widget<T>: FocusableWidget {
     /// Update and draw
-    fn render(&mut self, graphics: &mut Graphics, state: &YaffeState, current_focus: &WidgetId);
+    fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId);
 
     /// Offset from initial placement to move. Percentage based on widget size
     fn offset(&self) -> LogicalPosition { LogicalPosition::new(0., 0.) }
 
     /// Called when a user action occurs
-    fn action(&mut self, _: &mut YaffeState, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction) -> bool {
+    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction) -> bool {
         false
     }
 
     /// Called when the control gets focus
-    fn got_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
+    fn got_focus(&mut self, _: &T, _: &mut AnimationManager) {}
 
     /// Called when the control loses focus
-    fn lost_focus(&mut self, _: &YaffeState, _: &mut AnimationManager) {}
+    fn lost_focus(&mut self, _: &T, _: &mut AnimationManager) {}
 }
 
 #[macro_export]
@@ -87,23 +87,23 @@ macro_rules! widget {
 
 /// Contains an individual widget
 /// Manages ratio sizing and animations
-pub struct WidgetContainer {
-    children: Vec<WidgetContainer>,
-    widget: Box<dyn Widget>,
+pub struct WidgetContainer<T> {
+    children: Vec<WidgetContainer<T>>,
+    widget: Box<dyn Widget<T>>,
     ratio: LogicalSize,
     alignment: ContainerAlignment,
 }
-impl WidgetContainer {
-    pub fn root(widget: impl Widget + 'static) -> WidgetContainer {
+impl<T> WidgetContainer<T> {
+    pub fn root(widget: impl Widget<T> + 'static) -> WidgetContainer<T> {
         WidgetContainer::new(widget, LogicalSize::new(1.0, 1.0), ContainerAlignment::Left)
     }
-    fn new(widget: impl Widget + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer {
+    fn new(widget: impl Widget<T> + 'static, ratio: LogicalSize, alignment: ContainerAlignment) -> WidgetContainer<T> {
         WidgetContainer { children: vec![], widget: Box::new(widget), ratio, alignment }
     }
 
     pub fn add_child(
         &mut self,
-        widget: impl Widget + 'static,
+        widget: impl Widget<T> + 'static,
         size: LogicalSize,
         alignment: ContainerAlignment,
     ) -> &mut Self {
@@ -111,7 +111,7 @@ impl WidgetContainer {
         self
     }
 
-    pub fn with_child(&mut self, widget: impl Widget + 'static, size: LogicalSize) -> &mut WidgetContainer {
+    pub fn with_child(&mut self, widget: impl Widget<T> + 'static, size: LogicalSize) -> &mut WidgetContainer<T> {
         self.children.push(WidgetContainer::new(widget, size, ContainerAlignment::Left));
 
         let count = self.children.len();
@@ -120,7 +120,7 @@ impl WidgetContainer {
 
     pub fn action(
         &mut self,
-        state: &mut YaffeState,
+        state: &mut T,
         animations: &mut AnimationManager,
         action: &Actions,
         current_focus: &WidgetId,
@@ -141,7 +141,7 @@ impl WidgetContainer {
         false
     }
 
-    pub fn render(&mut self, state: &YaffeState, graphics: &mut Graphics, current_focus: &WidgetId) {
+    pub fn render(&mut self, state: &T, graphics: &mut Graphics, current_focus: &WidgetId) {
         //These measure the offset from the edges to begin or end rendering
         let mut top_stack = 0.;
         let mut bottom_stack = 0.;
@@ -184,7 +184,7 @@ impl WidgetContainer {
         }
     }
 
-    fn find_widget_mut(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer> {
+    fn find_widget_mut(&mut self, widget: WidgetId) -> Option<&mut WidgetContainer<T>> {
         let id = self.widget.get_id();
         if widget == id {
             return Some(self);

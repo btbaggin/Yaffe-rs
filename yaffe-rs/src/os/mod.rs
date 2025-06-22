@@ -44,6 +44,4 @@ pub fn get_and_update_volume(delta: f32) -> VolumeResult<f32> { os_impl::get_and
 
 pub fn initialize_gamepad() -> Result<impl PlatformGamepad, i32> { os_impl::initialize_gamepad() }
 
-pub fn get_clipboard(window: &Window) -> Option<String> { os_impl::get_clipboard(window) }
-
 pub fn sanitize_file(file: &str) -> String { os_impl::sanitize_file(file) }

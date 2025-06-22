@@ -144,13 +144,6 @@ pub fn get_asset_slot<'a>(map: &'a mut PooledCache<32, AssetKey, AssetSlot>, ass
     }
     map.get_mut(asset).log_message_and_panic("Invalid asset slot request")
 }
-// pub fn get_asset_slot<'a>(graphics: &'a Graphics, asset: &'a AssetKey) -> &'a mut AssetSlot {
-//     let mut map = graphics.asset_cache.borrow_mut();
-//     if !map.exists(asset) {
-//         map.insert(asset.clone(), AssetSlot::new(asset.clone().get_path()));
-//     }
-//     map.get_mut(asset).log_message_and_panic("Invalid asset slot request")
-// }
 
 fn asset_path_is_valid(asset: &AssetKey, path: &Path) -> bool {
     match asset {
@@ -177,11 +170,7 @@ pub fn ensure_asset_loaded<'a>(
         if let Ok(ASSET_STATE_UNLOADED) =
             slot.state.compare_exchange(ASSET_STATE_UNLOADED, ASSET_STATE_PENDING, Ordering::Acquire, Ordering::Relaxed)
         {
-            let queue = queue.as_ref();
-            let lock = queue.lock().log_and_panic();
-            let mut queue = lock.borrow_mut();
-
-            queue.send(crate::Job::LoadImage { key: asset.clone(), file: slot.path.clone() }).unwrap();
+            queue.start_job(crate::Job::LoadImage { key: asset.clone(), file: slot.path.clone() });
             return None;
         }
     }

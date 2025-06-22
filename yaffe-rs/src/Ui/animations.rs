@@ -70,7 +70,6 @@ impl AnimationManager {
         field: FieldOffset,
         target: T,
     ) -> AnimationBuilder<'a, T> {
-        // Get current value - you'll need to implement this based on your system
         let current_value = apply::<_, T>(field, widget).clone();
 
         AnimationBuilder {
@@ -85,7 +84,7 @@ impl AnimationManager {
 
     /// Processes any widgets that have running animations
     /// Currently only position animations are allowed
-    pub fn process(&mut self, root: &mut crate::ui::WidgetContainer, delta_time: f32) {
+    pub fn process<S>(&mut self, root: &mut crate::ui::WidgetContainer<S>, delta_time: f32) {
         //We do this at the beginning because we need animations to persist 1 fram longer than they go
         //This is because we only redraw the screen if animations are playing
         //If we removed them at the end we wouldn't redraw the last frame of the animation
@@ -100,7 +99,7 @@ impl AnimationManager {
 
                 match animation.data {
                     AnimationData::F32 { from, to } => {
-                        let animator = apply_mut::<dyn crate::ui::Widget, f32>(animation.offset, widget);
+                        let animator = apply_mut::<dyn crate::ui::Widget<S>, f32>(animation.offset, widget);
                         *animator = animator.slerp(from, to, delta_time / animation.duration);
                         if animation.remaining <= 0. {
                             *animator = to

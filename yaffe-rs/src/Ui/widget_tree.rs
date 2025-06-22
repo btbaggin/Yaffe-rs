@@ -1,5 +1,4 @@
 use crate::ui::{AnimationManager, WidgetContainer, WidgetId};
-use crate::YaffeState;
 use std::ops::Deref;
 use std::time::Instant;
 
@@ -13,17 +12,21 @@ pub enum ContainerAlignment {
     Bottom,
 }
 
+pub trait WindowState {
+    fn on_revert_focus(&mut self);
+}
+
 /// Container for our widgets that lays them out in the tree
 /// Has higher level management methods to perfrom things
 /// on the entire UI tree
-pub struct WidgetTree {
-    pub root: WidgetContainer,
+pub struct WidgetTree<T: WindowState> {
+    pub root: WidgetContainer<T>,
     pub focus: Vec<WidgetId>,
-    pub data: YaffeState,
+    pub data: T,
     last_focused: Instant,
 }
-impl WidgetTree {
-    pub fn new(root: WidgetContainer, data: YaffeState, initial_focus: WidgetId) -> WidgetTree {
+impl<T: WindowState> WidgetTree<T> {
+    pub fn new(root: WidgetContainer<T>, data: T, initial_focus: WidgetId) -> WidgetTree<T> {
         WidgetTree { root, focus: vec![initial_focus], data, last_focused: Instant::now() }
     }
 
@@ -33,7 +36,7 @@ impl WidgetTree {
         self.root.render(&self.data, graphics, &focused_widget);
     }
 
-    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer) -> Option<&'a mut WidgetContainer> {
+    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut WidgetContainer<T>) -> Option<&'a mut WidgetContainer<T>> {
         if let Some(last) = focus.last() {
             return root.find_widget_mut(*last);
         }
@@ -61,13 +64,7 @@ impl WidgetTree {
         //If we have revert all the way to the last different widget
         //This will allow us to get back to the platform list after going deep in a plugin
         //items
-        let state = &mut self.data;
-        if state.navigation_stack.borrow_mut().pop().is_some() {
-            if let crate::state::GroupType::Plugin(index) = state.get_selected_group().kind {
-                crate::plugins::load_plugin_items(state, index);
-            }
-            return;
-        }
+        self.data.on_revert_focus();
 
         let mut last = self.focus.pop();
         if (now - self.last_focused).as_millis() < INPUT_DELAY {
@@ -91,7 +88,7 @@ impl WidgetTree {
     }
 }
 
-impl Deref for WidgetTree {
-    type Target = WidgetContainer;
+impl<T: WindowState> Deref for WidgetTree<T> {
+    type Target = WidgetContainer<T>;
     fn deref(&self) -> &Self::Target { &self.root }
 }

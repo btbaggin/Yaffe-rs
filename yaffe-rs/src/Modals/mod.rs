@@ -1,6 +1,5 @@
 mod game_scraper_modal;
 mod list_modal;
-mod overlay_modal;
 mod platform_detail_modal;
 mod platform_scraper_modal;
 mod restricted_modal;
@@ -12,7 +11,6 @@ use crate::{LogicalSize, Rect};
 
 pub use game_scraper_modal::{on_game_found_close, GameScraperModal};
 pub use list_modal::ListModal;
-pub use overlay_modal::OverlayModal;
 pub use platform_detail_modal::{on_add_platform_close, on_update_platform_close, PlatformDetailModal};
 pub use platform_scraper_modal::{on_platform_found_close, PlatformScraperModal};
 pub use restricted_modal::SetRestrictedModal;

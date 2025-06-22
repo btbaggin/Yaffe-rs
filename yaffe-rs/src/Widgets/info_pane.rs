@@ -16,14 +16,14 @@ widget!(
 fn build_container(exe: Option<&crate::Tile>) -> Container {
     let mut main = Container::vertical(1.);
     if let Some(exe) = exe {
-        main.add(Label::new(exe.name.clone(), Some(TITLE_SIZE)));
+        main.add(Label::new(&exe.name.clone(), Some(TITLE_SIZE)));
 
         let mut top = Container::horizontal(0.15);
         let mut details = Container::vertical(1.);
 
         top.add(Image::new(exe.boxart.clone()));
         for (key, value) in &exe.metadata {
-            details.add(Label::simple(format!("{key}: {value}")));
+            details.add(Label::simple(&format!("{key}: {value}")));
         }
         top.add(details);
         main.add(top);
@@ -32,7 +32,7 @@ fn build_container(exe: Option<&crate::Tile>) -> Container {
     main
 }
 
-impl Widget for InfoPane {
+impl Widget<YaffeState> for InfoPane {
     fn offset(&self) -> LogicalPosition { self.offset }
 
     fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {

@@ -1,20 +1,40 @@
 use rand::Rng;
 use std::cell::RefCell;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::sync::{Arc, Mutex, mpsc::{Sender, Receiver}};
+use winit::window::WindowId;
 
 use crate::assets::AssetKey;
+use crate::windowing::get_current_window;
 use crate::logger::*;
 use crate::scraper::*;
 
-pub type JobQueue = spmc::Sender<Job>;
-pub type JobResults = std::sync::mpsc::Receiver<JobResult>;
-pub type ThreadSafeJobQueue = Arc<Mutex<RefCell<JobQueue>>>;
+pub type JobQueue = spmc::Sender<(Option<WindowId>, Job)>;
+pub type JobResults = Receiver<(Option<WindowId>, JobResult)>;
+
+#[derive(Clone)]
+pub struct ThreadSafeJobQueue(Arc<Mutex<RefCell<JobQueue>>>);
+impl ThreadSafeJobQueue {
+    pub fn new(queue: JobQueue) -> ThreadSafeJobQueue {
+        ThreadSafeJobQueue(Arc::new(Mutex::new(RefCell::new(queue))))
+    }
+
+    pub fn start_job(&self, job: Job) {
+        let lock = self.0.lock().log_and_panic();
+        let mut queue = lock.borrow_mut();
+        queue.send((Some(get_current_window()), job)).unwrap();
+    }
+
+    pub fn start_unassociated_job(&self, job: Job) {
+                let lock = self.0.lock().log_and_panic();
+        let mut queue = lock.borrow_mut();
+        queue.send((None, job)).unwrap();
+    }
+}
 
 /// Starts a single producer multiple consumer job threading system
 /// Jobs can be sent to this system using the returned JobQueue
-pub fn start_job_system() -> (ThreadSafeJobQueue, std::sync::mpsc::Receiver<JobResult>) {
+pub fn start_job_system() -> (ThreadSafeJobQueue, JobResults) {
     const NUM_THREADS: u32 = 8;
 
     let (tx, rx) = spmc::channel();
@@ -22,41 +42,41 @@ pub fn start_job_system() -> (ThreadSafeJobQueue, std::sync::mpsc::Receiver<JobR
     for _ in 0..NUM_THREADS {
         let rx = rx.clone();
         let notify_tx = notify_tx.clone();
-        thread::spawn(move || poll_pending_jobs(rx, notify_tx));
+        std::thread::spawn(move || poll_pending_jobs(rx, notify_tx));
     }
 
-    (Arc::new(Mutex::new(RefCell::new(tx))), notify_rx)
+    (ThreadSafeJobQueue::new(tx), notify_rx)
 }
 
-fn poll_pending_jobs(queue: spmc::Receiver<Job>, notify: std::sync::mpsc::Sender<JobResult>) {
-    let send_reply = |result| {
-        notify.send(result).log("Unable to notify main loop about finished job");
+fn poll_pending_jobs(queue: spmc::Receiver<(Option<WindowId>, Job)>, notify: Sender<(Option<WindowId>, JobResult)>) {
+    let send_reply = |window_id, result| {
+        notify.send((window_id, result)).log("Unable to notify main loop about finished job");
     };
 
-    while let Ok(msg) = queue.recv() {
+    while let Ok((window_id, msg)) = queue.recv() {
         crate::logger::trace!("Processing job {msg:?}");
         match msg {
             Job::LoadImage { key, file } => {
                 if let Some((data, dimensions)) = crate::assets::load_image_async(&key, file) {
-                    send_reply(JobResult::LoadImage { data, dimensions, key });
+                    send_reply(window_id, JobResult::LoadImage { data, dimensions, key });
                 }
             }
 
             Job::DownloadUrl { url, file_path } => crate::scraper::download_file(url, file_path),
 
             Job::SearchPlatform { id, name, path, args } => match search_platform(id, &name, path, args) {
-                Ok(result) => send_reply(JobResult::SearchPlatform(result)),
+                Ok(result) => send_reply(window_id, JobResult::SearchPlatform(result)),
                 Err(e) => error!("Error occured while searching platforms {e:?}"),
             },
 
             Job::SearchGame { id, exe, name, platform } => match search_game(id, &name, exe, platform) {
-                Ok(result) => send_reply(JobResult::SearchGame(result)),
+                Ok(result) => send_reply(window_id, JobResult::SearchGame(result)),
                 Err(e) => error!("Error occured while searching games {e:?}"),
             },
 
             Job::CheckUpdates => {
                 let applied = crate::scraper::check_for_updates().log("Error checking for updates");
-                send_reply(JobResult::CheckUpdates(applied))
+                send_reply(window_id, JobResult::CheckUpdates(applied))
             }
         }
     }
@@ -106,6 +126,7 @@ pub enum JobResult {
     CheckUpdates(bool),
 }
 
+// TODO this can probably completely go away?
 pub fn process_results<F, T>(results: &mut Vec<JobResult>, should_process: F, mut process: T)
 where
     F: Fn(&JobResult) -> bool,

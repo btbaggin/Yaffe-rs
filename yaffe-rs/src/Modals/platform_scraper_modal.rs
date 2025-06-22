@@ -42,9 +42,9 @@ fn build_container(item: &PlatformScrapeResult) -> Container {
     let mut top = Container::horizontal(0.25);
     top.add(Image::new(AssetKey::Url(item.boxart.clone())));
 
-    main.add(Label::new(item.info.platform.clone(), Some(crate::ui::TITLE_SIZE)));
+    main.add(Label::new(&item.info.platform.clone(), Some(crate::ui::TITLE_SIZE)));
     main.add(top);
-    main.add(Label::wrapping(item.overview.clone(), None));
+    main.add(Label::wrapping(&item.overview.clone(), None));
 
     main
 }

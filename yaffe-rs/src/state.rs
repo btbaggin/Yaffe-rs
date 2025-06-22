@@ -9,12 +9,12 @@ use crate::assets::AssetKey;
 use crate::data::GameInfo;
 use crate::job_system::ThreadSafeJobQueue;
 use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
-use crate::overlay_window::OverlayWindow;
 use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
 use crate::settings::SettingsFile;
 use crate::ui::Modal;
 use crate::DeferredAction;
+use crate::overlay_state::{ExternalProcess, YaffeProcess};
 use yaffe_lib::{PluginFilter, SelectedAction, TileType, YaffePluginItem};
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -267,7 +267,7 @@ impl Tile {
         &self,
         state: &YaffeState,
         group: &TileGroup,
-    ) -> Result<Option<Box<dyn ExternalProcess>>, Box<dyn std::error::Error>> {
+    ) -> Result<Option<YaffeProcess>, Box<dyn std::error::Error>> {
         let child: Box<dyn ExternalProcess> = match group.kind {
             GroupType::Plugin(index) => {
                 let plugin = &state.plugins[index];
@@ -296,7 +296,7 @@ impl Tile {
                 Box::new(process.spawn()?) as Box<dyn ExternalProcess>
             }
         };
-        Ok(Some(child))
+        Ok(Some(YaffeProcess::new(&self.name, self.boxart.clone(), child)))
     }
 }
 
@@ -324,33 +324,14 @@ impl SelectedItem {
     }
 }
 
-pub trait ExternalProcess {
-    fn is_running(&mut self) -> bool;
-    fn kill(&mut self) -> std::io::Result<()>;
-}
-impl ExternalProcess for std::process::Child {
-    fn is_running(&mut self) -> bool {
-        match self.try_wait() {
-            Ok(None) => true,
-            Ok(Some(_)) => false,
-            Err(_) => {
-                //If we cant kill it, oh well.
-                self.kill().log("Unable to determine process status");
-                false
-            }
-        }
-    }
-    fn kill(&mut self) -> std::io::Result<()> { self.kill() }
-}
-
 pub struct YaffeState {
-    process: Rc<RefCell<Option<Box<dyn ExternalProcess>>>>,
+    process: Rc<RefCell<Option<YaffeProcess>>>,
     pub selected: SelectedItem,
     pub groups: Vec<TileGroup>,
     pub plugins: Vec<Plugin>,
     pub modals: Mutex<Vec<Modal>>,
     pub toasts: HashMap<u64, String>,
-    queue: ThreadSafeJobQueue,
+    pub queue: ThreadSafeJobQueue,
     pub filter: Option<MetadataSearch>,
     pub restricted_mode: RestrictedMode,
     pub refresh_list: bool,
@@ -359,7 +340,7 @@ pub struct YaffeState {
     pub navigation_stack: RefCell<Vec<String>>,
 }
 impl YaffeState {
-    pub fn new(process: Rc<RefCell<Option<Box<dyn ExternalProcess>>>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
+    pub fn new(process: Rc<RefCell<Option<YaffeProcess>>>, settings: SettingsFile, queue: ThreadSafeJobQueue) -> YaffeState {
         YaffeState {
             process,
             selected: SelectedItem::new(),
@@ -389,11 +370,11 @@ impl YaffeState {
 
     pub fn find_group(&self, id: i64) -> Option<&TileGroup> { self.groups.iter().find(|p| p.id == id) }
 
-    pub fn start_job(&self, job: crate::Job) {
-        let lock = self.queue.lock().log_and_panic();
-        let mut queue = lock.borrow_mut();
-        queue.send(job).unwrap();
-    }
+    // pub fn start_job(&self, job: crate::Job) {
+    //     let lock = self.queue.lock().log_and_panic();
+    //     let mut queue = lock.borrow_mut();
+    //     queue.send(job).unwrap();
+    // }
 
     pub fn display_toast(&mut self, id: u64, toast: &str) { self.toasts.insert(id, toast.to_string()); }
 
@@ -402,4 +383,14 @@ impl YaffeState {
     pub fn exit(&mut self) { self.running = false; }
 
     pub fn is_overlay_active(&self) -> bool { self.process.borrow().is_some() }
+}
+impl crate::ui::WindowState for YaffeState {
+    fn on_revert_focus(&mut self) {
+        if self.navigation_stack.borrow_mut().pop().is_some() {
+            if let crate::state::GroupType::Plugin(index) = self.get_selected_group().kind {
+                crate::plugins::load_plugin_items(self, index);
+            }
+            return;
+        }
+    }
 }

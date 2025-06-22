@@ -30,7 +30,7 @@ impl Control for CheckBox {
     }
 
     fn action(&mut self, action: &Actions) {
-        if let Actions::KeyPress(InputType::Key(KeyCode::Space, _)) = action {
+        if let Actions::KeyPress(InputType::Key(KeyCode::Space, _, _)) = action {
             self.checked = !self.checked;
         }
     }

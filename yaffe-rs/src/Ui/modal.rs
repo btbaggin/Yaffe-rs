@@ -1,4 +1,5 @@
 use crate::assets::Images;
+use crate::ui::RightAlignment;
 use crate::ui::controls::{change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
 use crate::{windowing::WindowHelper, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, YaffeState};
 use std::collections::HashMap;
@@ -107,8 +108,8 @@ pub fn is_modal_open(state: &YaffeState) -> bool {
 /// Renders a modal window along with its contents
 pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
     const PADDING: f32 = 2.;
-    let titlebar_size = graphics.font_size() * 1.25;
-    let toolbar_size = graphics.font_size() * 0.75;
+    let titlebar_size = graphics.title_font_size();
+    let toolbar_size = graphics.font_size() + MARGIN;
 
     let padding = LogicalSize::new(graphics.bounds.width() * 0.1, graphics.bounds.height() * 0.1);
     let rect = Rect::new(*graphics.bounds.top_left() + padding, graphics.bounds.size() - padding);
@@ -150,12 +151,15 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
 
     //Action buttons
     if let Some(s) = &modal.confirmation_button {
-        let mut right = LogicalPosition::new(window.right() - MARGIN, window.bottom() - toolbar_size);
+        let right = LogicalPosition::new(window.right() - MARGIN, window.bottom() - toolbar_size);
 
+        let image_size = LogicalSize::new(graphics.font_size(), graphics.font_size());
+        let mut alignment = RightAlignment::new(right);
         for t in [("Cancel", Images::ButtonB), (&s[..], Images::ButtonA)] {
-            let text = crate::ui::get_drawable_text(graphics, toolbar_size, t.0);
-            right = crate::ui::right_aligned_text(graphics, right, Some(t.1), graphics.font_color(), text);
-            right.x -= MARGIN;
+            alignment = alignment
+                .text(graphics, t.0)
+                .image(graphics, t.1, image_size)
+                .space();
         }
     }
 }

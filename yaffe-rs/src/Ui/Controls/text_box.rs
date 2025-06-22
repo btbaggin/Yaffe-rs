@@ -3,7 +3,7 @@ use crate::input::InputType;
 use crate::ui::get_drawable_text;
 use crate::utils::Rect;
 use crate::{Actions, LogicalPosition};
-use winit::keyboard::KeyCode;
+use winit::keyboard::{KeyCode, ModifiersState};
 
 pub struct TextBox {
     text: String,
@@ -21,6 +21,7 @@ impl TextBox {
 impl Control for TextBox {
     fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
         const MAX_SIZE: f32 = 500.;
+        const CURSOR_WIDTH: f32 = 2.;
 
         let size = f32::min(container.width() - LABEL_SIZE - crate::ui::MARGIN, MAX_SIZE);
         let control = draw_label_and_box(graphics, container.top_left(), size, &self.label);
@@ -56,7 +57,7 @@ impl Control for TextBox {
             graphics.draw_line(
                 LogicalPosition::new(cursor_x, control.top() + 2.),
                 LogicalPosition::new(cursor_x, control.bottom() - 2.),
-                2.,
+                CURSOR_WIDTH,
                 graphics.font_color(),
             );
         }
@@ -66,44 +67,41 @@ impl Control for TextBox {
 
     fn action(&mut self, action: &Actions) {
         match action {
-            Actions::KeyPress(InputType::Key(k, text)) => match k {
-                KeyCode::Backspace => {
-                    if self.caret > 0 {
-                        self.text.remove(self.caret - 1);
-                        self.caret -= 1;
-                    }
+            Actions::KeyPress(InputType::Key(k, text, mods)) => match k {
+                KeyCode::Backspace => if self.caret > 0 {
+                    self.text.remove(self.caret - 1);
+                    self.caret -= 1;
                 }
-                KeyCode::Delete => {
-                    if self.caret < self.text.len() {
-                        self.text.remove(self.caret);
-                    }
+                KeyCode::Delete => if self.caret < self.text.len() {
+                    self.text.remove(self.caret);
                 }
                 KeyCode::Home => self.caret = 0,
                 KeyCode::End => self.caret = self.text.len(),
-                _ => {
-                    if let Some(text) = text {
-                        self.text.insert_str(self.caret, text);
-                        self.caret += text.chars().count();
-                    }
-                }
-            },
-            // Actions::KeyPress(InputType::Char(c)) => {
-                    // self.text.insert(self.caret, *c);
-                    // self.caret += 1;
-            // }
+                KeyCode::KeyV if is_command(&mods) => {
+                    use copypasta::ClipboardProvider;
+                    let Ok(mut ctx) = copypasta::ClipboardContext::new() else {
+                        return;
+                    };
+                    let Ok(text) = ctx.get_contents() else {
+                        return;
+                    };
+                    self.insert_text(&text);
+                },
+                // TODO selection and copy?
+                _ => if let Some(text) = text {
+                    self.insert_text(&text);
+                },
+
+            }
             Actions::KeyPress(InputType::Paste(t)) => {
                 self.text.insert_str(self.caret, t);
                 self.caret += t.len();
             }
-            Actions::Right => {
-                if self.caret < self.text.len() {
-                    self.caret += 1
-                }
+            Actions::Right => if self.caret < self.text.len() {
+                self.caret += 1
             }
-            Actions::Left => {
-                if self.caret > 0 {
-                    self.caret -= 1
-                }
+            Actions::Left => if self.caret > 0 {
+                self.caret -= 1
             }
             _ => {}
         }
@@ -112,4 +110,20 @@ impl Control for TextBox {
 impl InputControl for TextBox {
     fn value(&self) -> &str { &self.text }
     fn set_focused(&mut self, value: bool) { self.focused = value; }
+}
+impl TextBox {
+    fn insert_text(&mut self, text: &str) {
+        self.text.insert_str(self.caret, text);
+        self.caret += text.len();
+    }
+}
+
+fn is_command(modifiers: &Option<ModifiersState>) -> bool {
+    modifiers.is_some_and(|m| if cfg!(target_os = "macos") {
+        m.super_key()
+    } else if cfg!(not(target_os = "macos")) {
+        m.control_key()
+    } else {
+        false
+    })
 }

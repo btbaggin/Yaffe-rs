@@ -39,18 +39,18 @@ impl ModalContent for GameScraperModal {
 
 fn build_container(item: &GameScrapeResult) -> Container {
     let mut main = Container::vertical(0.5);
-    main.add(Label::new(item.info.name.clone(), Some(crate::ui::TITLE_SIZE)));
+    main.add(Label::new(&item.info.name.clone(), Some(crate::ui::TITLE_SIZE)));
 
     let mut top = Container::horizontal(0.25);
     let mut details = Container::vertical(1.);
 
     top.add(Image::new(AssetKey::Url(item.boxart.clone())));
-    details.add(Label::simple(format!("Players: {}", item.info.players)));
-    details.add(Label::simple(format!("Rating: {}", item.info.rating)));
-    details.add(Label::simple(format!("Released: {}", item.info.released)));
+    details.add(Label::simple(&format!("Players: {}", item.info.players)));
+    details.add(Label::simple(&format!("Rating: {}", item.info.rating)));
+    details.add(Label::simple(&format!("Released: {}", item.info.released)));
     top.add(details);
     main.add(top);
-    main.add(Label::wrapping(item.info.overview.clone(), None));
+    main.add(Label::wrapping(&item.info.overview.clone(), None));
 
     main
 }

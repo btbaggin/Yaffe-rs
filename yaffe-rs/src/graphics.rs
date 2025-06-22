@@ -50,40 +50,37 @@ impl Graphics {
     }
 
     pub fn dark_shade_factor(&self) -> f32 {
-        if let SettingValue::F32(c) = self.cached_settings[&SettingNames::DarkShadeFactor] {
-            c
-        } else {
-            unreachable!()
-        }
+        let SettingValue::F32(c) = self.cached_settings[&SettingNames::DarkShadeFactor] else {
+            unreachable!();
+        };
+        c
     }
     pub fn light_shade_factor(&self) -> f32 {
-        if let SettingValue::F32(c) = self.cached_settings[&SettingNames::LightShadeFactor] {
-            c
-        } else {
-            unreachable!()
-        }
+        let SettingValue::F32(c) = self.cached_settings[&SettingNames::LightShadeFactor] else {
+            unreachable!();
+        };
+        c
     }
     pub fn accent_color(&self) -> Color {
-        if let SettingValue::Color(c) = self.cached_settings[&SettingNames::AccentColor] {
-            Color::from_rgba(c.0, c.1, c.2, c.3)
-        } else {
-            unreachable!()
-        }
+        let SettingValue::Color(c) = self.cached_settings[&SettingNames::AccentColor] else {
+            unreachable!();
+        };
+        Color::from_rgba(c.0, c.1, c.2, c.3)
     }
     pub fn font_color(&self) -> Color {
-        if let SettingValue::Color(c) = self.cached_settings[&SettingNames::FontColor] {
-            Color::from_rgba(c.0, c.1, c.2, c.3)
-        } else {
-            unreachable!()
-        }
+        let SettingValue::Color(c) = self.cached_settings[&SettingNames::FontColor] else {
+            unreachable!();
+        };
+        Color::from_rgba(c.0, c.1, c.2, c.3)
     }
     pub fn font_size(&self) -> f32 {
-        let size = if let SettingValue::F32(s) = self.cached_settings[&SettingNames::InfoFontSize] {
-            s
-        } else {
-            unreachable!()
+        let SettingValue::F32(s) = self.cached_settings[&SettingNames::InfoFontSize] else {
+            unreachable!();
         };
-        size * self.scale_factor
+        s * self.scale_factor
+    }
+    pub fn title_font_size(&self) -> f32 {
+        self.font_size() * 1.25
     }
     pub fn font_unfocused_color(&self) -> Color { change_brightness(&self.font_color(), -0.5) }
     pub fn accent_unfocused_color(&self) -> Color { change_brightness(&self.accent_color(), -0.3) }

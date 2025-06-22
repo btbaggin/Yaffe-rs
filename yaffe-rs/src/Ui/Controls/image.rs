@@ -13,10 +13,6 @@ impl Control for Image {
     fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
         let image_size = crate::ui::image_fill(graphics, &self.image, &container.size());
         graphics.draw_asset_image(Rect::point_and_size(*container.top_left(), image_size), &self.image);
-        // let image = crate::assets::request_asset_image(graphics, &self.image);
-        // if let Some(i) = image {
-        //     i.render(graphics, Rect::point_and_size(*container.top_left(), image_size));
-        // }
 
         image_size
     }

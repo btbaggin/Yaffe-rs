@@ -10,11 +10,12 @@ use crate::ui::{display_modal, AnimationManager, DeferredAction, ModalResult, Wi
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
 
-impl WindowHandler for WidgetTree {
+impl WindowHandler for WidgetTree<YaffeState> {
     fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
-    fn on_fixed_update(&mut self, _: &mut WindowHelper) -> bool {
+    fn on_fixed_update(&mut self, animations: &mut AnimationManager, delta_time: f32, _: &mut WindowHelper) -> bool {
         //Check for any updates to the settings file
+        animations.process(&mut self.root, delta_time);
         crate::settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
 
@@ -104,7 +105,7 @@ impl WindowHandler for WidgetTree {
 
     fn on_stop(&mut self) { crate::plugins::unload(&mut self.data.plugins); }
 
-    fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer { &mut self.root }
+    // fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer { &mut self.root }
 }
 
 fn on_menu_close(

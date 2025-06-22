@@ -99,13 +99,6 @@ impl Rect {
     }
     pub fn point_and_size(pos: LogicalPosition, size: LogicalSize) -> Self { Rect::new(pos, pos + size) }
 
-    pub fn percent(parent: Rect, percent: LogicalSize) -> Self {
-        let pos = *parent.top_left();
-        let size = parent.size();
-        let size = LogicalSize::new(size.x * percent.x, size.y * percent.y);
-        Rect::new(pos, pos + size)
-    }
-
     pub fn to_physical(self, scale_factor: f32) -> PhysicalRect {
         let top_left = self.top_left.to_physical(scale_factor);
         let bottom_right = self.bottom_right.to_physical(scale_factor);

@@ -426,24 +426,24 @@ impl crate::input::PlatformGamepad for WindowsInput {
     }
 }
 
-pub(super) fn get_clipboard(_: &Window) -> Option<String> {
-    unsafe {
-        let mut result = None;
-        if OpenClipboard(std::ptr::null_mut()) != 0 {
-            let data = GetClipboardData(CF_TEXT);
-            if !data.is_null() {
-                let text = GlobalLock(data);
-                if !text.is_null() {
-                    result = std::ffi::CString::from_raw(text as *mut i8).into_string().ok();
-                }
+// pub(super) fn get_clipboard(_: &Window) -> Option<String> {
+//     unsafe {
+//         let mut result = None;
+//         if OpenClipboard(std::ptr::null_mut()) != 0 {
+//             let data = GetClipboardData(CF_TEXT);
+//             if !data.is_null() {
+//                 let text = GlobalLock(data);
+//                 if !text.is_null() {
+//                     result = std::ffi::CString::from_raw(text as *mut i8).into_string().ok();
+//                 }
 
-                GlobalUnlock(data);
-            }
-            CloseClipboard();
-        }
-        result
-    }
-}
+//                 GlobalUnlock(data);
+//             }
+//             CloseClipboard();
+//         }
+//         result
+//     }
+// }
 
 pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
     unsafe { winapi::um::combaseapi::CoInitializeEx(std::ptr::null_mut(), winapi::um::objbase::COINIT_MULTITHREADED) };
