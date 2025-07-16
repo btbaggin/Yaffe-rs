@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Instant;
+use yaffe_lib::PathType;
 
 mod atlas;
 mod font;
@@ -34,6 +35,17 @@ impl AssetKey {
         }
     }
     fn image(image: Images) -> AssetKey { AssetKey::Static(AssetTypes::Image(image)) }
+}
+impl From<PathType> for AssetKey {
+    fn from(other: PathType) -> Self {
+        match other {
+            yaffe_lib::PathType::Url(s) => AssetKey::Url(s),
+            yaffe_lib::PathType::File(s) => {
+                let canon = std::fs::canonicalize(Path::new("./plugins").join(s)).unwrap();
+                AssetKey::File(canon)
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]

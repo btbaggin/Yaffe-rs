@@ -64,13 +64,10 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
 
 fn process_jobs(graphics: &mut Graphics, job_results: Vec<JobResult>) {
     for r in job_results {
-        match r {
-            JobResult::LoadImage { data, dimensions, key } => {
-                let mut map = graphics.asset_cache.borrow_mut();
-                let asset_slot = crate::assets::get_asset_slot(&mut map, &key);
-                asset_slot.set_data(data, dimensions);
-            }
-            _ => {}
+        if let JobResult::LoadImage { data, dimensions, key } = r {
+            let mut map = graphics.asset_cache.borrow_mut();
+            let asset_slot = crate::assets::get_asset_slot(&mut map, &key);
+            asset_slot.set_data(data, dimensions);
         }
     }
 }

@@ -27,7 +27,7 @@ impl Widget<YaffeState, DeferredAction> for PlatformList {
             }
             Actions::Accept => {
                 handler.focus_widget::<AppList>();
-                handler.load_plugin();
+                handler.load_plugin(true);
 
                 true
             }
@@ -67,7 +67,7 @@ impl Widget<YaffeState, DeferredAction> for PlatformList {
         let mut plat_kind: Option<GroupType> = None;
         for (i, p) in state.groups.iter().enumerate() {
             //Header for the specific platform type
-            if Some(p.kind) != plat_kind {
+            if plat_kind.is_none() || std::mem::discriminant(&plat_kind.unwrap()) != std::mem::discriminant(&p.kind) {
                 y = draw_header(graphics, y, rect.width(), p.kind);
                 plat_kind = Some(p.kind);
             }

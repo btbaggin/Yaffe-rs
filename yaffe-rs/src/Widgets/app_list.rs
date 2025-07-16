@@ -1,9 +1,12 @@
-use crate::ui::{AnimationManager, Widget, WidgetId};
+use crate::logger::UserMessage;
+use crate::state::GroupType;
+use crate::ui::{get_drawable_text, AnimationManager, Widget, WidgetId};
 use crate::widgets::{AppTile, InfoPane, SearchBar};
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
 };
 use std::collections::HashMap;
+use yaffe_lib::TileType;
 
 const MARGIN: f32 = 0.1;
 
@@ -48,7 +51,7 @@ impl Widget<YaffeState, DeferredAction> for AppList {
             Actions::Accept => {
                 if let Some(exe) = state.get_selected_tile() {
                     if !exe.restricted || crate::restrictions::verify_restricted_action(state) {
-                        start_game(state, handler)
+                        start_app(state, handler)
                     }
                 }
                 true
@@ -78,13 +81,30 @@ impl Widget<YaffeState, DeferredAction> for AppList {
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState, current_focus: &WidgetId) {
-        self.update(state, graphics);
+        let rect = graphics.bounds;
+        let margin_x = rect.width() * MARGIN;
+        let margin_y = rect.height() * MARGIN;
+        let list_rect = Rect::from_tuples(
+            (rect.left() + margin_x, rect.top() + margin_y),
+            (rect.right() - margin_x, rect.bottom() - margin_y),
+        );
+        self.update(state, graphics, &list_rect);
 
-        let plat = state.get_selected_group();
+        // Draw navigation stack
+        let stack = state.navigation_stack.borrow();
+        let text = stack.iter().map(|n| n.display.clone()).collect::<Vec<_>>().join(" > ");
+        let navigation_text = get_drawable_text(graphics, graphics.title_font_size(), &text);
+        let navigation_pos = LogicalPosition::new(
+            list_rect.left() - (margin_x * 0.2),
+            list_rect.top() - (margin_y * 0.2) - navigation_text.height(),
+        );
+        graphics.draw_text(navigation_pos, graphics.font_color(), &navigation_text);
+
+        let group = state.get_selected_group();
 
         //Height needs to be based on image aspect * width
         let focused = current_focus.is_focused::<Self>();
-        for i in 0..plat.tiles.len() {
+        for i in 0..group.tiles.len() {
             if i == state.selected.tile_index && focused {
                 continue;
             }
@@ -92,19 +112,18 @@ impl Widget<YaffeState, DeferredAction> for AppList {
             let tile = &mut self.tiles[i];
             //Only render tiles inside visible area
             if tile.intersects(&graphics.bounds) {
-                tile.render(false, self.tile_animation, &plat.tiles[i], graphics);
+                tile.render(false, self.tile_animation, &group.tiles[i], graphics);
             }
         }
 
         if let Some(tile) = self.tiles.get_mut(state.selected.tile_index) {
-            tile.render(focused, self.tile_animation, &plat.tiles[state.selected.tile_index], graphics);
+            tile.render(focused, self.tile_animation, state.get_selected_tile().unwrap(), graphics);
         }
     }
 }
 impl AppList {
-    fn update(&mut self, state: &YaffeState, graphics: &mut crate::Graphics) {
+    fn update(&mut self, state: &YaffeState, graphics: &mut crate::Graphics, bounds: &Rect) {
         let scale_factor = graphics.scale_factor;
-        let rect = graphics.bounds;
         //Check the length of our cache vs actual in case a game was added
         //to this platform while we were on it
         let group = state.get_selected_group();
@@ -118,22 +137,22 @@ impl AppList {
             self.cached_platform = group.id;
         }
 
-        self.update_tiles(state, graphics, &rect, scale_factor);
+        self.update_tiles(state, graphics, bounds, scale_factor);
     }
 
-    fn update_tiles(&mut self, state: &YaffeState, graphics: &mut crate::Graphics, rect: &Rect, scale_factor: f32) {
+    fn update_tiles(
+        &mut self,
+        state: &YaffeState,
+        graphics: &mut crate::Graphics,
+        list_rect: &Rect,
+        scale_factor: f32,
+    ) {
         let rows = state.settings.get_i32(crate::SettingNames::MaxRows);
         let columns = state.settings.get_i32(crate::SettingNames::MaxColumns);
         let group = state.get_selected_group();
 
         //Calculate total size for inner list
         let first_visible = *self.first_visible.entry(group.id).or_insert(0);
-        let margin_x = rect.width() * MARGIN;
-        let margin_y = rect.height() * MARGIN;
-        let list_rect = Rect::from_tuples(
-            (rect.left() + margin_x, rect.top() + margin_y),
-            (rect.right() - margin_x, rect.bottom() - margin_y),
-        );
 
         //Get size each tile should try to stretch to
         let (tiles_x, tiles_y, ideal_tile_size) =
@@ -306,18 +325,33 @@ impl AppList {
 
             if let crate::state::GroupType::Plugin(_) = state.get_selected_group().kind {
                 if visible + self.tiles_x * self.tiles_y >= self.tiles.len() {
-                    handler.load_plugin();
+                    handler.load_plugin(false);
                 }
             }
         }
     }
 }
 
-fn start_game(state: &YaffeState, handler: &mut DeferredAction) {
-    if let Some(exe) = state.get_selected_tile() {
-        match exe.tile_type {
-            yaffe_lib::TileType::App => exe.run(state, handler),
-            yaffe_lib::TileType::Folder => exe.get_children(state, handler),
+fn start_app(state: &mut YaffeState, handler: &mut DeferredAction) {
+    if let Some(tile) = state.get_selected_tile() {
+        match tile.tile_type {
+            TileType::App => {
+                if let Some(group) = state.find_group(tile.group_id) {
+                    let child = tile.get_tile_process(state, group);
+                    if let Some(Some(process)) = child.display_failure_deferred("Unable to start process", handler) {
+                        state.set_process(process);
+                        //We could refresh so our recent games page updates, but I dont think that's desirable
+                    }
+                }
+            }
+            TileType::Folder => {
+                state.navigate_to(tile);
+                match tile.get_containing_group_type(state) {
+                    GroupType::Recents => unreachable!(),
+                    GroupType::Emulator => unimplemented!(),
+                    GroupType::Plugin(_) => handler.load_plugin(true),
+                }
+            }
         }
     }
 }

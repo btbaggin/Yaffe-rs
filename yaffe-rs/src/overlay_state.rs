@@ -81,5 +81,5 @@ impl OverlayState {
     }
 }
 impl WindowState for OverlayState {
-    fn on_revert_focus(&mut self) {}
+    fn on_revert_focus(&mut self) -> bool { true }
 }

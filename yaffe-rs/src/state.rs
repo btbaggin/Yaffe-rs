@@ -14,8 +14,7 @@ use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
 use crate::settings::SettingsFile;
 use crate::ui::Modal;
-use crate::DeferredAction;
-use yaffe_lib::{PluginFilter, SelectedAction, TileType, YaffePluginItem};
+use yaffe_lib::{NavigationEntry, PluginFilter, PluginTile, SelectedAction, TileType};
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum GroupType {
@@ -185,20 +184,12 @@ pub struct Tile {
     pub description: String,
     pub restricted: bool,
     // We need to store the group on here because recents can be from multiple platforms
-    group_id: i64,
+    pub group_id: i64,
     pub boxart: AssetKey,
     pub metadata: HashMap<String, String>,
 }
 impl Tile {
-    pub fn plugin_item(group_id: i64, item: YaffePluginItem) -> Self {
-        let boxart = match item.thumbnail {
-            yaffe_lib::PathType::Url(s) => AssetKey::Url(s),
-            yaffe_lib::PathType::File(s) => {
-                let canon = std::fs::canonicalize(Path::new("./plugins").join(s)).unwrap();
-                AssetKey::File(canon)
-            }
-        };
-
+    pub fn plugin_item(group_id: i64, item: PluginTile) -> Self {
         Self {
             file: item.path,
             name: item.name,
@@ -206,7 +197,7 @@ impl Tile {
             tile_type: item.tile_type,
             metadata: HashMap::new(),
             group_id,
-            boxart,
+            boxart: item.thumbnail.into(),
             restricted: item.restricted,
         }
     }
@@ -239,31 +230,12 @@ impl Tile {
         }
     }
 
-    pub fn run(&self, state: &YaffeState, handler: &mut DeferredAction) {
-        if let Some(group) = state.find_group(self.group_id) {
-            let child = self.get_tile_process(state, group);
-            if let Some(Some(process)) = child.display_failure_deferred("Unable to start process", handler) {
-                *state.process.borrow_mut() = Some(process);
-                // *overlay.set_process(process);
-                //We could refresh so our recent games page updates, but I dont think that's desirable
-            }
-        }
+    pub fn get_containing_group_type(&self, state: &YaffeState) -> GroupType {
+        let group = state.find_group(self.group_id).unwrap();
+        group.kind
     }
 
-    pub fn get_children(&self, state: &YaffeState, handler: &mut DeferredAction) {
-        if let Some(group) = state.find_group(self.group_id) {
-            match group.kind {
-                GroupType::Emulator | GroupType::Recents => unimplemented!(),
-                GroupType::Plugin(_) => {
-                    handler.load_plugin();
-                    let mut stack = state.navigation_stack.borrow_mut();
-                    stack.push(self.file.clone());
-                }
-            }
-        }
-    }
-
-    fn get_tile_process(
+    pub fn get_tile_process(
         &self,
         state: &YaffeState,
         group: &TileGroup,
@@ -272,7 +244,7 @@ impl Tile {
             GroupType::Plugin(index) => {
                 let plugin = &state.plugins[index];
 
-                match plugin.select_tile(&self.name, &self.file, &self.tile_type) {
+                match plugin.select_tile(&self.name, &self.file) {
                     SelectedAction::Webview(site) => {
                         let child = crate::utils::yaffe_helper("webview", &[&site]);
                         Box::new(child?) as Box<dyn ExternalProcess>
@@ -337,7 +309,7 @@ pub struct YaffeState {
     pub refresh_list: bool,
     pub settings: SettingsFile,
     pub running: bool,
-    pub navigation_stack: RefCell<Vec<String>>,
+    pub navigation_stack: RefCell<Vec<NavigationEntry>>,
 }
 impl YaffeState {
     pub fn new(
@@ -374,12 +346,6 @@ impl YaffeState {
 
     pub fn find_group(&self, id: i64) -> Option<&TileGroup> { self.groups.iter().find(|p| p.id == id) }
 
-    // pub fn start_job(&self, job: crate::Job) {
-    //     let lock = self.queue.lock().log_and_panic();
-    //     let mut queue = lock.borrow_mut();
-    //     queue.send(job).unwrap();
-    // }
-
     pub fn display_toast(&mut self, id: u64, toast: &str) { self.toasts.insert(id, toast.to_string()); }
 
     pub fn remove_toast(&mut self, id: &u64) { self.toasts.remove(id); }
@@ -387,14 +353,27 @@ impl YaffeState {
     pub fn exit(&mut self) { self.running = false; }
 
     pub fn is_overlay_active(&self) -> bool { self.process.borrow().is_some() }
+
+    pub fn set_process(&self, process: YaffeProcess) { *self.process.borrow_mut() = Some(process) }
+
+    pub fn navigate_to(&self, tile: &Tile) {
+        let mut stack = self.navigation_stack.borrow_mut();
+        stack.push(NavigationEntry { path: tile.file.clone(), display: tile.name.clone() });
+    }
 }
+
 impl crate::ui::WindowState for YaffeState {
-    fn on_revert_focus(&mut self) {
+    fn on_revert_focus(&mut self) -> bool {
         if self.navigation_stack.borrow_mut().pop().is_some() {
-            if let crate::state::GroupType::Plugin(index) = self.get_selected_group().kind {
-                crate::plugins::load_plugin_items(self, index);
+            self.selected.tile_index = 0;
+
+            let group = &mut self.groups[self.selected.group_index];
+            group.tiles.clear();
+            if let crate::state::GroupType::Plugin(index) = group.kind {
+                crate::plugins::load_plugin_items(self, index).display_failure("Error loading plugin items", self);
             }
-            return;
+            return false;
         }
+        true
     }
 }

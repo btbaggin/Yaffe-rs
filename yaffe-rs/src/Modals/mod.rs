@@ -27,7 +27,8 @@ impl ModalContent for MessageModalContent {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
         let width = Self::modal_width(rect, ModalSize::Half);
-        LogicalSize::new(width, graphics.font_size() + crate::ui::MARGIN)
+        let rows = self.message.len() as f32 / 80.;
+        LogicalSize::new(width, (graphics.font_size() * rows) + crate::ui::MARGIN)
     }
 
     fn action(&mut self, action: &crate::Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {

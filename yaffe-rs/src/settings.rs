@@ -229,6 +229,11 @@ pub fn load_settings_from_path<P: Clone + AsRef<Path>>(path: P) -> SettingsResul
             let (key, type_value) = line.split_at(line.find(':').ok_or(SettingLoadError::IncorrectFormat)?);
             let (ty, value) = type_value.split_at(type_value.find('=').ok_or(SettingLoadError::IncorrectFormat)?);
 
+            // TODO update this parsing so we dont need to include the type? determine by probably....
+            // color starts with ()
+            // number is number
+            // float is number with .
+            // string is other
             //First character will be : or =, dont include that
             let value = value[1..].trim();
             let value = match ty[1..].trim() {

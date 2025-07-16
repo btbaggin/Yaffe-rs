@@ -13,7 +13,7 @@ pub enum ContainerAlignment {
 }
 
 pub trait WindowState {
-    fn on_revert_focus(&mut self);
+    fn on_revert_focus(&mut self) -> bool;
 }
 
 /// Container for our widgets that lays them out in the tree
@@ -67,7 +67,9 @@ impl<T: WindowState, D> WidgetTree<T, D> {
         //If we have revert all the way to the last different widget
         //This will allow us to get back to the platform list after going deep in a plugin
         //items
-        self.data.on_revert_focus();
+        if !self.data.on_revert_focus() {
+            return;
+        }
 
         let mut last = self.focus.pop();
         if (now - self.last_focused).as_millis() < INPUT_DELAY {

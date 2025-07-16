@@ -30,7 +30,7 @@ use crate::Graphics;
 static mut CURRENT_WINDOW_ID: WindowId = WindowId::dummy();
 pub fn get_current_window() -> WindowId {
     #[allow(static_mut_refs)]
-    return unsafe { CURRENT_WINDOW_ID.clone() };
+    return unsafe { CURRENT_WINDOW_ID };
 }
 
 pub struct App {
@@ -192,7 +192,7 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
-        unsafe { CURRENT_WINDOW_ID = window_id.clone() }
+        unsafe { CURRENT_WINDOW_ID = window_id }
         match event {
             WindowEvent::CloseRequested => {
                 for window in self.windows.values() {
@@ -243,7 +243,7 @@ impl ApplicationHandler for App {
 
                 // Only handle each action once per frame. This fixes issues where the actions will trigger once for overlay and once for main, causing double actions
                 if self.handled_actions.insert(action.clone()) {
-                    super::send_action_to_window(&mut self.windows, window_id, &action);
+                    super::send_action_to_window(&mut self.windows, window_id, action);
                 }
             }
 
@@ -324,9 +324,8 @@ impl ApplicationHandler for App {
 
 fn process_system_jobs(timer: &mut f32, job_results: Vec<JobResult>) {
     for r in job_results {
-        match r {
-            JobResult::CheckUpdates(true) => *timer = f32::MIN,
-            _ => {}
+        if let JobResult::CheckUpdates(true) = r {
+            *timer = f32::MIN;
         }
     }
 }

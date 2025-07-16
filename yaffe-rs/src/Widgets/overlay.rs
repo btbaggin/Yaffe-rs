@@ -66,7 +66,7 @@ impl Widget<OverlayState, ()> for OverlayBackground {
         let title = crate::ui::get_drawable_text(graphics, graphics.title_font_size(), &process.name);
         graphics.draw_text(*window.top_left(), graphics.font_color(), &title);
 
-        // TODO draw image, this required processing events on the overlay window
+        // TODO draw image at appropriate size
         graphics
             .draw_asset_image(Rect::point_and_size(*window.top_left(), LogicalSize::new(100., 100.)), &process.image);
 

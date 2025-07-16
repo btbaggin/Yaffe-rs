@@ -3,8 +3,8 @@ use crate::input::InputType;
 use crate::ui::get_drawable_text;
 use crate::utils::Rect;
 use crate::{Actions, LogicalPosition};
-use winit::keyboard::{KeyCode, ModifiersState};
 use copypasta::ClipboardProvider;
+use winit::keyboard::{KeyCode, ModifiersState};
 
 pub struct TextBox {
     text: String,
@@ -88,8 +88,8 @@ impl Control for TextBox {
     }
 
     fn action(&mut self, action: &Actions) {
-        match action {
-            Actions::KeyPress(InputType::Key(k, text, mods)) => match k {
+        if let Actions::KeyPress(InputType::Key(k, text, mods)) = action {
+            match k {
                 KeyCode::Backspace => {
                     if self.caret > 0 {
                         self.text.remove(self.caret - 1);
@@ -103,7 +103,7 @@ impl Control for TextBox {
                 }
                 KeyCode::Home => self.caret = 0,
                 KeyCode::End => self.caret = self.text.len(),
-                KeyCode::KeyV if is_command(&mods) => {
+                KeyCode::KeyV if is_command(mods) => {
                     let Ok(mut ctx) = copypasta::ClipboardContext::new() else {
                         return;
                     };
@@ -112,7 +112,7 @@ impl Control for TextBox {
                     };
                     self.insert_text(&text);
                 }
-                KeyCode::KeyC if is_command(&mods) => {
+                KeyCode::KeyC if is_command(mods) => {
                     let Ok(mut ctx) = copypasta::ClipboardContext::new() else {
                         return;
                     };
@@ -121,13 +121,13 @@ impl Control for TextBox {
                 KeyCode::ArrowLeft => {
                     let old_caret = self.caret;
                     if self.caret > 0 {
-                        if is_command(&mods) {
+                        if is_command(mods) {
                             self.caret = find_word_boundary(&self.text, self.caret, false)
                         } else {
                             self.caret -= 1
                         }
                     }
-                    if is_shift(&mods) {
+                    if is_shift(mods) {
                         self.selection = calculate_selection(self.selection, self.caret, old_caret);
                     } else {
                         self.selection = None;
@@ -136,13 +136,13 @@ impl Control for TextBox {
                 KeyCode::ArrowRight => {
                     let old_caret = self.caret;
                     if self.caret < self.text.len() {
-                        if is_command(&mods) {
+                        if is_command(mods) {
                             self.caret = find_word_boundary(&self.text, self.caret, true)
                         } else {
                             self.caret += 1
                         }
                     }
-                    if is_shift(&mods) {
+                    if is_shift(mods) {
                         self.selection = calculate_selection(self.selection, self.caret, old_caret);
                     } else {
                         self.selection = None;
@@ -150,11 +150,10 @@ impl Control for TextBox {
                 }
                 _ => {
                     if let Some(text) = text {
-                        self.insert_text(&text);
+                        self.insert_text(text);
                     }
                 }
-            },
-            _ => {}
+            }
         }
     }
 }
@@ -260,18 +259,30 @@ pub fn find_word_boundary(text: &str, position: usize, direction: bool) -> usize
     }
 
     if direction {
-        if position >= len { return text.len(); }
+        if position >= len {
+            return text.len();
+        }
 
         // If we're in a word, skip to the end of it, then skip puncuation
-        while pos < len && is_word_char(chars[pos]) { pos += 1; }
-        while pos < len && !is_word_char(chars[pos]) { pos += 1; }
+        while pos < len && is_word_char(chars[pos]) {
+            pos += 1;
+        }
+        while pos < len && !is_word_char(chars[pos]) {
+            pos += 1;
+        }
     } else {
-        if position == 0 { return 0; }
+        if position == 0 {
+            return 0;
+        }
         pos = if pos > 0 { pos - 1 } else { 0 };
 
         // Skip puncuation then if we're in a word, skip to the end of it
-        while pos > 0 && !is_word_char(chars[pos]) { pos -= 1; }
-        while pos > 0 && is_word_char(chars[pos]) { pos -= 1; }
+        while pos > 0 && !is_word_char(chars[pos]) {
+            pos -= 1;
+        }
+        while pos > 0 && is_word_char(chars[pos]) {
+            pos -= 1;
+        }
     }
     pos
 }

@@ -1,0 +1,4 @@
+server: str = http://localhost:8096
+username: str = allex
+password: str = password
+player: str = C:\Program Files\VideoLAN\VLC\vlc.exe
