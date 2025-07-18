@@ -1,7 +1,7 @@
 use crate::logger::{LogEntry, UserMessage};
 use crate::modals::*;
-use crate::settings::{SettingValue, SettingsFile};
-use crate::ui::{rgba_string, CheckBox, Container, Control, TextBox};
+use crate::settings::SettingsFile;
+use crate::ui::{CheckBox, Container, Control, TextBox};
 use crate::{Actions, Rect, YaffeState};
 use std::str::FromStr;
 
@@ -25,12 +25,7 @@ impl SettingsModal {
         for (name, default) in setting_names {
             names.push(name.clone());
 
-            let value = match default {
-                SettingValue::Color(c) => rgba_string(&c),
-                SettingValue::F32(f) => f.to_string(),
-                SettingValue::I32(i) => i.to_string(),
-                SettingValue::String(s) => s.clone(),
-            };
+            let value = default.to_string();
             controls.add_field(&name, TextBox::new(name.clone(), value));
         }
 

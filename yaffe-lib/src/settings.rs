@@ -3,12 +3,22 @@ use std::collections::HashMap;
 use crate::PluginError;
 
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum SettingValue {
     String(String),
     F32(f32),
     I32(i32),
-    Color((f32, f32, f32, f32)), // RGBA
+    Tuple((f32, f32, f32, f32)), // RGBA
+}
+impl std::fmt::Display for SettingValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SettingValue::Tuple(c) => write!(f, "({:.1},{:.1},{:.1},{:.1})", c.0, c.1, c.2, c.3), //TODO change this to something?
+            SettingValue::F32(ff) => write!(f, "{ff:.1}"),
+            SettingValue::I32(i) => write!(f, "{i}"),
+            SettingValue::String(s) => write!(f, "{s}"),
+        }
+    }
 }
 
 pub type SettingsResult<T> = Result<T, SettingLoadError>;
@@ -17,7 +27,7 @@ pub type SettingsResult<T> = Result<T, SettingLoadError>;
 #[derive(Debug)]
 pub enum SettingLoadError {
     IncorrectFormat,
-    InvalidType,
+    InvalidType(String),
     InvalidValue,
     IoError(std::io::Error),
 }

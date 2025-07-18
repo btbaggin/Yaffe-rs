@@ -1,4 +1,3 @@
-use crate::ui::rgba_string;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::io::Write;
@@ -23,10 +22,10 @@ macro_rules! stringy_enum {
                 }
             }
 
-            fn get_default(value: &str) -> SettingValue {
+            fn get_default(value: &str) -> Option<SettingValue> {
                 match value {
-                    $($display => $default,)+
-                    &_ => panic!("cant happen"),
+                    $($display => Some($default),)+
+                    &_ => None,
                 }
             }
         }
@@ -41,8 +40,8 @@ stringy_enum! {
         InfoScrollSpeed("info_scroll_speed") = SettingValue::F32(5.),
         MaxRows("max_rows") = SettingValue::I32(4),
         MaxColumns("max_columns") = SettingValue::I32(4),
-        FontColor("font_color") = SettingValue::Color((0.95, 0.95, 0.95, 1.)),
-        AccentColor("accent_color") = SettingValue::Color((0.25, 0.3, 1., 1.)),
+        FontColor("font_color") = SettingValue::Tuple((0.95, 0.95, 0.95, 1.)),
+        AccentColor("accent_color") = SettingValue::Tuple((0.25, 0.3, 1., 1.)),
         RecentPageCount("recent_page_count") = SettingValue::F32(1.),
         AssetCacheSizeMb("asset_cache_size_mb") = SettingValue::I32(64),
         LoggingLevel("logging_level") = SettingValue::String(String::from("Info")),
@@ -55,8 +54,11 @@ macro_rules! settings_get {
         pub fn $name(&self, setting: crate::settings::SettingNames) -> $ty {
             let key = crate::settings::SettingNames::to_string(setting);
 
-            let value =
-                if let Some(value) = self.settings.get(key) { value.clone() } else { SettingNames::get_default(key) };
+            let value = if let Some(value) = self.settings.get(key) {
+                value.clone()
+            } else {
+                SettingNames::get_default(key).unwrap()
+            };
 
             if let $setting(value) = value {
                 return value.clone();
@@ -89,7 +91,7 @@ impl SettingsFile {
             let value = if let Some(value) = self.settings.get(*name) {
                 value.clone()
             } else {
-                SettingNames::get_default(name)
+                SettingNames::get_default(name).unwrap()
             };
 
             result.push((name.to_string(), value));
@@ -100,8 +102,8 @@ impl SettingsFile {
     pub fn set_setting(&mut self, name: &str, value: &str) -> Result<(), SettingLoadError> {
         assert!(SETTINGS.contains(&name));
 
-        let setting = SettingNames::get_default(name);
-        let value = setting_from_string(&setting, value, true)?;
+        let setting = SettingNames::get_default(name).unwrap();
+        let value = setting_from_string(name, &setting, value, true)?;
         match value {
             //Add or insert new value
             Some(v) => {
@@ -118,17 +120,11 @@ impl SettingsFile {
     settings_get!(get_f32, f32, SettingValue::F32);
     settings_get!(get_i32, i32, SettingValue::I32);
     settings_get!(get_str, String, SettingValue::String);
-    settings_get!(get_color, (f32, f32, f32, f32), SettingValue::Color);
+    settings_get!(get_tuple, (f32, f32, f32, f32), SettingValue::Tuple);
 
     pub fn serialize(&self) -> Result<(), std::io::Error> {
         fn write_line(name: &str, value: &SettingValue, file: &mut std::fs::File) -> Result<(), std::io::Error> {
-            let line = match value {
-                SettingValue::String(s) => format!("{}: {} = {}\n", name, "str", s),
-                SettingValue::I32(i) => format!("{}: {} = {}\n", name, "i32", i),
-                SettingValue::F32(f) => format!("{}: {} = {}\n", name, "f32", f),
-                SettingValue::Color(c) => format!("{}: {} = {}\n", name, "color", rgba_string(c)),
-            };
-
+            let line = format!("{name} = {value}\n");
             file.write_all(line.as_bytes())
         }
 
@@ -142,59 +138,41 @@ impl SettingsFile {
     }
 }
 
+// TODO combine with parse_value
 pub fn setting_from_string(
+    name: &str,
     setting: &SettingValue,
     value: &str,
     allow_clear: bool,
 ) -> SettingsResult<Option<SettingValue>> {
+    let value = value.trim();
     if value.is_empty() {
         return Ok(None);
     }
 
-    let value = match setting {
-        SettingValue::Color(c) => {
-            let v = color_from_string(value)?;
-            if &v == c && allow_clear {
-                None
-            } else {
-                Some(SettingValue::Color(v))
-            }
-        }
-        SettingValue::F32(f) => {
-            let v = value.parse::<f32>()?;
-            if &v == f && allow_clear {
-                None
-            } else {
-                Some(SettingValue::F32(v))
-            }
-        }
-        SettingValue::I32(i) => {
-            let v = value.parse::<i32>()?;
-            if &v == i && allow_clear {
-                None
-            } else {
-                Some(SettingValue::I32(v))
-            }
-        }
-        SettingValue::String(s) => {
-            if s == value && allow_clear {
-                None
-            } else {
-                Some(SettingValue::String(value.to_string()))
-            }
-        }
-    };
-    Ok(value)
+    let v = parse_value(value)?;
+
+    if std::mem::discriminant(&v) != std::mem::discriminant(setting) {
+        return Err(SettingLoadError::InvalidType(name.to_string()));
+    }
+    if &v == setting && allow_clear {
+        Ok(None)
+    } else {
+        Ok(Some(v))
+    }
 }
 
 /// Loads settings from a file path
-pub fn load_settings<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<SettingsFile> {
+pub fn load_settings<P: Clone + AsRef<Path>>(path: P, validate_names: bool) -> SettingsResult<SettingsFile> {
     let mut path_buf = std::path::PathBuf::new();
     path_buf.push(path.clone());
     let last_write = std::fs::metadata(path_buf.clone())?.modified();
 
-    let settings =
-        SettingsFile { settings: load_settings_from_path(path)?, path: path_buf, last_write: last_write.unwrap() };
+    let settings = SettingsFile {
+        settings: load_settings_from_path(path, validate_names)?,
+        path: path_buf,
+        last_write: last_write.unwrap(),
+    };
 
     Ok(settings)
 }
@@ -208,7 +186,7 @@ pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<bool> {
 
         if last_write > settings.last_write {
             settings.last_write = last_write;
-            settings.settings = load_settings_from_path(settings.path.clone())?;
+            settings.settings = load_settings_from_path(settings.path.clone(), true)?;
             return Ok(true);
         }
     }
@@ -217,7 +195,10 @@ pub fn update_settings(settings: &mut SettingsFile) -> SettingsResult<bool> {
 }
 
 /// Loads settings from a file path
-pub fn load_settings_from_path<P: Clone + AsRef<Path>>(path: P) -> SettingsResult<HashMap<String, SettingValue>> {
+pub fn load_settings_from_path<P: Clone + AsRef<Path>>(
+    path: P,
+    validate_names: bool,
+) -> SettingsResult<HashMap<String, SettingValue>> {
     let mut path_buf = std::path::PathBuf::new();
     path_buf.push(path);
     let data = std::fs::read_to_string(path_buf.clone())?;
@@ -226,36 +207,39 @@ pub fn load_settings_from_path<P: Clone + AsRef<Path>>(path: P) -> SettingsResul
     for line in data.lines() {
         //# denotes a comment
         if !line.starts_with('#') && !line.is_empty() {
-            let (key, type_value) = line.split_at(line.find(':').ok_or(SettingLoadError::IncorrectFormat)?);
-            let (ty, value) = type_value.split_at(type_value.find('=').ok_or(SettingLoadError::IncorrectFormat)?);
+            let (key, value) = line.split_at(line.find('=').ok_or(SettingLoadError::IncorrectFormat)?);
 
-            // TODO update this parsing so we dont need to include the type? determine by probably....
-            // color starts with ()
-            // number is number
-            // float is number with .
-            // string is other
-            //First character will be : or =, dont include that
+            //First character will be =, dont include that
+            let key = key.trim();
             let value = value[1..].trim();
-            let value = match ty[1..].trim() {
-                "f32" => SettingValue::F32(value.parse::<f32>()?),
-                "i32" => SettingValue::I32(value.parse::<i32>()?),
-                "str" => SettingValue::String(String::from(value)),
-                "color" => SettingValue::Color(color_from_string(value)?),
-                _ => return Err(SettingLoadError::InvalidType),
-            };
-            current_settings.insert(String::from(key.trim()), value);
+            let value = parse_value(value)?;
+            if let Some(default) = SettingNames::get_default(key) {
+                if validate_names && std::mem::discriminant(&default) != std::mem::discriminant(&value) {
+                    return Err(SettingLoadError::InvalidType(key.to_string()));
+                }
+            }
+            current_settings.insert(String::from(key), value);
         }
     }
 
     Ok(current_settings)
 }
 
-pub fn color_from_string(value: &str) -> SettingsResult<(f32, f32, f32, f32)> {
-    let values: Vec<&str> = value.split(',').collect();
-    Ok((
-        values[0].trim().parse::<f32>()?,
-        values[1].trim().parse::<f32>()?,
-        values[2].trim().parse::<f32>()?,
-        values[3].trim().parse::<f32>()?,
-    ))
+fn parse_value(value: &str) -> Result<SettingValue, SettingLoadError> {
+    if value.starts_with("(") && value.ends_with(")") {
+        let inner = &value[1..value.len() - 1]; // Remove parentheses
+        let parts: Vec<SettingValue> = inner.split(',').map(|s| parse_value(s.trim()).unwrap()).collect();
+        match parts.as_slice() {
+            [SettingValue::F32(f1), SettingValue::F32(f2), SettingValue::F32(f3), SettingValue::F32(f4)] => {
+                Ok(SettingValue::Tuple((*f1, *f2, *f3, *f4)))
+            }
+            _ => Err(SettingLoadError::IncorrectFormat),
+        }
+    } else if let Ok(i32) = value.parse::<i32>() {
+        Ok(SettingValue::I32(i32))
+    } else if let Ok(f32) = value.parse::<f32>() {
+        Ok(SettingValue::F32(f32))
+    } else {
+        Ok(SettingValue::String(String::from(value)))
+    }
 }

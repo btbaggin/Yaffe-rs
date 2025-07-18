@@ -3,7 +3,7 @@
 /plugins
 /Roms
 log.txt
-yaffe.settings
+**/*.settings
 yaffe-rs.exe
 Yaffe.db
 Cargo.lock

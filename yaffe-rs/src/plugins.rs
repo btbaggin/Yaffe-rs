@@ -36,7 +36,7 @@ fn load(state: &mut YaffeState, path: &mut PathBuf) -> Result<(), Box<dyn std::e
         info!("Loaded plugin {plugin_name}");
 
         path.set_extension("settings");
-        let settings = crate::settings::load_settings_from_path(path.clone()).unwrap_or_default();
+        let settings = crate::settings::load_settings_from_path(path.clone(), false).unwrap_or_default();
         plugin
             .initialize(&settings)
             .display_failure(&format!("Unable to load plugin {plugin_name}"), state)

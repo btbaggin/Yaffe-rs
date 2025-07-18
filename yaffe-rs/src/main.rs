@@ -64,7 +64,7 @@ fn main() {
 
     let (queue, notify) = job_system::start_job_system();
 
-    let settings = match settings::load_settings("./yaffe.settings") {
+    let settings = match settings::load_settings("./yaffe.settings", true) {
         Ok(settings) => settings,
         Err(e) => {
             logger::error!("Unable to load settings: {e:?}");

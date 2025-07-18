@@ -48,8 +48,6 @@ pub fn change_brightness(color: &Color, factor: f32) -> Color {
     Color::from_rgba(r, g, b, a)
 }
 
-pub fn rgba_string(c: &(f32, f32, f32, f32)) -> String { format!("{},{},{},{}", c.0, c.1, c.2, c.3) }
-
 fn draw_label_and_box(graphics: &mut crate::Graphics, pos: &LogicalPosition, size: f32, label: &str) -> Rect {
     let font_size = graphics.font_size();
     graphics.simple_text(*pos, label);

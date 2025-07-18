@@ -40,7 +40,7 @@ impl Graphics {
             self.cached_settings.insert(s, SettingValue::F32(settings.get_f32(s)));
         }
         for s in [SettingNames::FontColor, SettingNames::AccentColor] {
-            self.cached_settings.insert(s, SettingValue::Color(settings.get_color(s)));
+            self.cached_settings.insert(s, SettingValue::Tuple(settings.get_tuple(s)));
         }
     }
 
@@ -57,13 +57,13 @@ impl Graphics {
         c
     }
     pub fn accent_color(&self) -> Color {
-        let SettingValue::Color(c) = self.cached_settings[&SettingNames::AccentColor] else {
+        let SettingValue::Tuple(c) = self.cached_settings[&SettingNames::AccentColor] else {
             unreachable!();
         };
         Color::from_rgba(c.0, c.1, c.2, c.3)
     }
     pub fn font_color(&self) -> Color {
-        let SettingValue::Color(c) = self.cached_settings[&SettingNames::FontColor] else {
+        let SettingValue::Tuple(c) = self.cached_settings[&SettingNames::FontColor] else {
             unreachable!();
         };
         Color::from_rgba(c.0, c.1, c.2, c.3)

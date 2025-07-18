@@ -31,12 +31,12 @@ impl Widget<YaffeState, DeferredAction> for AppList {
     ) -> bool {
         match action {
             Actions::Up => {
-                let apps = state.settings.get_i32(SettingNames::MaxRows);
+                let apps = state.settings.get_i32(SettingNames::MaxColumns);
                 self.update_position(state, apps, false, handler, animations);
                 true
             }
             Actions::Down => {
-                let apps = state.settings.get_i32(SettingNames::MaxRows);
+                let apps = state.settings.get_i32(SettingNames::MaxColumns);
                 self.update_position(state, apps, true, handler, animations);
                 true
             }
@@ -158,12 +158,12 @@ impl AppList {
         let (tiles_x, tiles_y, ideal_tile_size) =
             self.get_ideal_tile_size(state, graphics, &list_rect.to_physical(scale_factor));
 
-        self.tiles_x = usize::min(tiles_x, rows as usize);
-        self.tiles_y = usize::min(tiles_y, columns as usize);
+        self.tiles_x = usize::min(tiles_x, columns as usize);
+        self.tiles_y = usize::min(tiles_y, rows as usize);
         let ideal_tile_size = ideal_tile_size.to_logical(scale_factor);
 
-        let tile_width = f32::max(list_rect.width() / rows as f32, ideal_tile_size.x);
-        let tile_height = f32::max(list_rect.height() / columns as f32, ideal_tile_size.y);
+        let tile_width = f32::max(list_rect.width() / columns as f32, ideal_tile_size.x);
+        let tile_height = f32::max(list_rect.height() / rows as f32, ideal_tile_size.y);
         let mut effective_i = 0;
         for tile in self.tiles.iter_mut() {
             tile.apply_filter(&state.filter, &group.tiles);
