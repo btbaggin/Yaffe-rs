@@ -62,9 +62,9 @@ pub fn on_add_platform_close(
         let args = content.controls.by_tag("Args").unwrap();
         let job = crate::Job::SearchPlatform {
             id: job_id,
-            name: name.value().to_string(),
-            path: exe.value().to_string(),
-            args: args.value().to_string(),
+            name: name.value().trim().to_string(),
+            path: exe.value().trim().to_string(),
+            args: args.value().trim().to_string(),
         };
         state.queue.start_job(job);
 
@@ -84,7 +84,7 @@ pub fn on_update_platform_close(
 
         let exe = content.controls.by_tag("Executable").unwrap();
         let args = content.controls.by_tag("Args").unwrap();
-        crate::data::PlatformInfo::update(content.id, exe.value(), args.value())
+        crate::data::PlatformInfo::update(content.id, exe.value().trim(), args.value().trim())
             .display_failure("Unable to update platform", state);
     }
 }

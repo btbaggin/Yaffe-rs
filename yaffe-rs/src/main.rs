@@ -7,6 +7,7 @@ use std::rc::Rc;
 /*
  * TODO
  * Search bar doesnt work well on plugins
+ * allow reloading plugins?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

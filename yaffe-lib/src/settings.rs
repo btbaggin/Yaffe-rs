@@ -13,7 +13,7 @@ pub enum SettingValue {
 impl std::fmt::Display for SettingValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SettingValue::Tuple(c) => write!(f, "({:.1},{:.1},{:.1},{:.1})", c.0, c.1, c.2, c.3), //TODO change this to something?
+            SettingValue::Tuple(c) => write!(f, "({:.1},{:.1},{:.1},{:.1})", c.0, c.1, c.2, c.3),
             SettingValue::F32(ff) => write!(f, "{ff:.1}"),
             SettingValue::I32(i) => write!(f, "{i}"),
             SettingValue::String(s) => write!(f, "{s}"),

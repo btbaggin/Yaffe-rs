@@ -50,6 +50,7 @@ impl Control for TextBox {
             cursor_x = f32::min(origin_x + width, control.right());
         }
 
+        // TODO broken with deleting text?
         if let Some((start, end)) = self.selection {
             let pre_text = get_drawable_text(graphics, height, &self.text[0..start]);
             let text = get_drawable_text(graphics, height, &self.text[start..end]);
@@ -92,12 +93,22 @@ impl Control for TextBox {
             match k {
                 KeyCode::Backspace => {
                     if self.caret > 0 {
-                        self.text.remove(self.caret - 1);
-                        self.caret -= 1;
+                        if let Some(selection) = self.selection {
+                            self.text.replace_range(selection.0..selection.1, "");
+                            self.caret = selection.0;
+                            self.selection = None;
+                        } else {
+                            self.text.remove(self.caret - 1);
+                            self.caret -= 1;
+                        }
                     }
                 }
                 KeyCode::Delete => {
-                    if self.caret < self.text.len() {
+                    if let Some(selection) = self.selection {
+                        self.text.replace_range(selection.0..selection.1, "");
+                        self.caret = selection.0;
+                        self.selection = None;
+                    } else if self.caret < self.text.len() {
                         self.text.remove(self.caret);
                     }
                 }

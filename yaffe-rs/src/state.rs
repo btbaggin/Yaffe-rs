@@ -174,7 +174,7 @@ impl TileGroup {
         }
     }
 
-    pub fn get_rom_path(&self) -> PathBuf { Path::new("./Roms").join(&self.name) }
+    pub fn get_rom_path(&self) -> PathBuf { std::fs::canonicalize(Path::new("Roms").join(&self.name)).unwrap() }
 }
 
 pub struct Tile {
@@ -258,6 +258,7 @@ impl Tile {
                 let (path, args) = crate::data::PlatformInfo::get_info(id).log_message_and_panic("Platform not found");
                 crate::data::GameInfo::update_last_run(id, &self.file).log("Unable to update game last run");
 
+                let path = std::fs::canonicalize(path)?;
                 let mut process = &mut std::process::Command::new(path);
                 let exe_path = group.get_rom_path().join(&self.file);
 

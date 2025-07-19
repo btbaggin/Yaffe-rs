@@ -138,7 +138,6 @@ impl SettingsFile {
     }
 }
 
-// TODO combine with parse_value
 pub fn setting_from_string(
     name: &str,
     setting: &SettingValue,

@@ -1,6 +1,10 @@
+use crate::assets::Images;
 use crate::logger::LogEntry;
 use crate::os::get_and_update_volume;
-use crate::ui::{AnimationManager, Widget, WidgetId, LABEL_SIZE, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
+use crate::ui::{
+    image_fill, AnimationManager, RightAlignment, Widget, WidgetId, LABEL_SIZE, MARGIN, MODAL_BACKGROUND,
+    MODAL_OVERLAY_COLOR,
+};
 use crate::{widget, Actions, Graphics, LogicalPosition, LogicalSize, OverlayState, Rect};
 use speedy2d::color::Color;
 
@@ -42,6 +46,9 @@ impl Widget<OverlayState, ()> for OverlayBackground {
         // Modal
         let rect = graphics.bounds;
 
+        let font_size = graphics.font_size();
+        let image_size = LogicalSize::new(font_size, font_size);
+
         let size = LogicalSize::new(rect.width() * WINDOW_WIDTH, rect.height() * WINDOW_HEIGHT);
         let window_position = (rect.size() - size) / 2.;
         let window = Rect::new(window_position, window_position + size);
@@ -51,6 +58,13 @@ impl Widget<OverlayState, ()> for OverlayBackground {
             (window.left() + MARGIN, window.top() + MARGIN),
             (window.right() - MARGIN, window.bottom() - MARGIN),
         );
+
+        let volume_height = window.height() / 10.;
+        let image_width = window.width() / 3.;
+        let image_height = window.height() - volume_height - image_size.y - (MARGIN * 3.);
+
+        let size = image_fill(graphics, &process.image, &LogicalSize::new(image_width, image_height));
+        graphics.draw_asset_image(Rect::point_and_size(*window.top_left(), size), &process.image);
 
         //Draw time
         let time = chrono::Local::now();
@@ -63,21 +77,28 @@ impl Widget<OverlayState, ()> for OverlayBackground {
         );
 
         // Draw Title
-        let title = crate::ui::get_drawable_text(graphics, graphics.title_font_size(), &process.name);
-        graphics.draw_text(*window.top_left(), graphics.font_color(), &title);
-
-        // TODO draw image at appropriate size
-        graphics
-            .draw_asset_image(Rect::point_and_size(*window.top_left(), LogicalSize::new(100., 100.)), &process.image);
+        let title_width = window.width() - image_width - MARGIN - text.width();
+        let title =
+            crate::ui::get_drawable_text_with_wrap(graphics, graphics.title_font_size(), &process.name, title_width);
+        graphics.draw_text(
+            LogicalPosition::new(window.left() + MARGIN + image_width, window.top()),
+            graphics.font_color(),
+            &title,
+        );
 
         // Volume
-        let volume_position = LogicalPosition::new(window.left(), window.top() + (window.height() / 2.));
+        let volume_position = LogicalPosition::new(window.left(), window.top() + image_height + MARGIN);
         draw_volume_bar(
             graphics,
             volume_position,
-            LogicalSize::new(window.width() - LABEL_SIZE - MARGIN, window.height() / 10.),
+            LogicalSize::new(window.width() - LABEL_SIZE - MARGIN, volume_height),
             self.volume,
         );
+
+        let font_size = graphics.font_size();
+        let image_size = LogicalSize::new(font_size, font_size);
+        let menu = RightAlignment::new(LogicalPosition::new(window.right(), window.bottom() - font_size));
+        menu.text(graphics, "Exit").image(graphics, Images::ButtonA, image_size);
     }
 }
 
