@@ -50,7 +50,6 @@ impl Control for TextBox {
             cursor_x = f32::min(origin_x + width, control.right());
         }
 
-        // TODO broken with deleting text?
         if let Some((start, end)) = self.selection {
             let pre_text = get_drawable_text(graphics, height, &self.text[0..start]);
             let text = get_drawable_text(graphics, height, &self.text[start..end]);

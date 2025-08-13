@@ -61,7 +61,7 @@ impl Widget<OverlayState, ()> for OverlayBackground {
 
         let volume_height = window.height() / 10.;
         let image_width = window.width() / 3.;
-        let image_height = window.height() - volume_height - image_size.y - (MARGIN * 3.);
+        let image_height = window.height() - volume_height - image_size.y - (MARGIN * 2.);
 
         let size = image_fill(graphics, &process.image, &LogicalSize::new(image_width, image_height));
         graphics.draw_asset_image(Rect::point_and_size(*window.top_left(), size), &process.image);

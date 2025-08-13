@@ -8,6 +8,7 @@ use std::rc::Rc;
  * TODO
  * Search bar doesnt work well on plugins
  * allow reloading plugins?
+ * Make UI placement better? Somethign that can remember where you place things and auto account for margins and stuff?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
