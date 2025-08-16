@@ -1,6 +1,8 @@
-use std::collections::HashMap;
 use std::hash::Hash;
+use std::{collections::HashMap, time::Instant};
 use winit::keyboard::{KeyCode, ModifiersState};
+
+use crate::logger::PanicLogEntry;
 
 pub struct InputMap<A: Eq + Hash, B: Eq + Hash, T: Clone> {
     keys: HashMap<A, T>,
@@ -76,22 +78,88 @@ pub fn get_input_map() -> InputMap<KeyCode, ControllerInput, Actions> {
 }
 
 pub trait PlatformGamepad {
-    fn update(&mut self, controller_index: u32) -> Result<(), u32>;
-    fn get_gamepad(&mut self) -> Vec<ControllerInput>;
+    fn update(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn is_button_pressed(&self, button: ControllerInput) -> bool;
+    fn get_right_thumbstick(&self) -> (f32, f32);
+    fn get_left_thumbstick(&self) -> (f32, f32);
+}
+
+pub struct Gamepad {
+    platform: Box<dyn PlatformGamepad + 'static>,
+    last_input: Instant,
+}
+impl Gamepad {
+    pub fn new() -> Gamepad {
+        let platform_impl = crate::os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
+        Gamepad { platform: Box::new(platform_impl), last_input: Instant::now() }
+    }
+    pub fn update(&mut self) -> Result<(), Box<dyn std::error::Error>> { self.platform.update() }
 }
 
 pub fn input_to_action(
     input_map: &InputMap<KeyCode, ControllerInput, Actions>,
-    input: &mut dyn PlatformGamepad,
+    input: &mut Gamepad,
 ) -> std::collections::HashSet<Actions> {
     let mut result = std::collections::HashSet::new();
-    for g in input.get_gamepad() {
-        if let Some(action) = input_map.get(None, Some(g)) {
-            result.insert(action.clone());
-        } else {
-            result.insert(Actions::KeyPress(InputType::Gamepad(g)));
-        }
+    add_thumbstick_actions(input, input_map, &mut result);
+
+    if input.platform.is_button_pressed(ControllerInput::ButtonStart) {
+        add_action(ControllerInput::ButtonStart, input_map, &mut result);
+    }
+    if input.platform.is_button_pressed(ControllerInput::ButtonBack) {
+        add_action(ControllerInput::ButtonBack, input_map, &mut result);
+    }
+    if input.platform.is_button_pressed(ControllerInput::ButtonSouth) {
+        add_action(ControllerInput::ButtonSouth, input_map, &mut result);
+    }
+    if input.platform.is_button_pressed(ControllerInput::ButtonEast) {
+        add_action(ControllerInput::ButtonEast, input_map, &mut result);
+    }
+    if input.platform.is_button_pressed(ControllerInput::ButtonWest) {
+        add_action(ControllerInput::ButtonWest, input_map, &mut result);
+    }
+    if input.platform.is_button_pressed(ControllerInput::ButtonNorth) {
+        add_action(ControllerInput::ButtonNorth, input_map, &mut result);
     }
 
     result
+}
+
+fn add_thumbstick_actions(
+    gamepad: &mut Gamepad,
+    input_map: &InputMap<KeyCode, ControllerInput, Actions>,
+    result: &mut std::collections::HashSet<Actions>,
+) {
+    let now = Instant::now();
+    if (now - gamepad.last_input).as_millis() > 100 {
+        let (x, y) = gamepad.platform.get_left_thumbstick();
+        if x < 0.0 && x.abs() > y.abs() {
+            add_action(ControllerInput::DirectionLeft, input_map, result);
+            gamepad.last_input = now;
+        }
+        if y > 0.0 && y.abs() > x.abs() {
+            add_action(ControllerInput::DirectionUp, input_map, result);
+            gamepad.last_input = now;
+        }
+        if y < 0.0 && y.abs() > x.abs() {
+            add_action(ControllerInput::DirectionDown, input_map, result);
+            gamepad.last_input = now;
+        }
+        if x > 0.0 && x.abs() > y.abs() {
+            add_action(ControllerInput::DirectionRight, input_map, result);
+            gamepad.last_input = now;
+        }
+    }
+}
+
+fn add_action(
+    input: ControllerInput,
+    input_map: &InputMap<KeyCode, ControllerInput, Actions>,
+    result: &mut std::collections::HashSet<Actions>,
+) {
+    if let Some(action) = input_map.get(None, Some(input)) {
+        result.insert(action.clone());
+    } else {
+        result.insert(Actions::KeyPress(InputType::Gamepad(input)));
+    }
 }

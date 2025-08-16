@@ -1,6 +1,6 @@
 use crate::assets::Images;
 use crate::logger::LogEntry;
-use crate::os::get_and_update_volume;
+use crate::os::{get_volume, set_volume};
 use crate::ui::{
     image_fill, AnimationManager, RightAlignment, Widget, WidgetId, LABEL_SIZE, MARGIN, MODAL_BACKGROUND,
     MODAL_OVERLAY_COLOR,
@@ -12,18 +12,20 @@ const VOLUME_STEP: f32 = 0.05;
 
 widget!(
     pub struct OverlayBackground {
-        volume: f32 = get_and_update_volume(0.).unwrap_or(0.)
+        volume: f32 = 0.
     }
 );
 impl Widget<OverlayState, ()> for OverlayBackground {
     fn action(&mut self, _: &mut OverlayState, _: &mut AnimationManager, action: &Actions, _: &mut ()) -> bool {
         match action {
             Actions::Left => {
-                self.volume = get_and_update_volume(-VOLUME_STEP).log("Unable to get system volume");
+                self.volume = f32::max(0., self.volume - VOLUME_STEP);
+                set_volume(self.volume).log("Unable to get system volume");
                 true
             }
             Actions::Right => {
-                self.volume = get_and_update_volume(VOLUME_STEP).log("Unable to get system volume");
+                self.volume = f32::min(1., self.volume + VOLUME_STEP);
+                set_volume(self.volume).log("Unable to get system volume");
                 true
             }
             _ => false,
@@ -35,6 +37,7 @@ impl Widget<OverlayState, ()> for OverlayBackground {
             return;
         };
 
+        self.volume = get_volume().unwrap_or(0.);
         graphics.clear_screen(Color::TRANSPARENT);
 
         const WINDOW_WIDTH: f32 = 0.33;

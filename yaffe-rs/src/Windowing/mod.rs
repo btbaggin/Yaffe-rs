@@ -1,16 +1,15 @@
 use crate::{
     graphics::Graphics,
-    input::{ControllerInput, InputMap, InputType, PlatformGamepad},
+    input::InputType,
     job_system::{Job, JobResult, JobResults, ThreadSafeJobQueue},
     ui::AnimationManager,
-    Actions, PhysicalSize,
+    PhysicalSize,
 };
 use std::cell::RefCell;
 
 use glutin::surface::WindowSurface;
 
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::keyboard::KeyCode;
 use winit::window::{Window, WindowAttributes, WindowId};
 
 use speedy2d::GLRenderer;
@@ -95,17 +94,11 @@ impl WindowInfo {
     }
 }
 
-pub fn run_app(
-    input_map: InputMap<KeyCode, ControllerInput, Actions>,
-    queue: ThreadSafeJobQueue,
-    window_infos: Vec<WindowInfo>,
-    job_results: JobResults,
-    gamepad: impl PlatformGamepad + 'static,
-) {
+pub fn run_app(queue: ThreadSafeJobQueue, window_infos: Vec<WindowInfo>, job_results: JobResults) {
     let el = EventLoop::new().unwrap();
     el.set_control_flow(ControlFlow::Poll);
 
-    let mut app = app::App::new(input_map, queue, window_infos, job_results, gamepad);
+    let mut app = app::App::new(queue, window_infos, job_results);
     let _ = el.run_app(&mut app);
 }
 

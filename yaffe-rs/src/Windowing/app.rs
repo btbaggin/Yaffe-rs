@@ -22,7 +22,7 @@ use winit::raw_window_handle::HasWindowHandle;
 use winit::window::{Fullscreen, WindowId};
 
 use super::{AnimationManager, InputType, JobResults, WindowHelper, WindowInfo, YaffeWindow};
-use crate::input::{Actions, ControllerInput, InputMap, PlatformGamepad};
+use crate::input::{Actions, ControllerInput, Gamepad, InputMap};
 use crate::job_system::{JobResult, ThreadSafeJobQueue};
 use crate::logger::LogEntry;
 use crate::Graphics;
@@ -44,22 +44,16 @@ pub struct App {
     update_timer: f32,
     last_time: Instant,
     job_results: JobResults,
-    gamepad: Box<dyn PlatformGamepad + 'static>,
+    gamepad: Gamepad,
     handled_actions: HashSet<Actions>,
 }
 
 impl App {
-    pub fn new(
-        input_map: InputMap<KeyCode, ControllerInput, Actions>,
-        queue: ThreadSafeJobQueue,
-        window_infos: Vec<WindowInfo>,
-        job_results: JobResults,
-        gamepad: impl PlatformGamepad + 'static,
-    ) -> Self {
+    pub fn new(queue: ThreadSafeJobQueue, window_infos: Vec<WindowInfo>, job_results: JobResults) -> Self {
         Self {
             windows: HashMap::new(),
             modifiers: None,
-            input_map,
+            input_map: crate::input::get_input_map(),
             queue,
             window_infos,
             finished_jobs: vec![],
@@ -67,7 +61,7 @@ impl App {
             update_timer: 0.,
             last_time: Instant::now(),
             job_results,
-            gamepad: Box::new(gamepad),
+            gamepad: Gamepad::new(),
             handled_actions: HashSet::new(),
         }
     }
@@ -283,11 +277,9 @@ impl ApplicationHandler for App {
         self.delta_time = (now - self.last_time).as_millis() as f32 / 1000.;
         self.last_time = now;
 
-        //Get controller input
-        self.gamepad.update(0).log("Unable to get controller input");
-
         //Convert our input to actions we will propogate through the UI
-        let mut gamepad_actions = crate::input::input_to_action(&self.input_map, &mut *self.gamepad);
+        self.gamepad.update().log("Unable to get controller input");
+        let mut gamepad_actions = crate::input::input_to_action(&self.input_map, &mut self.gamepad);
 
         super::check_for_updates(&mut self.update_timer, self.delta_time, &self.queue);
 

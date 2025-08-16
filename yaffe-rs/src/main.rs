@@ -91,9 +91,6 @@ fn main() {
         ui::WidgetId::of::<PlatformList>(),
     );
 
-    let input_map = input::get_input_map();
-    let gamepad = os::initialize_gamepad().log_message_and_panic("Unable to initialize input");
-
     plugins::load_plugins(&mut ui.data, "./plugins");
 
     let main = WindowAttributes::default().with_title("Yaffe").with_visible(true);
@@ -108,7 +105,7 @@ fn main() {
         windowing::WindowInfo::new(Rc::new(RefCell::new(overlay)), overlay_att, true),
         windowing::WindowInfo::new(Rc::new(RefCell::new(ui)), main, true),
     ];
-    windowing::run_app(input_map, queue, handlers, notify, gamepad);
+    windowing::run_app(queue, handlers, notify);
 }
 
 pub fn build_main_tree() -> ui::WidgetContainer<YaffeState, DeferredAction> {

@@ -99,20 +99,27 @@ const JS_EVENT_AXIS: u8 = 0x02; /* joystick moved */
 const JS_EVENT_INIT: u8 = 0x80; /* initial state of device */
 
 impl crate::input::PlatformGamepad for LinuxInput {
-    fn update(&mut self, user_index: u32) -> Result<(), u32> {
+    // fn update(&mut self, user_index: u32) -> Result<(), u32> {
+    //     self.previous_state = self.current_state;
+
+    //     let path = format!("/dev/input/js{}", user_index);
+    //     if self.check_for_joystick(&path) {
+    //         self.get_joystick();
+    //     }
+    //     Ok(())
+    // }
+
+    fn get_gamepad(&mut self, user_index: u32) -> Vec<super::ControllerInput> {
+        fn is_pressed(input: &LinuxInput, button: u16) -> bool {
+            input.current_state.w_buttons & button != 0 && input.previous_state.w_buttons & button == 0
+        }
         self.previous_state = self.current_state;
 
         let path = format!("/dev/input/js{}", user_index);
         if self.check_for_joystick(&path) {
             self.get_joystick();
         }
-        Ok(())
-    }
 
-    fn get_gamepad(&mut self) -> Vec<super::ControllerInput> {
-        fn is_pressed(input: &LinuxInput, button: u16) -> bool {
-            input.current_state.w_buttons & button != 0 && input.previous_state.w_buttons & button == 0
-        }
         let mut result = Vec::new();
 
         let now = Instant::now();
@@ -337,7 +344,7 @@ macro_rules! intern_atom {
 //     result
 // }
 
-pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
+pub(super) fn get_volume() -> VolumeResult<f32> {
     //https://stackoverflow.com/questions/6787318/set-alsa-master-volume-from-c-code
     //https://stackoverflow.com/questions/57918821/how-to-get-and-set-volume-in-linux-using-alsa-using-c
     let mixer = alsa::Mixer::new("default", true)?;
@@ -348,14 +355,28 @@ pub(super) fn get_and_update_volume(delta: f32) -> VolumeResult<f32> {
     if let Some(selem) = selem {
         let (_, max) = selem.get_playback_volume_range();
         let volume = selem.get_playback_volume(alsa::mixer::SelemChannelId::mono())?;
-        let mut volume = (volume / max) as f32;
-
-        if delta != 0. {
-            volume = f32::min(1., f32::max(0., volume + delta));
-            selem.set_playback_volume_all((volume * max as f32) as i64)?;
-        }
+        let volume = (volume / max) as f32;
 
         return Ok(volume);
+    }
+
+    return Err(super::StartupError::Other(String::from("Unable to find PRM selem")));
+}
+
+pub(super) fn set_volume(volume: f32) -> VolumeResult<()> {
+    //https://stackoverflow.com/questions/6787318/set-alsa-master-volume-from-c-code
+    //https://stackoverflow.com/questions/57918821/how-to-get-and-set-volume-in-linux-using-alsa-using-c
+    let mixer = alsa::Mixer::new("default", true)?;
+    let id = alsa::mixer::SelemId::new("Master", 0);
+    // let id = alsa::mixer::SelemId::new("PCM", 0);
+
+    let selem = mixer.find_selem(&id);
+    if let Some(selem) = selem {
+        let (_, max) = selem.get_playback_volume_range();
+        volume = f32::min(1., f32::max(0., volume));
+        selem.set_playback_volume_all((volume * max as f32) as i64)?;
+
+        return Ok(());
     }
 
     return Err(super::StartupError::Other(String::from("Unable to find PRM selem")));
