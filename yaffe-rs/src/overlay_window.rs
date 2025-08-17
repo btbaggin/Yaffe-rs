@@ -3,7 +3,6 @@ use crate::job_system::JobResult;
 use crate::logger::LogEntry;
 use crate::overlay_state::OverlayState;
 use crate::ui::{AnimationManager, WidgetTree};
-use crate::widgets::OverlayBackground;
 use crate::windowing::WindowHelper;
 use crate::Graphics;
 
@@ -14,7 +13,7 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
         graphics.cache_settings(&self.data.settings);
-        self.render_all(graphics);
+        self.render(graphics);
         true
     }
 
@@ -39,13 +38,7 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
             }
             _ => {
                 if self.data.showing {
-                    self.root.action(
-                        &mut self.data,
-                        animations,
-                        action,
-                        &crate::ui::WidgetId::of::<OverlayBackground>(),
-                        &mut (),
-                    );
+                    self.action(animations, action, &mut ());
 
                     if let Actions::Accept = action {
                         let mut process = self.data.process.borrow_mut();

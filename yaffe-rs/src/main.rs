@@ -12,6 +12,10 @@ use std::rc::Rc;
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+const PLATFORM_LIST_ID: WidgetId = WidgetId::static_id(2);
+const APP_LIST_ID: WidgetId = WidgetId::static_id(3);
+const SEARCH_BAR_ID: WidgetId = WidgetId::static_id(4);
+const INFO_PANE_ID: WidgetId = WidgetId::static_id(5);
 
 mod assets;
 mod data;
@@ -43,7 +47,7 @@ use logger::{error, PanicLogEntry};
 use overlay_state::OverlayState;
 use settings::SettingNames;
 use state::{Tile, TileGroup, YaffeState};
-use ui::DeferredAction;
+use ui::{DeferredAction, UiContainer, WidgetId};
 use utils::{append_app_ext, LogicalPosition, LogicalSize, PhysicalRect, PhysicalSize, Rect, ScaleFactor, Transparent};
 use widgets::*;
 use winit::window::{WindowAttributes, WindowLevel};
@@ -80,16 +84,8 @@ fn main() {
     let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
     let overlay_state = OverlayState::new(process.clone(), settings.clone());
 
-    let overlay = ui::WidgetTree::<OverlayState, ()>::new(
-        build_overlay_tree(),
-        overlay_state,
-        ui::WidgetId::of::<OverlayBackground>(),
-    );
-    let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(
-        build_main_tree(),
-        yaffe_state,
-        ui::WidgetId::of::<PlatformList>(),
-    );
+    let overlay = ui::WidgetTree::<OverlayState, ()>::new(build_overlay_tree(), overlay_state, WidgetId::static_id(1));
+    let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(build_main_tree(), yaffe_state, PLATFORM_LIST_ID);
 
     plugins::load_plugins(&mut ui.data, "./plugins");
 
@@ -108,17 +104,22 @@ fn main() {
     windowing::run_app(queue, handlers, notify);
 }
 
-pub fn build_main_tree() -> ui::WidgetContainer<YaffeState, DeferredAction> {
-    use ui::ContainerAlignment;
+pub fn build_main_tree() -> UiContainer<YaffeState, DeferredAction> {
+    use ui::ContainerSize;
 
-    let mut root = ui::WidgetContainer::root(Background::new());
-    root.add_child(PlatformList::new(), LogicalSize::new(0.25, 1.), ContainerAlignment::Left)
-        .with_child(AppList::new(), LogicalSize::new(0.75, 1.))
-        .add_child(SearchBar::new(), LogicalSize::new(1., 0.05), ContainerAlignment::Top)
-        .add_child(Toolbar::new(), LogicalSize::new(1., 0.075), ContainerAlignment::Bottom)
-        .add_child(InfoPane::new(), LogicalSize::new(0.33, 1.), ContainerAlignment::Right);
+    let mut root = UiContainer::row();
+    root.add_child(PlatformList::new_with_id(PLATFORM_LIST_ID), ContainerSize::Percent(0.25))
+        .with_child(UiContainer::column(), ContainerSize::Fill)
+            .add_child(SearchBar::new_with_id(SEARCH_BAR_ID), ContainerSize::Percent(0.05))
+            .add_child(AppList::new_with_id(APP_LIST_ID), ContainerSize::Fill)
+            .add_child(Toolbar::new(), ContainerSize::Percent(0.05));
 
     root
 }
 
-fn build_overlay_tree() -> ui::WidgetContainer<OverlayState, ()> { ui::WidgetContainer::root(OverlayBackground::new()) }
+use ui::ContainerSize;
+fn build_overlay_tree() -> UiContainer<OverlayState, ()> {
+    let mut root = UiContainer::row();
+    root.add_child(OverlayBackground::new(), ContainerSize::Percent(1.));
+    root
+}

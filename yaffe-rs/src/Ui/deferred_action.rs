@@ -8,7 +8,7 @@ pub struct DeferredAction {
 }
 impl DeferredAction {
     pub fn new() -> DeferredAction { DeferredAction { focus: None, load_plugin: None, message: None } }
-    pub fn focus_widget<T: 'static>(&mut self) { self.focus = Some(FocusType::Focus(WidgetId::of::<T>())); }
+    pub fn focus_widget(&mut self, id: WidgetId) { self.focus = Some(FocusType::Focus(id)); }
     pub fn revert_focus(&mut self) { self.focus = Some(FocusType::Revert); }
     pub fn load_plugin(&mut self, reset_items: bool) { self.load_plugin = Some(reset_items); }
     pub fn display_message(&mut self, message: String) { self.message = Some(message); }

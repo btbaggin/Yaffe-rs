@@ -1,6 +1,5 @@
 use crate::modals::{on_update_platform_close, PlatformDetailModal};
-use crate::ui::{display_modal, AnimationManager, Widget, WidgetId, MARGIN, MENU_BACKGROUND};
-use crate::widgets::AppList;
+use crate::ui::{display_modal, AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN, MENU_BACKGROUND};
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
 };
@@ -8,7 +7,7 @@ use crate::{
 widget!(
     pub struct PlatformList {}
 );
-impl Widget<YaffeState, DeferredAction> for PlatformList {
+impl UiElement<YaffeState, DeferredAction> for PlatformList {
     fn action(
         &mut self,
         state: &mut YaffeState,
@@ -26,7 +25,7 @@ impl Widget<YaffeState, DeferredAction> for PlatformList {
                 true
             }
             Actions::Accept => {
-                handler.focus_widget::<AppList>();
+                handler.focus_widget(crate::APP_LIST_ID);
                 handler.load_plugin(true);
 
                 true
@@ -45,7 +44,7 @@ impl Widget<YaffeState, DeferredAction> for PlatformList {
 
     fn render(&mut self, graphics: &mut crate::Graphics, state: &YaffeState, current_focus: &WidgetId) {
         //Background
-        let rect = graphics.bounds;
+        let rect = self.layout();
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
 
         //Title
@@ -57,7 +56,7 @@ impl Widget<YaffeState, DeferredAction> for PlatformList {
         );
 
         let text_color =
-            if current_focus.is_focused::<Self>() { graphics.font_color() } else { graphics.font_unfocused_color() };
+            if current_focus == &self.get_id() { graphics.font_color() } else { graphics.font_unfocused_color() };
 
         let font_size = graphics.font_size();
 
@@ -80,7 +79,7 @@ impl Widget<YaffeState, DeferredAction> for PlatformList {
             if i == selected_index {
                 let rect = Rect::from_tuples((rect.left(), y), (right, y + height));
 
-                let color = if current_focus.is_focused::<Self>() {
+                let color = if current_focus == &self.get_id() {
                     graphics.accent_color()
                 } else {
                     graphics.accent_unfocused_color()

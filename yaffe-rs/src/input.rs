@@ -80,7 +80,6 @@ pub fn get_input_map() -> InputMap<KeyCode, ControllerInput, Actions> {
 pub trait PlatformGamepad {
     fn update(&mut self) -> Result<(), Box<dyn std::error::Error>>;
     fn is_button_pressed(&self, button: ControllerInput) -> bool;
-    fn get_right_thumbstick(&self) -> (f32, f32);
     fn get_left_thumbstick(&self) -> (f32, f32);
 }
 

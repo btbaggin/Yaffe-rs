@@ -288,21 +288,10 @@ impl crate::input::PlatformGamepad for WindowsInput {
             (0.0, 0.0)
         }
     }
-
-    /// Get current right thumbstick position (-1.0 to 1.0, with deadzone applied)
-    fn get_right_thumbstick(&self) -> (f32, f32) {
-        if let Some(ref current) = self.current_reading {
-            self.apply_deadzone(current.RightThumbstickX, current.RightThumbstickY)
-        } else {
-            (0.0, 0.0)
-        }
-    }
 }
 
 pub(super) fn get_volume() -> PlatformResult<f32> {
     unsafe {
-        // Initialize COM
-        // Ensure COM is uninitialized when function exits
         let _com_guard = ComGuard::new(None)?;
 
         // Create device enumerator
@@ -318,7 +307,6 @@ pub(super) fn get_volume() -> PlatformResult<f32> {
 
 pub(super) fn set_volume(amount: f32) -> PlatformResult<()> {
     unsafe {
-        // Initialize COM
         let _com_guard = ComGuard::new(None)?;
 
         // Create device enumerator

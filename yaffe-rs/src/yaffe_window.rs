@@ -1,7 +1,7 @@
 use crate::graphics::Graphics;
 use crate::input::Actions;
 use crate::job_system::JobResult;
-use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
+use crate::logger::{LogEntry, UserMessage};
 use crate::modals::{
     on_add_platform_close, on_settings_close, ListModal, PlatformDetailModal, SetRestrictedModal, SettingsModal,
 };
@@ -34,7 +34,12 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
             }
 
             graphics.cache_settings(&self.data.settings);
-            self.render_all(graphics);
+
+            // Draw background
+            let base = graphics.accent_color();
+            graphics.draw_image_tinted(base, graphics.bounds, crate::assets::Images::Background);
+
+            self.render(graphics);
 
             //Render modal last, on top of everything
             let modals = self.data.modals.lock().unwrap();
@@ -90,9 +95,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
             _ => {
                 let mut handler = DeferredAction::new();
                 let result = if !crate::ui::is_modal_open(&self.data) {
-                    let focus = self.focus.last().log_and_panic();
-
-                    self.root.action(&mut self.data, animations, action, focus, &mut handler)
+                    self.action(animations, action, &mut handler)
                 } else {
                     crate::ui::update_modal(&mut self.data, helper, action, &mut handler);
                     true

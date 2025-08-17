@@ -2,7 +2,7 @@ use crate::assets::Images;
 use crate::logger::LogEntry;
 use crate::os::{get_volume, set_volume};
 use crate::ui::{
-    image_fill, AnimationManager, RightAlignment, Widget, WidgetId, LABEL_SIZE, MARGIN, MODAL_BACKGROUND,
+    image_fill, AnimationManager, RightAlignment, UiElement, WidgetId, LABEL_SIZE, MARGIN, MODAL_BACKGROUND,
     MODAL_OVERLAY_COLOR,
 };
 use crate::{widget, Actions, Graphics, LogicalPosition, LogicalSize, OverlayState, Rect};
@@ -15,7 +15,7 @@ widget!(
         volume: f32 = 0.
     }
 );
-impl Widget<OverlayState, ()> for OverlayBackground {
+impl UiElement<OverlayState, ()> for OverlayBackground {
     fn action(&mut self, _: &mut OverlayState, _: &mut AnimationManager, action: &Actions, _: &mut ()) -> bool {
         match action {
             Actions::Left => {

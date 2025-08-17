@@ -1,7 +1,7 @@
 use crate::logger::UserMessage;
 use crate::state::GroupType;
-use crate::ui::{get_drawable_text, AnimationManager, Widget, WidgetId};
-use crate::widgets::{AppTile, InfoPane, SearchBar};
+use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::widgets::AppTile;
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
 };
@@ -12,16 +12,16 @@ const MARGIN: f32 = 0.1;
 
 widget!(
     pub struct AppList {
-    cached_platform: i64 = i64::MIN,
-    tiles: Vec<AppTile> = Vec::<AppTile>::new(),
-    tiles_x: usize = 0,
-    tiles_y: usize = 0,
-    first_visible: HashMap<i64, usize> = HashMap::new(),
-    tile_animation: f32 = 0.
-}
+        cached_platform: i64 = i64::MIN,
+        tiles: Vec<AppTile> = Vec::<AppTile>::new(),
+        tiles_x: usize = 0,
+        tiles_y: usize = 0,
+        first_visible: HashMap<i64, usize> = HashMap::new(),
+        tile_animation: f32 = 0.
+    }
 );
 
-impl Widget<YaffeState, DeferredAction> for AppList {
+impl UiElement<YaffeState, DeferredAction> for AppList {
     fn action(
         &mut self,
         state: &mut YaffeState,
@@ -57,11 +57,11 @@ impl Widget<YaffeState, DeferredAction> for AppList {
                 true
             }
             Actions::Info => {
-                handler.focus_widget::<InfoPane>();
+                handler.focus_widget(crate::INFO_PANE_ID);
                 true
             }
             Actions::Filter => {
-                handler.focus_widget::<SearchBar>();
+                handler.focus_widget(crate::SEARCH_BAR_ID);
                 true
             }
             Actions::Back => {
@@ -103,7 +103,7 @@ impl Widget<YaffeState, DeferredAction> for AppList {
         let group = state.get_selected_group();
 
         //Height needs to be based on image aspect * width
-        let focused = current_focus.is_focused::<Self>();
+        let focused = current_focus == &self.get_id();
         for i in 0..group.tiles.len() {
             if i == state.selected.tile_index && focused {
                 continue;

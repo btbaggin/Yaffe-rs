@@ -64,7 +64,7 @@ impl AnimationManager {
 
     pub fn animate<'a, T: Animator>(
         &'a mut self,
-        widget: &impl crate::ui::FocusableWidget,
+        widget: &impl crate::ui::LayoutElement,
         field: FieldOffset,
         target: T,
     ) -> AnimationBuilder<'a, T> {
@@ -82,7 +82,7 @@ impl AnimationManager {
 
     /// Processes any widgets that have running animations
     /// Currently only position animations are allowed
-    pub fn process<S, D>(&mut self, root: &mut crate::ui::WidgetContainer<S, D>, delta_time: f32) {
+    pub fn process<S: 'static, D: 'static>(&mut self, root: &mut crate::ui::UiContainer<S, D>, delta_time: f32) {
         //We do this at the beginning because we need animations to persist 1 fram longer than they go
         //This is because we only redraw the screen if animations are playing
         //If we removed them at the end we wouldn't redraw the last frame of the animation
@@ -93,11 +93,9 @@ impl AnimationManager {
             animation.remaining -= delta_time;
 
             if let Some(widget) = root.find_widget_mut(animation.widget) {
-                let widget = widget.widget.as_mut();
-
                 match animation.data {
                     AnimationData::F32 { from, to } => {
-                        let animator = apply_mut::<dyn crate::ui::Widget<S, D>, f32>(animation.offset, widget);
+                        let animator = apply_mut::<dyn crate::ui::UiElement<S, D>, f32>(animation.offset, widget);
                         *animator = animator.slerp(from, to, delta_time / animation.duration);
                         if animation.remaining <= 0. {
                             *animator = to

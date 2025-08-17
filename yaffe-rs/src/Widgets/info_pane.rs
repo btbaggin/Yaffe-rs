@@ -1,5 +1,5 @@
 use crate::ui::{
-    get_drawable_text_with_wrap, AnimationManager, Container, Control, Image, Label, Widget, WidgetId, MARGIN,
+    get_drawable_text_with_wrap, AnimationManager, Container, Control, Image, Label, UiElement, WidgetId, MARGIN,
     MODAL_BACKGROUND, TITLE_SIZE,
 };
 use crate::{widget, Actions, DeferredAction, Graphics, LogicalPosition, Rect, ScaleFactor, YaffeState};
@@ -32,9 +32,7 @@ fn build_container(exe: Option<&crate::Tile>) -> Container {
     main
 }
 
-impl Widget<YaffeState, DeferredAction> for InfoPane {
-    fn offset(&self) -> LogicalPosition { self.offset }
-
+impl UiElement<YaffeState, DeferredAction> for InfoPane {
     fn got_focus(&mut self, state: &YaffeState, animations: &mut AnimationManager) {
         animations.animate(self, crate::offset_of!(InfoPane => offset: LogicalPosition => x), 0.).duration(0.2).start();
         self.y_offset = 0.;

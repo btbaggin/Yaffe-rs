@@ -1,6 +1,5 @@
 use crate::state::MetadataSearch;
-use crate::ui::{AnimationManager, Widget, WidgetId, MENU_BACKGROUND};
-use crate::widgets::AppList;
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MENU_BACKGROUND};
 use crate::{widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState};
 
 const NAME_WIDTH: f32 = 175.;
@@ -14,9 +13,7 @@ widget!(
         offset: LogicalPosition = LogicalPosition::new(0., -1.)
     }
 );
-impl Widget<YaffeState, DeferredAction> for SearchBar {
-    fn offset(&self) -> LogicalPosition { self.offset }
-
+impl UiElement<YaffeState, DeferredAction> for SearchBar {
     fn action(
         &mut self,
         state: &mut YaffeState,
@@ -31,7 +28,7 @@ impl Widget<YaffeState, DeferredAction> for SearchBar {
                 true
             }
             Actions::Accept => {
-                handler.focus_widget::<AppList>();
+                handler.focus_widget(crate::APP_LIST_ID);
                 let filter = self.searches[self.active_search].clone();
 
                 //If our current item is no longer visible because it was filtered out
@@ -111,7 +108,7 @@ impl Widget<YaffeState, DeferredAction> for SearchBar {
 
     fn render(&mut self, graphics: &mut crate::Graphics, _: &YaffeState, current_focus: &WidgetId) {
         let current_search = &self.searches[self.active_search];
-        let rect = graphics.bounds;
+        let rect = self.layout();
         let filter_start = rect.left() + NAME_WIDTH;
         let name = &current_search.name;
 
@@ -119,8 +116,11 @@ impl Widget<YaffeState, DeferredAction> for SearchBar {
         let font_size = graphics.font_size();
 
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
-        let focused_color =
-            if current_focus.is_focused::<Self>() { graphics.font_color() } else { graphics.font_unfocused_color() };
+        let focused_color = if current_focus == &crate::SEARCH_BAR_ID {
+            graphics.font_color()
+        } else {
+            graphics.font_unfocused_color()
+        };
 
         //Filter option name
         let filter_rect =
