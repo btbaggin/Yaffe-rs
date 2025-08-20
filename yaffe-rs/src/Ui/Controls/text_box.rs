@@ -1,42 +1,45 @@
-use super::{draw_label_and_box, Control, InputControl, LABEL_SIZE};
+use super::{draw_label_and_box, LABEL_SIZE};
 use crate::input::InputType;
-use crate::ui::get_drawable_text;
+use crate::ui::{get_drawable_text, ValueElement, LayoutElement, AnimationManager, WidgetId, UiElement};
 use crate::utils::Rect;
-use crate::{Actions, LogicalPosition};
+use crate::{Actions, LogicalPosition, Graphics};
 use copypasta::ClipboardProvider;
 use winit::keyboard::{KeyCode, ModifiersState};
 
-pub struct TextBox {
-    text: String,
-    caret: usize,
-    label: String,
-    focused: bool,
-    selection: Option<(usize, usize)>,
-}
-impl TextBox {
-    pub fn new(label: String, text: String) -> TextBox {
-        TextBox { label, text, caret: 0, focused: false, selection: None }
+crate::widget!(
+    pub struct TextBox {
+        text: String = String::new(),
+        caret: usize = 0,
+        label: String = String::new(),
+        selection: Option<(usize, usize)> = None
     }
-    pub fn from_str(label: String, text: &str) -> TextBox {
-        TextBox { label, text: text.to_string(), caret: 0, focused: false, selection: None }
-    }
-}
+);
 
-impl Control for TextBox {
-    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
+impl TextBox {
+    pub fn from(label: &str, text: &str) -> TextBox {
+        let mut textbox = TextBox::new();
+        textbox.text = text.to_string();
+        textbox.label = label.to_string();
+        textbox
+    }
+}
+impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
+    fn render(&mut self, graphics: &mut Graphics, _: &T, current_focus: &WidgetId) {
         const MAX_SIZE: f32 = 500.;
         const CURSOR_WIDTH: f32 = 2.;
 
-        let size = f32::min(container.width() - LABEL_SIZE - crate::ui::MARGIN, MAX_SIZE);
-        let control = draw_label_and_box(graphics, container.top_left(), size, &self.label);
+        let rect = self.layout();
+        let size = f32::min(rect.width() - LABEL_SIZE - crate::ui::MARGIN, MAX_SIZE);
+        let control = draw_label_and_box(graphics, rect.top_left(), size, &self.label);
 
         let height = control.height();
         let text = get_drawable_text(graphics, height, &self.text);
-        let box_left = container.left() + LABEL_SIZE;
+        let box_left = rect.left() + LABEL_SIZE;
 
+        let focused = &self.id == current_focus;
         let mut cursor_x = 0.;
         let mut origin_x = control.left();
-        if self.focused {
+        if focused {
             let text = get_drawable_text(graphics, height, &self.text[0..self.caret]);
             // Very special case. The text already accounts for scaling, so we need to undo that to revert back to logical units
             // Then we can do calculations and pass them to the graphics API which converts back to physical units
@@ -61,8 +64,8 @@ impl Control for TextBox {
 
             graphics.draw_rectangle(
                 Rect::new(
-                    LogicalPosition::new(selection_x, container.top()),
-                    LogicalPosition::new(selection_right, container.top() + height),
+                    LogicalPosition::new(selection_x, rect.top()),
+                    LogicalPosition::new(selection_right, rect.top() + height),
                 ),
                 graphics.accent_color(),
             );
@@ -70,12 +73,12 @@ impl Control for TextBox {
 
         //Clip text so it doesnt render outside box
         let clip = Rect::new(
-            LogicalPosition::new(box_left, container.top()),
-            LogicalPosition::new(box_left + size, container.top() + height),
+            LogicalPosition::new(box_left, rect.top()),
+            LogicalPosition::new(box_left + size, rect.top() + height),
         );
         graphics.draw_text_cropped(LogicalPosition::new(origin_x, control.top()), clip, graphics.font_color(), &text);
 
-        if self.focused {
+        if focused {
             graphics.draw_line(
                 LogicalPosition::new(cursor_x, control.top() + 2.),
                 LogicalPosition::new(cursor_x, control.bottom() - 2.),
@@ -84,10 +87,10 @@ impl Control for TextBox {
             );
         }
 
-        crate::LogicalSize::new(control.width() + LABEL_SIZE, control.height())
+        self.size = crate::LogicalSize::new(control.width() + LABEL_SIZE, control.height())
     }
 
-    fn action(&mut self, action: &Actions) {
+    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
         if let Actions::KeyPress(InputType::Key(k, text, mods)) = action {
             match k {
                 KeyCode::Backspace => {
@@ -115,16 +118,16 @@ impl Control for TextBox {
                 KeyCode::End => self.caret = self.text.len(),
                 KeyCode::KeyV if is_command(mods) => {
                     let Ok(mut ctx) = copypasta::ClipboardContext::new() else {
-                        return;
+                        return false;
                     };
                     let Ok(text) = ctx.get_contents() else {
-                        return;
+                        return false;
                     };
                     self.insert_text(&text);
                 }
                 KeyCode::KeyC if is_command(mods) => {
                     let Ok(mut ctx) = copypasta::ClipboardContext::new() else {
-                        return;
+                        return false;
                     };
                     let _ = ctx.set_contents(self.text.clone());
                 }
@@ -158,18 +161,18 @@ impl Control for TextBox {
                         self.selection = None;
                     }
                 }
-                _ => {
-                    if let Some(text) = text {
-                        self.insert_text(text);
-                    }
+                _ => if let Some(text) = text {
+                    self.insert_text(text);
                 }
             }
+            true
+        } else {
+            false
         }
     }
 }
-impl InputControl for TextBox {
-    fn value(&self) -> &str { &self.text }
-    fn set_focused(&mut self, value: bool) { self.focused = value; }
+impl ValueElement<String> for TextBox {
+    fn value(&self) -> String { self.text.clone() }
 }
 impl TextBox {
     fn insert_text(&mut self, text: &str) {

@@ -1,4 +1,5 @@
-use crate::{modals::SetRestrictedModal, ui::ModalContent, ui::ModalResult, YaffeState};
+use crate::{modals::SetRestrictedModal, YaffeState};
+use crate::ui::ModalContent;
 
 const PIN_SIZE: usize = 8;
 
@@ -33,11 +34,10 @@ fn passcodes_equal(source: &RestrictedPasscode, target: &RestrictedPasscode) -> 
 
 pub fn on_restricted_modal_close(
     state: &mut YaffeState,
-    result: ModalResult,
-    content: &dyn ModalContent,
-    _: &mut crate::DeferredAction,
+    result: bool,
+    content: &ModalContent,
 ) {
-    if let ModalResult::Ok = result {
+    if result {
         let content = content.as_any().downcast_ref::<SetRestrictedModal>().unwrap();
         let pass = content.get_passcode();
 

@@ -1,19 +1,36 @@
-use super::{draw_label_and_box, Control, InputControl};
+use super::draw_label_and_box;
 use crate::input::{Actions, InputType};
+use crate::ui::{ValueElement, UiElement, WidgetId, AnimationManager, LayoutElement};
 use crate::utils::Rect;
+use crate::Graphics;
 use winit::keyboard::KeyCode;
 
-pub struct CheckBox {
-    checked: bool,
-    label: String,
-    focused: bool,
-}
+crate::widget!(
+    pub struct CheckBox {
+        checked: bool = false,
+        label: String = String::new()
+    }
+);
+
 impl CheckBox {
-    pub fn new(label: String, checked: bool) -> CheckBox { CheckBox { label, checked, focused: false } }
+    pub fn from(label: String, checked: bool) -> CheckBox {
+        let mut checkbox = CheckBox::new();
+        checkbox.label = label;
+        checkbox.checked = checked;
+        checkbox
+    }
 }
-impl Control for CheckBox {
-    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
-        let control = draw_label_and_box(graphics, container.top_left(), graphics.font_size(), &self.label);
+impl<T: 'static, D: 'static> UiElement<T, D> for CheckBox {
+    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
+        if let Actions::KeyPress(InputType::Key(KeyCode::Space, _, _)) = action {
+            self.checked = !self.checked;
+            return true;
+        }
+        false
+    }
+
+    fn render(&mut self, graphics: &mut Graphics, _: &T, _: &WidgetId) {
+        let control = draw_label_and_box(graphics, self.layout().top_left(), graphics.font_size(), &self.label);
 
         if self.checked {
             let base = graphics.accent_color();
@@ -26,22 +43,11 @@ impl Control for CheckBox {
             )
         }
 
-        crate::LogicalSize::new(control.width() + crate::ui::LABEL_SIZE, control.height())
-    }
-
-    fn action(&mut self, action: &Actions) {
-        if let Actions::KeyPress(InputType::Key(KeyCode::Space, _, _)) = action {
-            self.checked = !self.checked;
-        }
+        self.size = crate::LogicalSize::new(control.width() + crate::ui::LABEL_SIZE, control.height());
     }
 }
-impl InputControl for CheckBox {
-    fn value(&self) -> &str {
-        if self.checked {
-            "true"
-        } else {
-            "false"
-        }
+impl ValueElement<bool> for CheckBox {
+    fn value(&self) -> bool {
+        self.checked
     }
-    fn set_focused(&mut self, value: bool) { self.focused = value; }
 }

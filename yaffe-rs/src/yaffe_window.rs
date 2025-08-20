@@ -3,10 +3,10 @@ use crate::input::Actions;
 use crate::job_system::JobResult;
 use crate::logger::{LogEntry, UserMessage};
 use crate::modals::{
-    on_add_platform_close, on_settings_close, ListModal, PlatformDetailModal, SetRestrictedModal, SettingsModal,
+    on_add_platform_close, on_settings_close, PlatformDetailModal, SetRestrictedModal, SettingsModal, ListModal
 };
 use crate::restrictions::{on_restricted_modal_close, RestrictedMode};
-use crate::ui::{display_modal, AnimationManager, DeferredAction, ModalResult, WidgetTree};
+use crate::ui::{display_modal, AnimationManager, DeferredAction, WidgetTree, ModalContent};
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
 
@@ -35,18 +35,18 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
             graphics.cache_settings(&self.data.settings);
 
-            // Draw background
-            let base = graphics.accent_color();
-            graphics.draw_image_tinted(base, graphics.bounds, crate::assets::Images::Background);
+            // // Draw background
+            // let base = graphics.accent_color();
+            // graphics.draw_image_tinted(base, graphics.bounds, crate::assets::Images::Background);
 
             self.render(graphics);
 
             //Render modal last, on top of everything
-            let modals = self.data.modals.lock().unwrap();
-            if let Some(m) = modals.last() {
+            let modals = &mut self.data.modals.lock().unwrap();
+            if let Some(m) = modals.last_mut() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_modal(m, graphics);
+                crate::ui::render_modal(m,  graphics);
             }
 
             if !self.data.toasts.is_empty() {
@@ -62,7 +62,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
         self.data.running
     }
 
-    fn on_input(&mut self, animations: &mut AnimationManager, helper: &mut WindowHelper, action: &Actions) -> bool {
+    fn on_input(&mut self, animations: &mut AnimationManager, _: &mut WindowHelper, action: &Actions) -> bool {
         if self.data.is_overlay_active() {
             return false;
         }
@@ -82,7 +82,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
                         "Shut Down".to_string(),
                     ];
 
-                    let list = Box::new(crate::modals::ListModal::new(items));
+                    let list = crate::modals::ListModal::from(items);
                     crate::ui::display_modal(&mut self.data, "Menu", None, list, Some(on_menu_close));
                     true
                 } else {
@@ -97,7 +97,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
                 let result = if !crate::ui::is_modal_open(&self.data) {
                     self.action(animations, action, &mut handler)
                 } else {
-                    crate::ui::update_modal(&mut self.data, helper, action, &mut handler);
+                    crate::ui::update_modal(&mut self.data, animations, action);
                     true
                 };
                 handler.resolve(self, animations);
@@ -107,30 +107,23 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
     }
 
     fn on_stop(&mut self) { crate::plugins::unload(&mut self.data.plugins); }
-
-    // fn get_ui(&mut self) -> &mut crate::ui::WidgetContainer { &mut self.root }
 }
 
-fn on_menu_close(
-    state: &mut YaffeState,
-    result: ModalResult,
-    content: &dyn crate::ui::ModalContent,
-    _: &mut crate::DeferredAction,
-) {
-    if let ModalResult::Ok = result {
-        let list_content = content.as_any().downcast_ref::<ListModal<String>>().unwrap();
+fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
+    if result {
+        let list_content = content.as_any().downcast_ref::<ListModal>().unwrap();
 
-        match &list_content.get_selected()[..] {
+        match list_content.get_selected::<String>().as_str() {
             "Add Emulator" => {
-                let content = Box::new(PlatformDetailModal::emulator());
+                let content = PlatformDetailModal::emulator();
                 display_modal(state, "New Emulator", Some("Confirm"), content, Some(on_add_platform_close));
             }
             "Settings" => {
-                let content = Box::new(SettingsModal::new(&state.settings));
+                let content = SettingsModal::from(&state.settings);
                 display_modal(state, "Settings", Some("Confirm"), content, Some(on_settings_close));
             }
             "Disable Restricted Mode" | "Enable Restricted Mode" => {
-                let content = Box::new(SetRestrictedModal::new());
+                let content = SetRestrictedModal::new();
                 display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(on_restricted_modal_close))
             }
             "Scan For New Roms" => crate::platform::scan_new_files(state),
@@ -160,12 +153,12 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                 } else if result.count > 0 {
                     let items = result.results;
 
-                    let content = GameScraperModal::new(items);
+                    let content = GameScraperModal::from(items);
                     display_modal(
                         state,
                         &format!("Select Game: {}", result.request),
                         None,
-                        Box::new(content),
+                        content,
                         Some(crate::modals::on_game_found_close),
                     );
                 }
@@ -177,14 +170,15 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                 if let Some(platform) = result.get_exact() {
                     crate::platform::insert_platform(state, &platform.info);
                 } else if result.count > 0 {
-                    let items = result.results;
+                    // TODO
+                    // let items = result.results;
 
-                    let content = PlatformScraperModal::new(items);
+                    let content = PlatformScraperModal::new();
                     display_modal(
                         state,
                         "Select Platform",
                         None,
-                        Box::new(content),
+                        content,
                         Some(crate::modals::on_platform_found_close),
                     );
                 }

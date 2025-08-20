@@ -1,30 +1,36 @@
-use crate::ui::{List, ListItem, ModalContent, ModalResult, ModalSize};
-use crate::{Actions, LogicalSize, Rect};
+use crate::ui::{List, ListItem, UiElement, WidgetId, ModalAction, AnimationManager, UiContainer, ContainerSize, LayoutElement};
+use crate::{Actions, Graphics};
 
-/// Allow displaying a list of items that can be selected
-/// Items must implement `ListItem` trait
-pub struct ListModal<T: ListItem> {
-    list: List<T>,
-}
-impl<T: ListItem> ListModal<T> {
-    pub fn new(items: Vec<T>) -> ListModal<T> { ListModal { list: List::new(items) } }
+// Allow displaying a list of items that can be selected
+// Items must implement `ListItem` trait
+crate::widget!(
+    pub struct ListModal {
+        container: UiContainer<(), ModalAction> = UiContainer::column()
+    }
+);
 
-    pub fn get_selected(&self) -> &T { self.list.get_selected() }
-}
-
-impl<T: 'static + ListItem> ModalContent for ListModal<T> {
-    fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let count = self.list.items.len();
-        let height = count as f32 * graphics.font_size();
-
-        LogicalSize::new(Self::modal_width(rect, ModalSize::Third), height)
+impl ListModal {
+    pub fn from<T: ListItem + 'static>(items: Vec<T>) -> ListModal { 
+        let mut modal = ListModal::new();
+        let list = List::<T>::from(items);
+        modal.container.add_child(list, ContainerSize::Shrink);
+        modal
     }
 
-    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
-        self.list.update(action);
-        Self::default_modal_action(action)
+    pub fn get_selected<T: ListItem + 'static>(&self) -> &T {
+        let element = &self.container.get_child(0);
+        element.as_any().downcast_ref::<List<T>>().unwrap().get_selected()
+    }
+}
+
+impl UiElement<(), ModalAction> for ListModal {
+    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+        handler.close_if_accept(action) || self.container.action(state, animations, action, handler)
     }
 
-    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) { self.list.render(rect, graphics) }
+    fn render(&mut self, graphics: &mut Graphics, state: &(), current_focus: &WidgetId) {
+        // TODO this is soooooo fucked
+        self.container.render(graphics, state, current_focus);
+        self.set_layout(self.container.layout());
+    }
 }

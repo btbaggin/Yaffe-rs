@@ -1,4 +1,5 @@
-use crate::{Actions, LogicalSize, Rect};
+use crate::{Actions, LogicalSize, Rect, Graphics};
+use crate::ui::{WidgetId, AnimationManager, UiElement, LayoutElement};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;
@@ -8,21 +9,24 @@ impl ListItem for String {
     fn to_display(&self) -> String { self.to_string() }
 }
 
-/// Allow displaying a list of items that can be selected
-/// Items must implement `ListItem` trait
-pub struct List<T: ListItem> {
-    pub items: Vec<T>,
-    index: usize,
-    first_index: std::cell::RefCell<usize>,
-}
-impl<T: ListItem> List<T> {
-    pub fn new(items: Vec<T>) -> List<T> { List { items, index: 0, first_index: std::cell::RefCell::new(0) } }
+crate::widget!(
+    pub struct List<L: ListItem> {
+        pub items: Vec<L> = vec!(),
+        index: usize = 0
+    }
+);
+impl<L: ListItem> List<L> {
+    pub fn from(items: Vec<L>) -> List<L> {
+        let mut list = List::new();
+        list.items = items;
+        list
+    }
 
-    pub fn get_selected(&self) -> &T { &self.items[self.index] }
+    pub fn get_selected(&self) -> &L { &self.items[self.index] }
 }
 
-impl<T: ListItem> List<T> {
-    pub fn update(&mut self, action: &Actions) -> bool {
+impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
+    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
         match action {
             Actions::Down => {
                 if self.index < self.items.len() - 1 {
@@ -44,16 +48,11 @@ impl<T: ListItem> List<T> {
         }
     }
 
-    pub fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
+    fn render(&mut self, graphics: &mut Graphics, _: &T, _: &WidgetId) {
+        let rect = self.layout();
         let mut pos = *rect.top_left();
         let font_size = graphics.font_size();
-
-        let mut first_index = self.first_index.borrow_mut();
-        if self.index as f32 * font_size > rect.height() {
-            *first_index += 1
-        } else if self.index < *first_index {
-            *first_index = self.index;
-        }
+        let height = font_size * self.items.len() as f32;
 
         //Item list
         for (i, item) in self.items.iter().enumerate() {
@@ -67,5 +66,7 @@ impl<T: ListItem> List<T> {
             graphics.simple_text(pos, &display);
             pos.y += font_size;
         }
+
+        self.set_layout(Rect::point_and_size(*rect.top_left(), LogicalSize::new(rect.width(), height)));
     }
 }

@@ -1,15 +1,8 @@
 use crate::assets::Images;
 use crate::ui::controls::{change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
-use crate::ui::RightAlignment;
-use crate::{windowing::WindowHelper, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, YaffeState};
+use crate::ui::{RightAlignment, UiElement, AnimationManager, WidgetId, UiContainer, ContainerSize, LayoutElement};
+use crate::{Actions, LogicalPosition, LogicalSize, Rect, YaffeState, Graphics};
 use std::collections::HashMap;
-
-#[repr(u8)]
-pub enum ModalResult {
-    None,
-    Ok,
-    Cancel,
-}
 
 #[allow(dead_code)]
 #[repr(u8)]
@@ -20,82 +13,163 @@ pub enum ModalSize {
     Full,
 }
 
-pub type ModalOnClose = fn(&mut YaffeState, ModalResult, &dyn ModalContent, &mut DeferredAction);
+pub struct ModalAction {
+    close: Option<bool>
+}
+impl ModalAction {
+    pub fn close_if_accept(&mut self, action: &Actions) -> bool {
+        match action {
+            Actions::Accept => {
+                self.close = Some(true);
+                true
+            }
+            Actions::Back => {
+                self.close = Some(false);
+                true
+            }
+            _ => false
+        }
+    }
+}
+
+pub type ModalContent = dyn UiElement<(), ModalAction>;
+
+pub type ModalOnClose = fn(&mut YaffeState, bool, &ModalContent);
 pub struct Modal {
-    title: String,
     confirmation_button: Option<String>,
-    content: Box<dyn ModalContent>,
+    content: Box<UiContainer<(), ModalAction>>,
     on_close: Option<ModalOnClose>,
 }
 impl Modal {
-    pub fn overlay(content: Box<dyn ModalContent>) -> Modal {
-        Modal { title: String::from("Yaffe"), confirmation_button: Some(String::from("Exit")), content, on_close: None }
+    pub fn overlay(content: impl UiElement<(), ModalAction> + 'static) -> Modal {
+        let mut control = UiContainer::column();
+        control.background_color(MODAL_BACKGROUND)
+               .add_child(content, ContainerSize::Fixed(36.));
+        Modal {
+            confirmation_button: Some(String::from("Exit")),
+            content: Box::new(control),
+            on_close: None
+        }
     }
 
-    pub fn action(&mut self, action: &crate::Actions, helper: &mut crate::windowing::WindowHelper) -> ModalResult {
-        self.content.action(action, helper)
+    // pub fn action(&mut self, action: &crate::Actions, helper: &mut ()) -> ModalResult {
+    //     self.content.action(action, helper)
+    // }
+}
+
+crate::widget!(
+    pub struct ModalTitlebar {
+        title: String = String::new()
+    }
+);
+impl ModalTitlebar {
+    pub fn from(title: String) -> ModalTitlebar {
+        let mut titlebar = ModalTitlebar::new();
+        titlebar.title = title;
+        titlebar
+    }
+}
+impl crate::ui::UiElement<(), ModalAction> for ModalTitlebar {
+    fn render(&mut self, graphics: &mut Graphics, _: &(), _: &WidgetId) {
+        let layout = self.layout();
+        const PADDING: f32 = 2.;
+        let titlebar_color = graphics.accent_color();
+        let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
+        let titlebar = 
+            Rect::point_and_size(*layout.top_left(), layout.size() - LogicalSize::new(PADDING * 2., PADDING));
+        graphics.draw_rectangle(titlebar, titlebar_color);
+
+        let title_text = crate::ui::get_drawable_text(graphics, layout.height(), &self.title);
+        let title_pos = *layout.top_left() + LogicalPosition::new(MARGIN + PADDING, PADDING);
+        graphics.draw_text(title_pos, graphics.font_color(), &title_text);
     }
 }
 
-pub trait ModalContent {
-    fn as_any(&self) -> &dyn std::any::Any;
-    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize;
-    fn render(&self, rect: Rect, graphics: &mut crate::Graphics);
-    fn action(&mut self, action: &Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult;
-    fn default_modal_action(action: &Actions) -> ModalResult
-    where
-        Self: Sized,
-    {
-        match action {
-            Actions::Accept => ModalResult::Ok,
-            Actions::Back => ModalResult::Cancel,
-            _ => ModalResult::None,
+// crate::widget!(
+//     pub struct ModalContent {
+//         content: ModalContent
+//     }
+// );
+// impl crate::ui::UiElement<(), ()> for ModalContent {
+//     fn render(&mut self, graphics: &mut Graphics, state: &(), current_focus: &WidgetId) {
+
+//     }
+// }
+
+crate::widget!(
+    pub struct ModalToolbar {
+        confirmation_button: String = String::new()
+    }
+);
+impl ModalToolbar {
+    pub fn from(confirm: String) -> ModalToolbar {
+        let mut content = ModalToolbar::new();
+        content.confirmation_button = confirm;
+        content
+    }
+}
+impl crate::ui::UiElement<(), ModalAction> for ModalToolbar {
+    fn render(&mut self, graphics: &mut Graphics, _: &(), _: &WidgetId) {
+        let rect = self.layout();
+
+        let right = LogicalPosition::new(rect.right() - MARGIN, rect.top());
+        let image_size = LogicalSize::new(graphics.font_size(), graphics.font_size());
+        let mut alignment = RightAlignment::new(right);
+        for t in [("Cancel", Images::ButtonB), (&self.confirmation_button[..], Images::ButtonA)] {
+            alignment = alignment.text(graphics, t.0).image(graphics, t.1, image_size).space();
         }
     }
-    fn modal_width(rect: Rect, size: ModalSize) -> f32
-    where
-        Self: Sized,
-    {
-        match size {
-            ModalSize::Third => rect.width() * 0.33,
-            ModalSize::Half => rect.width() * 0.5,
-            ModalSize::Full => rect.width(),
-        }
+}
+
+fn build_modal(title: String, confirmation_button: Option<String>, content: impl UiElement<(), ModalAction> + 'static) -> UiContainer<(), ModalAction> {
+    let mut control = UiContainer::column();
+    control.background_color(MODAL_BACKGROUND)
+           .add_child(ModalTitlebar::from(title), ContainerSize::Fixed(36.))
+           .add_child(content, ContainerSize::Shrink);
+
+    if let Some(confirm) = confirmation_button {
+        control.add_child(ModalToolbar::from(confirm), ContainerSize::Fixed(24.));
     }
+    control
 }
 
 pub fn display_modal(
     state: &mut YaffeState,
     title: &str,
     confirmation_button: Option<&str>,
-    content: Box<dyn ModalContent>,
+    content: impl UiElement<(), ModalAction> + 'static,
     on_close: Option<ModalOnClose>,
 ) {
     let confirm = confirmation_button.map(String::from);
 
-    let m = Modal { title: String::from(title), confirmation_button: confirm, content, on_close };
+    let content = build_modal(String::from(title), confirm.clone(), content);
+    let m = Modal {
+        confirmation_button: confirm,
+        content: Box::new(content),
+        on_close
+    };
 
     let mut modals = state.modals.lock().unwrap();
     modals.push(m);
 }
 
-pub fn update_modal(state: &mut YaffeState, helper: &mut WindowHelper, action: &Actions, handler: &mut DeferredAction) {
+pub fn update_modal(state: &mut YaffeState, animations: &mut AnimationManager, action: &Actions) {
     //This method can call into display_modal above, which locks the mutex
     //If we lock here that call will wait infinitely
     //We can get_mut here to ensure compile time exclusivity instead of locking
     //That allows us to call display_modal in close() below
     let modals = state.modals.get_mut().unwrap();
     if let Some(modal) = modals.last_mut() {
-        let result = modal.content.action(action, helper);
+        let mut h = ModalAction { close: None };
+        modal.content.action(&mut (), animations, action, &mut h);
 
-        match result {
-            ModalResult::Ok | ModalResult::Cancel => {
-                let modal = modals.pop().unwrap();
-                if let Some(close) = modal.on_close {
-                    close(state, result, &*modal.content, handler);
-                }
+        if let Some(accept) = h.close {
+            let modal = modals.pop().unwrap();
+            if let Some(close) = modal.on_close {
+                // Content will always be second (after title, before buttons)
+                let content = modal.content.get_child(1).as_ref();
+                close(state, accept, content);
             }
-            ModalResult::None => {}
         }
     }
 }
@@ -106,16 +180,21 @@ pub fn is_modal_open(state: &YaffeState) -> bool {
 }
 
 /// Renders a modal window along with its contents
-pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
+pub fn render_modal(modal: &mut Modal, graphics: &mut crate::Graphics) {
     const PADDING: f32 = 2.;
     let titlebar_size = graphics.title_font_size();
     let toolbar_size = graphics.font_size() + MARGIN;
 
     let padding = LogicalSize::new(graphics.bounds.width() * 0.1, graphics.bounds.height() * 0.1);
     let rect = Rect::new(*graphics.bounds.top_left() + padding, graphics.bounds.size() - padding);
-    let content_size = modal.content.size(rect, graphics);
+    let width = match ModalSize::Half {
+        ModalSize::Third => graphics.bounds.width() * 0.33,
+        ModalSize::Half => graphics.bounds.width() * 0.5,
+        ModalSize::Full => graphics.bounds.width(),
+    };
+    let content_size = LogicalSize::new(graphics.bounds.height(), width);
 
-    //Calulate size
+    // //Calulate size
     let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + titlebar_size + content_size.y);
     if modal.confirmation_button.is_some() {
         size.y += toolbar_size;
@@ -126,39 +205,15 @@ pub fn render_modal(modal: &Modal, graphics: &mut crate::Graphics) {
 
     //Background
     graphics.draw_rectangle(graphics.bounds, MODAL_OVERLAY_COLOR);
-    graphics.draw_rectangle(window, MODAL_BACKGROUND);
 
-    //Titlebar
-    let titlebar_color = graphics.accent_color();
-    let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
-    let titlebar_pos = window_position + LogicalSize::new(PADDING, PADDING);
-    let titlebar =
-        Rect::new(titlebar_pos, titlebar_pos + LogicalSize::new(size.x - PADDING * 2., titlebar_size - PADDING));
-    graphics.draw_rectangle(titlebar, titlebar_color);
-
-    let title_text = crate::ui::get_drawable_text(graphics, titlebar_size, &modal.title);
-    let title_pos = LogicalPosition::new(titlebar_pos.x + MARGIN, titlebar_pos.y);
-    graphics.draw_text(title_pos, graphics.font_color(), &title_text);
-
-    //Content
-    //Window + margin for window + margin for icon
-    let content_pos = LogicalPosition::new(
-        window_position.x + MARGIN + PADDING,
-        window_position.y + MARGIN + titlebar_size + PADDING,
-    );
-    let content_rect = Rect::new(content_pos, content_pos + content_size);
-    modal.content.render(content_rect, graphics);
-
-    //Action buttons
-    if let Some(s) = &modal.confirmation_button {
-        let right = LogicalPosition::new(window.right() - MARGIN, window.bottom() - toolbar_size);
-
-        let image_size = LogicalSize::new(graphics.font_size(), graphics.font_size());
-        let mut alignment = RightAlignment::new(right);
-        for t in [("Cancel", Images::ButtonB), (&s[..], Images::ButtonA)] {
-            alignment = alignment.text(graphics, t.0).image(graphics, t.1, image_size).space();
-        }
-    }
+    // //Content
+    // //Window + margin for window + margin for icon
+    // let content_pos = LogicalPosition::new(
+    //     window_position.x + MARGIN + PADDING,
+    //     window_position.y + MARGIN + titlebar_size + PADDING,
+    // );
+    graphics.bounds = window;//Rect::new(content_pos, content_pos + content_size);
+    modal.content.render(graphics, &(), &modal.content.id());
 }
 
 pub fn render_toasts(toasts: &HashMap<u64, String>, graphics: &mut crate::Graphics) {

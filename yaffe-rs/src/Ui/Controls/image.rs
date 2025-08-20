@@ -1,21 +1,27 @@
-use super::Control;
-use crate::assets::AssetKey;
+use crate::assets::{AssetKey, AssetTypes, Images};
+use crate::ui::{AnimationManager, WidgetId, UiElement, LayoutElement};
 use crate::utils::Rect;
-use crate::Actions;
+use crate::{Actions, Graphics};
 
-pub struct Image {
-    image: AssetKey,
-}
+crate::widget!(
+    pub struct Image { image: AssetKey = AssetKey::Static(AssetTypes::Image(Images::Placeholder)) }
+);
+
 impl Image {
-    pub fn new(image: AssetKey) -> Image { Image { image } }
+    pub fn from(key: AssetKey) -> Image {
+        let mut image = Image::new();
+        image.image = key;
+        image
+    }
 }
-impl Control for Image {
-    fn render(&self, graphics: &mut crate::Graphics, container: &Rect) -> crate::LogicalSize {
-        let image_size = crate::ui::image_fill(graphics, &self.image, &container.size());
-        graphics.draw_asset_image(Rect::point_and_size(*container.top_left(), image_size), &self.image);
+impl<T: 'static, D: 'static> UiElement<T, D> for Image {
+    fn render(&mut self, graphics: &mut Graphics, _: &T, _: &WidgetId) {
+        let rect = self.layout();
+        let image_size = crate::ui::image_fill(graphics, &self.image, &rect.size());
+        graphics.draw_asset_image(Rect::point_and_size(*rect.top_left(), image_size), &self.image);
 
-        image_size
+        self.set_layout(Rect::point_and_size(*rect.top_left(), image_size));
     }
 
-    fn action(&mut self, _: &Actions) {}
+    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut D) -> bool { false }
 }

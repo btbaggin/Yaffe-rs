@@ -1,4 +1,5 @@
-use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
+use crate::{Actions, Graphics, Rect};
+use speedy2d::color::Color;
 
 mod animations;
 mod controls;
@@ -6,12 +7,14 @@ mod deferred_action;
 mod modal;
 mod utils;
 mod widget_tree;
+mod ui_container;
 pub use animations::{AnimationManager, FieldOffset};
 pub use controls::*;
 pub use deferred_action::DeferredAction;
 pub use modal::*;
 pub use utils::*;
 pub use widget_tree::{WidgetTree, WindowState};
+pub use ui_container::*;
 
 #[repr(u8)]
 enum FocusType {
@@ -20,9 +23,11 @@ enum FocusType {
 }
 
 pub trait LayoutElement {
+    fn id(&self) -> WidgetId;
     fn layout(&self) -> Rect;
     fn set_layout(&mut self, layout: Rect);
     fn get_id(&self) -> WidgetId;
+    fn as_any(&self) -> &dyn std::any::Any;
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 pub trait UiElement<T: 'static, D: 'static>: LayoutElement {
@@ -33,6 +38,17 @@ pub trait UiElement<T: 'static, D: 'static>: LayoutElement {
     fn got_focus(&mut self, _: &T, _: &mut AnimationManager) {}
     fn lost_focus(&mut self, _: &T, _: &mut AnimationManager) {}
 }
+pub trait ValueElement<T> {
+    fn value(&self) -> T;
+}
+
+#[macro_export]
+macro_rules! convert_to {
+    ($element:expr, $ty:ty) => {
+        $element.as_any().downcast_ref::<$ty>().unwrap()
+    };
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub struct WidgetId(u64);
 impl WidgetId {
@@ -46,28 +62,30 @@ impl WidgetId {
 
 #[macro_export]
 macro_rules! widget {
-    ($vis:vis struct $name:ident {
-        $($element:ident: $ty:ty = $value:expr),*
+($vis:vis struct $name:ident $(<$($generic:ident $( : $bound:path )?),+>)? {
+        $($elevis:vis $element:ident: $ty:ty = $value:expr),*
     }) => {
         #[allow(unused_variables)]
-        $vis struct $name {
+        $vis struct $name $(<$($generic : 'static $(+ $bound)?),+>)? {
             position: $crate::LogicalPosition,
             size: $crate::LogicalSize,
             id: $crate::ui::WidgetId,
-            $($element: $ty),*
+            $($elevis $element: $ty),*
         }
-        impl $crate::ui::LayoutElement for $name {
+        impl  $(<$($generic : 'static $(+ $bound)?),+>)? $crate::ui::LayoutElement for $name $(<$($generic),+>)? {
+            fn id(&self) -> $crate::ui::WidgetId { self.id }
             fn layout(&self) -> $crate::Rect { $crate::Rect::new(self.position, self.position + self.size) }
             fn set_layout(&mut self, layout: $crate::Rect) {
                 self.position = *layout.top_left();
                 self.size = layout.size();
             }
-            fn get_id(&self) -> WidgetId { self.id }
+            fn get_id(&self) -> $crate::ui::WidgetId { self.id }
+            fn as_any(&self) -> &dyn std::any::Any { self }
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
         }
-        impl $name {
+        impl $(<$($generic : 'static $(+ $bound)?),+>)? $name $(<$($generic),+>)? {
             #[allow(dead_code)]
-            pub fn new_with_id(id: WidgetId) -> $name {
+            pub fn new_with_id(id: $crate::ui::WidgetId) -> $name $(<$($generic),+>)? {
                 $name {
                     position: $crate::LogicalPosition::new(0., 0.),
                     size: $crate::LogicalSize::new(0., 0.),
@@ -77,174 +95,14 @@ macro_rules! widget {
             }
 
             #[allow(dead_code)]
-            pub fn new() -> $name {
-                Self::new_with_id(WidgetId::random())
+            pub fn new() -> $name $(<$($generic),+>)? {
+                Self::new_with_id($crate::ui::WidgetId::random())
             }
         }
     };
 }
 
-pub struct ContainerChild<T, D> {
-    element: Box<dyn UiElement<T, D>>,
-    size: ContainerSize,
-}
-impl<T, D> ContainerChild<T, D> {
-    fn get_size(&self, total: f32, fill_size: f32) -> f32 {
-        match self.size {
-            ContainerSize::Percent(p) => total * p,
-            ContainerSize::Fixed(f) => f,
-            ContainerSize::Fill => fill_size,
-        }
-    }
-}
 
-pub enum ContainerSize {
-    Percent(f32),
-    Fixed(f32),
-    Fill,
-}
-
-enum FlexDirection {
-    Row,
-    Column,
-}
-
-pub struct UiContainer<T: 'static, D: 'static> {
-    position: LogicalPosition,
-    size: LogicalSize,
-    id: WidgetId,
-    children: Vec<ContainerChild<T, D>>,
-    direction: FlexDirection,
-    fill_count: usize,
-}
-impl<T, D> LayoutElement for UiContainer<T, D> {
-    fn layout(&self) -> Rect { Rect::new(self.position, self.position + self.size) }
-    fn set_layout(&mut self, layout: Rect) {
-        self.position = *layout.top_left();
-        self.size = layout.size();
-    }
-    fn get_id(&self) -> WidgetId { self.id }
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
-}
-impl<T, D> UiContainer<T, D> {
-    pub fn row() -> UiContainer<T, D> {
-        UiContainer {
-            position: LogicalPosition::new(0., 0.),
-            size: LogicalSize::new(0., 0.),
-            id: WidgetId::random(),
-            children: vec![],
-            direction: FlexDirection::Row,
-            fill_count: 0,
-        }
-    }
-
-    pub fn column() -> UiContainer<T, D> {
-        UiContainer {
-            position: LogicalPosition::new(0., 0.),
-            size: LogicalSize::new(0., 0.),
-            id: WidgetId::random(),
-            children: vec![],
-            direction: FlexDirection::Column,
-            fill_count: 0,
-        }
-    }
-
-    pub fn add_child(&mut self, child: impl UiElement<T, D> + 'static, size: ContainerSize) -> &mut Self {
-        if let ContainerSize::Fill = size {
-            self.fill_count += 1;
-        }
-
-        let child = ContainerChild { element: Box::new(child), size };
-        self.children.push(child);
-        self
-    }
-
-    pub fn with_child(&mut self, child: UiContainer<T, D>, size: ContainerSize) -> &mut UiContainer<T, D> {
-        self.add_child(child, size);
-
-        let count = self.children.len();
-        self.children[count - 1].element.as_mut().as_any_mut().downcast_mut::<UiContainer<T, D>>().unwrap()
-    }
-
-    pub fn find_widget_mut(&mut self, widget_id: WidgetId) -> Option<&mut dyn UiElement<T, D>> {
-        // Check if the current container matches the widget_id
-        if self.get_id() == widget_id {
-            return Some(self);
-        }
-
-        // Recursively search in children
-        for child in &mut self.children {
-            if child.element.get_id() == widget_id {
-                return Some(child.element.as_mut());
-            } else if let Some(container) = child.element.as_any_mut().downcast_mut::<UiContainer<T, D>>() {
-                if let Some(found) = container.find_widget_mut(widget_id) {
-                    return Some(found);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn calc_fill_size(&self, total: f32) -> f32 {
-        if self.fill_count == 0 {
-            return 0.;
-        }
-
-        let mut total = total;
-        for child in &self.children {
-            total -= child.get_size(total, 0.);
-        }
-        total / self.fill_count as f32
-    }
-}
-
-impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
-    fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId) {
-        let total = match self.direction {
-            FlexDirection::Row => graphics.bounds.width(),
-            FlexDirection::Column => graphics.bounds.height(),
-        };
-
-        let fill_size = self.calc_fill_size(total);
-
-        for child in &mut self.children {
-            let (width, height, x_offset, y_offset) = match self.direction {
-                FlexDirection::Row => {
-                    let width = child.get_size(total, fill_size);
-                    let height = graphics.bounds.height();
-                    (width, height, width, 0.)
-                }
-                FlexDirection::Column => {
-                    let width = graphics.bounds.width();
-                    let height = child.get_size(total, fill_size);
-                    (width, height, 0., height)
-                }
-            };
-
-            let origin = *graphics.bounds.top_left();
-            let size = graphics.bounds.size();
-            child.element.set_layout(Rect::point_and_size(origin, LogicalSize::new(width, height)));
-
-            // graphics.bounds = Rect::point_and_size(origin, LogicalSize::new(width, height));
-            child.element.render(graphics, state, current_focus);
-            graphics.bounds = Rect::point_and_size(
-                origin + LogicalPosition::new(x_offset, y_offset),
-                LogicalSize::new(size.x - x_offset, size.y - y_offset),
-            );
-        }
-    }
-
-    fn action(&mut self, state: &mut T, animations: &mut AnimationManager, action: &Actions, handler: &mut D) -> bool {
-        // TODO only do current focus
-        for child in &mut self.children {
-            if child.element.action(state, animations, action, handler) {
-                return true;
-            }
-        }
-        false
-    }
-}
 
 // /// Contains an individual widget
 // /// Manages ratio sizing and animations

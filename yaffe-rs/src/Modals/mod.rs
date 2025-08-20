@@ -5,9 +5,9 @@ mod platform_scraper_modal;
 mod restricted_modal;
 mod settings_modal;
 
-use crate::ui::MARGIN;
-use crate::ui::{ModalContent, ModalResult, ModalSize};
-use crate::{LogicalSize, Rect};
+use crate::ui::{UiElement, WidgetId, AnimationManager, LayoutElement, ModalAction};
+use crate::input::{Actions};
+use crate::Graphics;
 
 pub use game_scraper_modal::{on_game_found_close, GameScraperModal};
 pub use list_modal::ListModal;
@@ -17,31 +17,40 @@ pub use restricted_modal::SetRestrictedModal;
 pub use settings_modal::{on_settings_close, SettingsModal};
 
 //Modal for displaying a simple string
-pub struct MessageModalContent {
-    message: String,
-}
+crate::widget!(
+    pub struct MessageModalContent {
+        message: String = String::new()
+    }
+);
+
 impl MessageModalContent {
-    pub fn new(message: &str) -> MessageModalContent { MessageModalContent { message: String::from(message) } }
+    pub fn from(message: &str) -> MessageModalContent {
+        let mut content = MessageModalContent::new();
+        content.message = message.to_string();
+        content
+    }
 }
-impl ModalContent for MessageModalContent {
-    fn as_any(&self) -> &dyn std::any::Any { self }
-    fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-        let width = Self::modal_width(rect, ModalSize::Half);
-        let rows = self.message.len() as f32 / 80.;
-        LogicalSize::new(width, (graphics.font_size() * rows) + crate::ui::MARGIN)
+impl UiElement<(), ModalAction> for MessageModalContent {
+    // fn as_any(&self) -> &dyn std::any::Any { self }
+    // fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
+    //     let width = Self::modal_width(rect, ModalSize::Half);
+    //     let rows = self.message.len() as f32 / 80.;
+    //     LogicalSize::new(width, (graphics.font_size() * rows) + crate::ui::MARGIN)
+    // }
+
+    fn action(&mut self, _state: &mut (), _: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+        handler.close_if_accept(action)
     }
 
-    fn action(&mut self, action: &crate::Actions, _: &mut crate::windowing::WindowHelper) -> ModalResult {
-        Self::default_modal_action(action)
-    }
-
-    fn render(&self, rect: Rect, graphics: &mut crate::Graphics) {
+    fn render(&mut self, graphics: &mut Graphics, _: &(), _: &WidgetId) {
+        let rect = self.layout();
         let name_label = crate::ui::get_drawable_text_with_wrap(
             graphics,
             graphics.font_size(),
             &self.message,
             rect.width() * graphics.scale_factor,
         );
+        self.size.y = name_label.height();
         graphics.draw_text(*rect.top_left(), graphics.font_color(), &name_label);
     }
 }

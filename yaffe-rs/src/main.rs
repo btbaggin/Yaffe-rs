@@ -108,7 +108,8 @@ pub fn build_main_tree() -> UiContainer<YaffeState, DeferredAction> {
     use ui::ContainerSize;
 
     let mut root = UiContainer::row();
-    root.add_child(PlatformList::new_with_id(PLATFORM_LIST_ID), ContainerSize::Percent(0.25))
+    root.background_image(crate::assets::Images::Background)
+        .add_child(PlatformList::new_with_id(PLATFORM_LIST_ID), ContainerSize::Percent(0.25))
         .with_child(UiContainer::column(), ContainerSize::Fill)
             .add_child(SearchBar::new_with_id(SEARCH_BAR_ID), ContainerSize::Percent(0.05))
             .add_child(AppList::new_with_id(APP_LIST_ID), ContainerSize::Fill)

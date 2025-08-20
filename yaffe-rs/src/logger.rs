@@ -100,7 +100,7 @@ impl<T, E: Debug> UserMessage<T> for std::result::Result<T, E> {
         match self {
             Err(e) => {
                 let message = format!("{message}: {e:?}");
-                let message = Box::new(crate::modals::MessageModalContent::new(&message));
+                let message = crate::modals::MessageModalContent::from(&message);
                 crate::ui::display_modal(state, "Error", None, message, None);
                 None
             }
