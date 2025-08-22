@@ -2,7 +2,7 @@ use super::draw_label_and_box;
 use crate::input::{Actions, InputType};
 use crate::ui::{AnimationManager, LayoutElement, UiElement, ValueElement, WidgetId, LABEL_SIZE};
 use crate::utils::Rect;
-use crate::{Graphics, LogicalSize};
+use crate::{Graphics, LogicalSize, LogicalPosition};
 use winit::keyboard::KeyCode;
 
 crate::widget!(
@@ -32,11 +32,15 @@ impl<T: 'static, D: 'static> UiElement<T, D> for CheckBox {
         false
     }
 
-    fn render(&mut self, graphics: &mut Graphics, _: &T, _: &WidgetId) {
+    fn render(&mut self, graphics: &mut Graphics, _: &T, current_focus: &WidgetId) {
         let control = draw_label_and_box(graphics, self.layout().top_left(), graphics.font_size(), &self.label);
 
+        let base = graphics.accent_color();
+        if self.get_id() == *current_focus {
+            graphics.outline_rect(control, 2., base);
+        }
+
         if self.checked {
-            let base = graphics.accent_color();
             graphics.draw_rectangle(
                 Rect::from_tuples(
                     (control.left() + 4., control.top() + 4.),

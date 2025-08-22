@@ -9,7 +9,6 @@ use std::rc::Rc;
  * Search bar doesnt work well on plugins
  * allow reloading plugins?
  * Search bar needs to disappear
- * Focus outline for controls?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -39,10 +39,13 @@ impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
         let text = get_drawable_text(graphics, height, &self.text);
         let box_left = rect.left() + LABEL_SIZE;
 
+        let base = graphics.accent_color();
         let focused = &self.id == current_focus;
         let mut cursor_x = 0.;
         let mut origin_x = control.left();
         if focused {
+            graphics.outline_rect(control, 2., base);
+
             let text = get_drawable_text(graphics, height, &self.text[0..self.caret]);
             // Very special case. The text already accounts for scaling, so we need to undo that to revert back to logical units
             // Then we can do calculations and pass them to the graphics API which converts back to physical units
@@ -70,7 +73,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
                     LogicalPosition::new(selection_x, rect.top()),
                     LogicalPosition::new(selection_right, rect.top() + height),
                 ),
-                graphics.accent_color(),
+                base
             );
         }
 

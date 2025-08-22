@@ -1,4 +1,4 @@
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, get_drawable_text, get_drawable_text_with_wrap};
 use crate::{Actions, Graphics, LogicalSize};
 
 crate::widget!(
@@ -27,17 +27,16 @@ impl Label {
 impl<T: 'static, D: 'static> UiElement<T, D> for Label {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         let size = self.font_size.unwrap_or(graphics.font_size());
-        let width = graphics.bounds.width();
         // TODO im double drawing. eewww
         let text = if self.wrap {
-            crate::ui::get_drawable_text_with_wrap(
+            get_drawable_text_with_wrap(
                 graphics,
                 size,
                 &self.text,
-                (width - crate::ui::MARGIN) * graphics.scale_factor,
+                graphics.bounds.width() * graphics.scale_factor,
             )
         } else {
-            crate::ui::get_drawable_text(graphics, size, &self.text)
+            get_drawable_text(graphics, size, &self.text)
         };
 
         let size = text.size();
@@ -48,14 +47,14 @@ impl<T: 'static, D: 'static> UiElement<T, D> for Label {
         let rect = self.layout();
         let size = self.font_size.unwrap_or(graphics.font_size());
         let text = if self.wrap {
-            crate::ui::get_drawable_text_with_wrap(
+            get_drawable_text_with_wrap(
                 graphics,
                 size,
                 &self.text,
-                (rect.width() - crate::ui::MARGIN) * graphics.scale_factor,
+                rect.width() * graphics.scale_factor,
             )
         } else {
-            crate::ui::get_drawable_text(graphics, size, &self.text)
+            get_drawable_text(graphics, size, &self.text)
         };
 
         graphics.draw_text_cropped(*rect.top_left(), rect, graphics.font_color(), &text);

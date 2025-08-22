@@ -15,6 +15,11 @@ pub enum ContainerSize {
     Shrink,
 }
 
+pub enum Justification {
+    Start,
+    Center,
+}
+
 #[derive(Debug)]
 enum FlexDirection {
     Row,
@@ -34,6 +39,7 @@ pub struct UiContainer<T: 'static, D: 'static> {
     children: Vec<ContainerChild<T, D>>,
     background: BackgroundType,
     direction: FlexDirection,
+    justification: Justification,
     margin: f32,
 }
 impl<T, D> LayoutElement for UiContainer<T, D> {
@@ -55,6 +61,7 @@ impl<T, D> UiContainer<T, D> {
             children: vec![],
             background: BackgroundType::None,
             direction: FlexDirection::Row,
+            justification: Justification::Start,
             margin: 5.,
         }
     }
@@ -67,6 +74,7 @@ impl<T, D> UiContainer<T, D> {
             children: vec![],
             background: BackgroundType::None,
             direction: FlexDirection::Column,
+            justification: Justification::Start,
             margin: 5.,
         }
     }
@@ -83,6 +91,11 @@ impl<T, D> UiContainer<T, D> {
 
     pub fn margin(&mut self, margin: f32) -> &mut Self {
         self.margin = margin;
+        self
+    }
+
+    pub fn justify(&mut self, justify: Justification) -> &mut Self {
+        self.justification = justify;
         self
     }
 
@@ -117,7 +130,6 @@ impl<T, D> UiContainer<T, D> {
                 }
             }
         }
-
         None
     }
 
@@ -137,7 +149,6 @@ impl<T, D> UiContainer<T, D> {
                 }
             }
         }
-
         None
     }
 
@@ -269,9 +280,16 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId) {
         let total_size = self.calc_container_size(graphics);
 
-        // TODO this is shit
-        // TODO justification
-        let layout = Rect::point_and_size(*graphics.bounds.top_left(), total_size);
+        let origin = *graphics.bounds.top_left();
+        let origin = match self.justification {
+            Justification::Start => *graphics.bounds.top_left(),
+            Justification::Center => match self.direction {
+                FlexDirection::Row => LogicalPosition::new((graphics.bounds.width() - total_size.x) / 2., origin.y),
+                FlexDirection::Column => LogicalPosition::new(origin.x, (graphics.bounds.height() - total_size.y) / 2.),
+            } 
+        };
+
+        let layout = Rect::point_and_size(origin, total_size);
         graphics.bounds = layout;
         self.set_layout(layout);
 

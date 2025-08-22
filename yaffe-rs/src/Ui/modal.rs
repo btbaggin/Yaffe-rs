@@ -1,6 +1,6 @@
 use crate::assets::Images;
 use crate::ui::controls::{change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
-use crate::ui::{AnimationManager, ContainerSize, LayoutElement, RightAlignment, UiContainer, UiElement, WidgetId};
+use crate::ui::{AnimationManager, ContainerSize, LayoutElement, RightAlignment, UiContainer, UiElement, WidgetId, Justification};
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect, YaffeState};
 use std::collections::HashMap;
 
@@ -36,22 +36,9 @@ pub type ModalContent = dyn UiElement<(), ModalAction>;
 
 pub type ModalOnClose = fn(&mut YaffeState, bool, &ModalContent);
 pub struct Modal {
-    confirmation_button: Option<String>,
     content: Box<UiContainer<(), ModalAction>>,
     on_close: Option<ModalOnClose>,
     width: ModalSize,
-}
-impl Modal {
-    pub fn overlay(content: impl UiElement<(), ModalAction> + 'static) -> Modal {
-        let mut control = UiContainer::column();
-        control.background_color(MODAL_BACKGROUND).add_child(content, ContainerSize::Fixed(36.));
-        Modal {
-            confirmation_button: Some(String::from("Exit")),
-            content: Box::new(control),
-            on_close: None,
-            width: ModalSize::Full,
-        }
-    }
 }
 
 crate::widget!(
@@ -72,8 +59,10 @@ impl crate::ui::UiElement<(), ModalAction> for ModalTitlebar {
         const PADDING: f32 = 2.;
         let titlebar_color = graphics.accent_color();
         let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
-        let titlebar =
-            Rect::point_and_size(*layout.top_left(), layout.size() - LogicalSize::new(PADDING * 2., PADDING));
+
+        let pos = *layout.top_left();
+        let pos = LogicalPosition::new(pos.x + PADDING, pos.y + PADDING);
+        let titlebar = Rect::point_and_size(pos, layout.size() - LogicalSize::new(PADDING * 2., PADDING));
         graphics.draw_rectangle(titlebar, titlebar_color);
 
         let title_text = crate::ui::get_drawable_text(graphics, layout.height(), &self.title);
@@ -126,6 +115,7 @@ fn build_modal(
     let mut control = UiContainer::column();
     control
         .background_color(MODAL_BACKGROUND)
+        .justify(Justification::Center)
         .add_child(ModalTitlebar::from(title), ContainerSize::Fixed(36.))
         .add_child(content, ContainerSize::Shrink);
 
@@ -145,8 +135,8 @@ pub fn display_modal(
 ) {
     let confirm = confirmation_button.map(String::from);
 
-    let content = build_modal(String::from(title), confirm.clone(), content);
-    let m = Modal { confirmation_button: confirm, content: Box::new(content), on_close, width };
+    let content = build_modal(String::from(title), confirm, content);
+    let m = Modal { content: Box::new(content), on_close, width };
 
     let mut modals = state.modals.lock().unwrap();
     modals.push(m);
@@ -180,38 +170,20 @@ pub fn is_modal_open(state: &YaffeState) -> bool {
 
 /// Renders a modal window along with its contents
 pub fn render_modal(modal: &mut Modal, graphics: &mut crate::Graphics) {
-    const PADDING: f32 = 2.;
-    let titlebar_size = graphics.title_font_size();
-    let toolbar_size = graphics.font_size() + MARGIN;
-
-    let padding = LogicalSize::new(graphics.bounds.width() * 0.1, graphics.bounds.height() * 0.1);
-    let rect = Rect::new(*graphics.bounds.top_left() + padding, graphics.bounds.size() - padding);
+    let rect = graphics.bounds;
     let width = match modal.width {
         ModalSize::Third => graphics.bounds.width() * 0.33,
         ModalSize::Half => graphics.bounds.width() * 0.5,
         ModalSize::Full => graphics.bounds.width(),
     };
     let content_size = LogicalSize::new(width, graphics.bounds.height());
-
-    // Calulate size
-    let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + titlebar_size + content_size.y);
-    if modal.confirmation_button.is_some() {
-        size.y += toolbar_size;
-    }
-
-    let window_position = (rect.size() - size) / 2. + padding;
-    // let window = Rect::new(window_position, window_position + size);
+    let window_position = LogicalPosition::new((rect.width() - width) / 2., rect.top());
 
     //Background
     graphics.draw_rectangle(graphics.bounds, MODAL_OVERLAY_COLOR);
 
-    // Content
-    // Window + margin for window + margin for icon
-    let content_pos = LogicalPosition::new(
-        window_position.x + MARGIN + PADDING,
-        window_position.y + MARGIN + titlebar_size + PADDING,
-    );
-    graphics.bounds = Rect::point_and_size(content_pos, content_size);
+    // TODO need to have some margin around content. Try to make content another trait again
+    graphics.bounds = Rect::point_and_size(window_position, content_size);
     modal.content.render(graphics, &(), &modal.content.get_id());
 }
 
