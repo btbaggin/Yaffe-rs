@@ -1,7 +1,8 @@
 use crate::logger::UserMessage;
 use crate::state::GroupType;
-use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::ui::{get_drawable_text, display_modal, AnimationManager, LayoutElement, UiElement, WidgetId, ModalSize};
 use crate::widgets::AppTile;
+use crate::modals::InfoModal;
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
 };
@@ -57,7 +58,10 @@ impl UiElement<YaffeState, DeferredAction> for AppList {
                 true
             }
             Actions::Info => {
-                handler.focus_widget(crate::INFO_PANE_ID);
+                if let Some(exe) = state.get_selected_tile() {
+                    let info = InfoModal::from(&exe);
+                    display_modal(state, &exe.name.clone(), None, info, ModalSize::Half, None);
+                }
                 true
             }
             Actions::Filter => {

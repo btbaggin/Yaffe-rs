@@ -30,14 +30,14 @@ impl DeferredAction {
                 if let Err(e) = crate::plugins::load_plugin_items(state, index) {
                     let message = format!("Error loading plugin items: {e:?}");
                     let message = crate::modals::MessageModalContent::from(&message);
-                    display_modal(&mut ui.data, "Error", None, message, None);
+                    display_modal(&mut ui.data, "Error", None, message, crate::ui::ModalSize::Half, None);
                 }
             }
         }
 
         if let Some(message) = self.message {
             let message = crate::modals::MessageModalContent::from(&message);
-            display_modal(&mut ui.data, "Error", None, message, None);
+            display_modal(&mut ui.data, "Error", None, message, crate::ui::ModalSize::Half, None);
         }
     }
 }

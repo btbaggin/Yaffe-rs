@@ -39,6 +39,7 @@ pub struct Modal {
     confirmation_button: Option<String>,
     content: Box<UiContainer<(), ModalAction>>,
     on_close: Option<ModalOnClose>,
+    width: ModalSize,
 }
 impl Modal {
     pub fn overlay(content: impl UiElement<(), ModalAction> + 'static) -> Modal {
@@ -48,13 +49,10 @@ impl Modal {
         Modal {
             confirmation_button: Some(String::from("Exit")),
             content: Box::new(control),
-            on_close: None
+            on_close: None,
+            width: ModalSize::Full
         }
     }
-
-    // pub fn action(&mut self, action: &crate::Actions, helper: &mut ()) -> ModalResult {
-    //     self.content.action(action, helper)
-    // }
 }
 
 crate::widget!(
@@ -138,6 +136,7 @@ pub fn display_modal(
     title: &str,
     confirmation_button: Option<&str>,
     content: impl UiElement<(), ModalAction> + 'static,
+    width: ModalSize,
     on_close: Option<ModalOnClose>,
 ) {
     let confirm = confirmation_button.map(String::from);
@@ -146,7 +145,8 @@ pub fn display_modal(
     let m = Modal {
         confirmation_button: confirm,
         content: Box::new(content),
-        on_close
+        on_close,
+        width
     };
 
     let mut modals = state.modals.lock().unwrap();
@@ -187,33 +187,33 @@ pub fn render_modal(modal: &mut Modal, graphics: &mut crate::Graphics) {
 
     let padding = LogicalSize::new(graphics.bounds.width() * 0.1, graphics.bounds.height() * 0.1);
     let rect = Rect::new(*graphics.bounds.top_left() + padding, graphics.bounds.size() - padding);
-    let width = match ModalSize::Half {
+    let width = match modal.width {
         ModalSize::Third => graphics.bounds.width() * 0.33,
         ModalSize::Half => graphics.bounds.width() * 0.5,
         ModalSize::Full => graphics.bounds.width(),
     };
-    let content_size = LogicalSize::new(graphics.bounds.height(), width);
+    let content_size = LogicalSize::new(width, graphics.bounds.height());
 
-    // //Calulate size
+    // Calulate size
     let mut size = LogicalSize::new(MARGIN * 2. + content_size.x, MARGIN * 2. + titlebar_size + content_size.y);
     if modal.confirmation_button.is_some() {
         size.y += toolbar_size;
     }
 
     let window_position = (rect.size() - size) / 2. + padding;
-    let window = Rect::new(window_position, window_position + size);
+    // let window = Rect::new(window_position, window_position + size);
 
     //Background
     graphics.draw_rectangle(graphics.bounds, MODAL_OVERLAY_COLOR);
 
-    // //Content
-    // //Window + margin for window + margin for icon
-    // let content_pos = LogicalPosition::new(
-    //     window_position.x + MARGIN + PADDING,
-    //     window_position.y + MARGIN + titlebar_size + PADDING,
-    // );
-    graphics.bounds = window;//Rect::new(content_pos, content_pos + content_size);
-    modal.content.render(graphics, &(), &modal.content.id());
+    // Content
+    // Window + margin for window + margin for icon
+    let content_pos = LogicalPosition::new(
+        window_position.x + MARGIN + PADDING,
+        window_position.y + MARGIN + titlebar_size + PADDING,
+    );
+    graphics.bounds = Rect::point_and_size(content_pos, content_size);
+    modal.content.render(graphics, &(), &modal.content.get_id());
 }
 
 pub fn render_toasts(toasts: &HashMap<u64, String>, graphics: &mut crate::Graphics) {

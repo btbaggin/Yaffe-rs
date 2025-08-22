@@ -7,6 +7,7 @@ struct ContainerChild<T, D> {
     realized_size: f32,
 }
 
+#[derive(Clone, Copy)]
 pub enum ContainerSize {
     Percent(f32),
     Fixed(f32),
@@ -33,9 +34,9 @@ pub struct UiContainer<T: 'static, D: 'static> {
     children: Vec<ContainerChild<T, D>>,
     background: BackgroundType,
     direction: FlexDirection,
+    margin: f32,
 }
 impl<T, D> LayoutElement for UiContainer<T, D> {
-    fn id(&self) -> WidgetId { self.id }
     fn layout(&self) -> Rect { Rect::new(self.position, self.position + self.size) }
     fn set_layout(&mut self, layout: Rect) {
         self.position = *layout.top_left();
@@ -54,6 +55,7 @@ impl<T, D> UiContainer<T, D> {
             children: vec![],
             background: BackgroundType::None,
             direction: FlexDirection::Row,
+            margin: 5.
         }
     }
 
@@ -65,6 +67,7 @@ impl<T, D> UiContainer<T, D> {
             children: vec![],
             background: BackgroundType::None,
             direction: FlexDirection::Column,
+            margin: 5.
         }
     }
 
@@ -75,6 +78,11 @@ impl<T, D> UiContainer<T, D> {
 
     pub fn background_color(&mut self, color: Color) -> &mut Self {
         self.background = BackgroundType::Color(color);
+        self
+    }
+
+    pub fn margin(&mut self, margin: f32) -> &mut Self {
+        self.margin = margin;
         self
     }
 
@@ -135,16 +143,47 @@ impl<T, D> UiContainer<T, D> {
         None
     }
 
-    fn calc_size(&mut self, parent_size: LogicalSize) -> LogicalSize {
+    pub fn replace_child(&mut self, widget_id: WidgetId, child: impl UiElement<T, D> + 'static) {
+        let child = Box::new(child);
+        self.replace_child_boxed(widget_id, child);
+    }
+
+    fn replace_child_boxed(&mut self, widget_id: WidgetId, child: Box<dyn UiElement<T, D>>) {
+        // Check direct children
+        for (i, c) in self.children.iter_mut().enumerate() {
+            if c.element.get_id() == widget_id {
+                let size = c.size;
+                self.children[i] = ContainerChild { 
+                    element: child, 
+                    size, 
+                    realized_size: 0. 
+                };
+                return;
+            }
+        }
+        
+        // Search recursively
+        for c in &mut self.children {
+            if let Some(container) = c.element.as_any_mut().downcast_mut::<UiContainer<T, D>>() {
+                container.replace_child_boxed(widget_id, child);
+                return;
+            }
+        }
+    }
+
+    fn calc_container_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        let parent_size = graphics.bounds.size();
         let mut total_fixed = 0.0;
         let mut total_percent = 0.0;
         let mut total_shrink = 0.0;
         let mut fill_count = 0;
 
+        let margin_size = self.children.len() as f32 * 5.;
+
         let total = match self.direction {
             FlexDirection::Row => parent_size.x,
             FlexDirection::Column => parent_size.y,
-        };
+        } - margin_size;
 
         // Calculate the total fixed, percent, and shrink sizes, and count the fill elements
         for child in &mut self.children {
@@ -161,9 +200,10 @@ impl<T, D> UiContainer<T, D> {
                     fill_count += 1;
                 }
                 ContainerSize::Shrink => {
+                    let size = child.element.calc_size(graphics);
                     let size = match self.direction {
-                        FlexDirection::Row => child.element.layout().width(),
-                        FlexDirection::Column => child.element.layout().height(),
+                        FlexDirection::Row => size.x,
+                        FlexDirection::Column => size.y,
                     };
                     total_shrink += size;
                     child.realized_size = size;
@@ -188,12 +228,12 @@ impl<T, D> UiContainer<T, D> {
         // Calculate the total size of the container
         let total_size = match self.direction {
             FlexDirection::Row => LogicalSize::new(
-                total_fixed + total_percent + total_shrink + (fill_size * fill_count as f32),
+                total_fixed + total_percent + total_shrink + (fill_size * fill_count as f32) + margin_size,
                 parent_size.y,
             ),
             FlexDirection::Column => LogicalSize::new(
                 parent_size.x,
-                total_fixed + total_percent + total_shrink + (fill_size * fill_count as f32),
+                total_fixed + total_percent + total_shrink + (fill_size * fill_count as f32) + margin_size,
             ),
         };
 
@@ -203,31 +243,35 @@ impl<T, D> UiContainer<T, D> {
     pub fn move_focus(&mut self, current_focus: Option<WidgetId>, next: bool) -> Option<WidgetId> {
         //Try to find current focus
         //Move index based on index and if it exists
+        let child_count = self.children.len() as isize;
         let index = match current_focus {
             None => {
-                if next { 0 } else { self.children.len() - 1 }
+                if next { 0isize } else { child_count - 1 }
             }
             Some(_) => {
-                let index = self.children.iter().position(|c| Some(c.element.id()) == current_focus);
+                let index = self.children.iter().position(|c| Some(c.element.get_id()) == current_focus);
                 if let Some(index) = index {
+                    let index = index as isize;
                     if next { index + 1 } else { index - 1 }
                 } else {
-                    self.children.len()
+                    child_count
                 }
             }
         };
 
-        if index == self.children.len() {
-            return None;
+        if index >= 0 && index < child_count {
+            Some(self.children[index as usize].element.get_id())
         } else {
-            Some(self.children[index].element.id())
+            None
         }
     }
 }
 
 impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.calc_container_size(graphics) }
+
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId) {
-        let total_size = self.calc_size(graphics.bounds.size());
+        let total_size = self.calc_container_size(graphics);
 
         // TODO this is shit
         // TODO justification
@@ -250,12 +294,12 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
                 FlexDirection::Row => {
                     let width = child.realized_size;
                     let height = graphics.bounds.height();
-                    (width, height, width, 0.)
+                    (width, height, width + self.margin, 0.)
                 }
                 FlexDirection::Column => {
                     let width = graphics.bounds.width();
                     let height = child.realized_size;
-                    (width, height, 0., height)
+                    (width, height, 0., height + self.margin)
                 }
             };
 
@@ -263,7 +307,6 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
             let size = graphics.bounds.size();
             child.element.set_layout(Rect::point_and_size(origin, LogicalSize::new(width, height)));
 
-            // graphics.bounds = Rect::point_and_size(origin, LogicalSize::new(width, height));
             child.element.render(graphics, state, current_focus);
             graphics.bounds = Rect::point_and_size(
                 origin + LogicalPosition::new(x_offset, y_offset),

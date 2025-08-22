@@ -19,8 +19,6 @@ impl<T: 'static, D: 'static> UiElement<T, D> for Image {
         let rect = self.layout();
         let image_size = crate::ui::image_fill(graphics, &self.image, &rect.size());
         graphics.draw_asset_image(Rect::point_and_size(*rect.top_left(), image_size), &self.image);
-
-        self.set_layout(Rect::point_and_size(*rect.top_left(), image_size));
     }
 
     fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut D) -> bool { false }

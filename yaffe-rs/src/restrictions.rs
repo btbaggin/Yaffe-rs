@@ -32,11 +32,7 @@ fn passcodes_equal(source: &RestrictedPasscode, target: &RestrictedPasscode) -> 
     true
 }
 
-pub fn on_restricted_modal_close(
-    state: &mut YaffeState,
-    result: bool,
-    content: &ModalContent,
-) {
+pub fn on_restricted_modal_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
     if result {
         let content = content.as_any().downcast_ref::<SetRestrictedModal>().unwrap();
         let pass = content.get_passcode();
@@ -45,6 +41,9 @@ pub fn on_restricted_modal_close(
             RestrictedMode::On(p) => {
                 if passcodes_equal(&pass, &p) {
                     state.restricted_mode = RestrictedMode::Off;
+                } else {
+                    // state.display_toast(0, );
+                    // TODO toast?
                 }
             }
             RestrictedMode::Off => state.restricted_mode = RestrictedMode::On(pass),

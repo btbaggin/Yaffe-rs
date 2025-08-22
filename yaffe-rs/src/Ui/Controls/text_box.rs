@@ -2,7 +2,7 @@ use super::{draw_label_and_box, LABEL_SIZE};
 use crate::input::InputType;
 use crate::ui::{get_drawable_text, ValueElement, LayoutElement, AnimationManager, WidgetId, UiElement};
 use crate::utils::Rect;
-use crate::{Actions, LogicalPosition, Graphics};
+use crate::{Actions, LogicalPosition, Graphics, LogicalSize};
 use copypasta::ClipboardProvider;
 use winit::keyboard::{KeyCode, ModifiersState};
 
@@ -24,6 +24,9 @@ impl TextBox {
     }
 }
 impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        LogicalSize::new(graphics.bounds.width(), graphics.font_size())
+    }
     fn render(&mut self, graphics: &mut Graphics, _: &T, current_focus: &WidgetId) {
         const MAX_SIZE: f32 = 500.;
         const CURSOR_WIDTH: f32 = 2.;
@@ -86,8 +89,6 @@ impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
                 graphics.font_color(),
             );
         }
-
-        self.size = crate::LogicalSize::new(control.width() + LABEL_SIZE, control.height())
     }
 
     fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {

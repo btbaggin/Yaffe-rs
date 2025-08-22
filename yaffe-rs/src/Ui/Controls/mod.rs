@@ -13,7 +13,6 @@ pub use list::{List, ListItem};
 pub use text_box::TextBox;
 
 pub const MARGIN: f32 = 10.;
-pub const TITLE_SIZE: f32 = 36.;
 pub const LABEL_SIZE: f32 = 250.;
 pub const MENU_BACKGROUND: Color = Color::from_rgba(0.2, 0.2, 0.2, 0.7);
 pub const MODAL_OVERLAY_COLOR: Color = Color::from_rgba(0., 0., 0., 0.6);

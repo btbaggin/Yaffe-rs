@@ -34,12 +34,16 @@ impl SettingsModal {
 }
 
 impl UiElement<(), ModalAction> for SettingsModal {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        self.settings.calc_size(graphics)
+    }
+
     fn render(&mut self, graphics: &mut Graphics, state: &(), _: &WidgetId) {
         self.settings.render(graphics, state, &self.focus.unwrap_or(WidgetId::random()));
         self.set_layout(self.settings.layout())
     }
 
-    fn action(&mut self, _state: &mut (), animation: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
         let handled = match action {
             Actions::Up => {
                 self.focus = self.settings.move_focus(self.focus, false);
@@ -55,7 +59,7 @@ impl UiElement<(), ModalAction> for SettingsModal {
         if !handled && !close {
             if let Some(focus) = self.focus {
                 if let Some(widget) = self.settings.find_widget_mut(focus) {
-                    return widget.action(_state, animation, action, handler);
+                    return widget.action(state, animations, action, handler);
                 }
             }
         }

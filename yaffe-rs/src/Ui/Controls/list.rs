@@ -26,6 +26,10 @@ impl<L: ListItem> List<L> {
 }
 
 impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        LogicalSize::new(graphics.bounds.width(), self.items.len() as f32 * graphics.font_size())
+    }
+
     fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
         match action {
             Actions::Down => {
@@ -52,7 +56,6 @@ impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
         let rect = self.layout();
         let mut pos = *rect.top_left();
         let font_size = graphics.font_size();
-        let height = font_size * self.items.len() as f32;
 
         //Item list
         for (i, item) in self.items.iter().enumerate() {
@@ -66,7 +69,5 @@ impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
             graphics.simple_text(pos, &display);
             pos.y += font_size;
         }
-
-        self.set_layout(Rect::point_and_size(*rect.top_left(), LogicalSize::new(rect.width(), height)));
     }
 }

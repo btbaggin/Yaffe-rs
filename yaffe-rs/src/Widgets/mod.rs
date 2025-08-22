@@ -1,6 +1,5 @@
 mod app_list;
 mod app_tile;
-mod background;
 mod info_pane;
 mod overlay;
 mod platform_list;
@@ -8,7 +7,7 @@ mod search_bar;
 mod toolbar;
 pub use app_list::AppList;
 pub use app_tile::AppTile;
-// TODO pub use info_pane::InfoPane;
+pub use info_pane::InfoPane;
 pub use overlay::OverlayBackground;
 pub use platform_list::PlatformList;
 pub use search_bar::SearchBar;

@@ -3,8 +3,6 @@ use crate::ui::{AnimationManager, LayoutElement, UiContainer, UiElement, WidgetI
 use std::ops::Deref;
 use std::time::Instant;
 
-const INPUT_DELAY: u128 = 200; // TODO can we delete this?
-
 pub trait WindowState {
     fn on_revert_focus(&mut self) -> bool;
 }
@@ -72,10 +70,8 @@ impl<T: WindowState, D> WidgetTree<T, D> {
         }
 
         let mut last = self.focus.pop();
-        if (now - self.last_focused).as_millis() < INPUT_DELAY {
-            while last.as_ref() == self.focus.last() {
-                last = self.focus.pop();
-            }
+        while last.as_ref() == self.focus.last() {
+            last = self.focus.pop();
         }
         self.last_focused = now;
 

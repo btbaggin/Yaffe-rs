@@ -24,7 +24,6 @@ use winit::window::{Fullscreen, WindowId};
 use super::{AnimationManager, InputType, JobResults, WindowHelper, WindowInfo, YaffeWindow};
 use crate::input::{Actions, ControllerInput, Gamepad, InputMap};
 use crate::job_system::{JobResult, ThreadSafeJobQueue};
-use crate::logger::LogEntry;
 use crate::Graphics;
 
 static mut CURRENT_WINDOW_ID: WindowId = WindowId::dummy();
@@ -278,7 +277,8 @@ impl ApplicationHandler for App {
         self.last_time = now;
 
         //Convert our input to actions we will propogate through the UI
-        self.gamepad.update().log("Unable to get controller input");
+        // If errored, the controller probably isnt connected
+        let _ = self.gamepad.update();
         let mut gamepad_actions = crate::input::input_to_action(&self.input_map, &mut self.gamepad);
 
         super::check_for_updates(&mut self.update_timer, self.delta_time, &self.queue);

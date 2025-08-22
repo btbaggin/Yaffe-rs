@@ -1,8 +1,8 @@
 use super::draw_label_and_box;
 use crate::input::{Actions, InputType};
-use crate::ui::{ValueElement, UiElement, WidgetId, AnimationManager, LayoutElement};
+use crate::ui::{ValueElement, UiElement, WidgetId, AnimationManager, LayoutElement, LABEL_SIZE};
 use crate::utils::Rect;
-use crate::Graphics;
+use crate::{Graphics, LogicalSize};
 use winit::keyboard::KeyCode;
 
 crate::widget!(
@@ -21,6 +21,9 @@ impl CheckBox {
     }
 }
 impl<T: 'static, D: 'static> UiElement<T, D> for CheckBox {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        LogicalSize::new(graphics.font_size() + LABEL_SIZE, graphics.font_size())
+    }
     fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
         if let Actions::KeyPress(InputType::Key(KeyCode::Space, _, _)) = action {
             self.checked = !self.checked;
@@ -42,8 +45,6 @@ impl<T: 'static, D: 'static> UiElement<T, D> for CheckBox {
                 base,
             )
         }
-
-        self.size = crate::LogicalSize::new(control.width() + crate::ui::LABEL_SIZE, control.height());
     }
 }
 impl ValueElement<bool> for CheckBox {

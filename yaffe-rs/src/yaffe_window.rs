@@ -1,12 +1,15 @@
 use crate::graphics::Graphics;
 use crate::input::Actions;
+use crate::assets::AssetKey;
 use crate::job_system::JobResult;
 use crate::logger::{LogEntry, UserMessage};
+use crate::scraper::{PlatformScrapeResult, GameScrapeResult};
 use crate::modals::{
-    on_add_platform_close, on_settings_close, PlatformDetailModal, SetRestrictedModal, SettingsModal, ListModal
+    on_add_platform_close, on_settings_close, PlatformDetailModal, SetRestrictedModal, SettingsModal, ListModal, ScraperModal
 };
 use crate::restrictions::{on_restricted_modal_close, RestrictedMode};
-use crate::ui::{display_modal, AnimationManager, DeferredAction, WidgetTree, ModalContent};
+use crate::ui::{display_modal, AnimationManager, DeferredAction, WidgetTree, ModalContent, ModalSize, ModalAction};
+use crate::widgets::InfoPane;
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
 
@@ -83,7 +86,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
                     ];
 
                     let list = crate::modals::ListModal::from(items);
-                    crate::ui::display_modal(&mut self.data, "Menu", None, list, Some(on_menu_close));
+                    crate::ui::display_modal(&mut self.data, "Menu", None, list, ModalSize::Third, Some(on_menu_close));
                     true
                 } else {
                     false
@@ -116,15 +119,15 @@ fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
         match list_content.get_selected::<String>().as_str() {
             "Add Emulator" => {
                 let content = PlatformDetailModal::emulator();
-                display_modal(state, "New Emulator", Some("Confirm"), content, Some(on_add_platform_close));
+                display_modal(state, "New Emulator", Some("Confirm"), content, ModalSize::Third, Some(on_add_platform_close));
             }
             "Settings" => {
                 let content = SettingsModal::from(&state.settings);
-                display_modal(state, "Settings", Some("Confirm"), content, Some(on_settings_close));
+                display_modal(state, "Settings", Some("Confirm"), content, ModalSize::Third, Some(on_settings_close));
             }
             "Disable Restricted Mode" | "Enable Restricted Mode" => {
                 let content = SetRestrictedModal::new();
-                display_modal(state, "Restricted Mode", Some("Set passcode"), content, Some(on_restricted_modal_close))
+                display_modal(state, "Restricted Mode", Some("Set passcode"), content, ModalSize::Third, Some(on_restricted_modal_close))
             }
             "Scan For New Roms" => crate::platform::scan_new_files(state),
             "Exit Yaffe" => state.exit(),
@@ -147,18 +150,17 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                 asset_slot.set_data(data, dimensions);
             }
             JobResult::SearchGame(result) => {
-                use crate::modals::GameScraperModal;
                 if let Some(game) = result.get_exact() {
                     crate::platform::insert_game(state, &game.info, game.boxart.clone());
                 } else if result.count > 0 {
                     let items = result.results;
-
-                    let content = GameScraperModal::from(items);
+                    let content = ScraperModal::from(items, build_game_info);
                     display_modal(
                         state,
                         &format!("Select Game: {}", result.request),
                         None,
                         content,
+                        crate::ui::ModalSize::Half,
                         Some(crate::modals::on_game_found_close),
                     );
                 }
@@ -166,19 +168,17 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                 state.remove_toast(&result.id);
             }
             JobResult::SearchPlatform(result) => {
-                use crate::modals::PlatformScraperModal;
                 if let Some(platform) = result.get_exact() {
                     crate::platform::insert_platform(state, &platform.info);
                 } else if result.count > 0 {
-                    // TODO
-                    // let items = result.results;
-
-                    let content = PlatformScraperModal::new();
+                    let items = result.results;
+                    let content = ScraperModal::from(items, build_platform_info);
                     display_modal(
                         state,
                         "Select Platform",
                         None,
                         content,
+                        crate::ui::ModalSize::Half,
                         Some(crate::modals::on_platform_found_close),
                     );
                 }
@@ -188,4 +188,17 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
             _ => {}
         }
     }
+}
+
+fn build_platform_info(item: &PlatformScrapeResult) -> InfoPane<(), ModalAction> {
+    let attributes = vec!();
+    InfoPane::from(AssetKey::Url(item.boxart.clone()), item.overview.clone(), attributes)
+}
+
+fn build_game_info(item: &GameScrapeResult) -> InfoPane<(), ModalAction> {
+    let mut attributes = vec!();
+    attributes.push(("Players".to_string(), item.info.players.to_string()));
+    attributes.push(("Rating".to_string(), item.info.rating.clone()));
+    attributes.push(("Released".to_string(), item.info.released.clone()));
+    InfoPane::from(AssetKey::Url(item.boxart.clone()), item.info.overview.clone(), attributes)
 }

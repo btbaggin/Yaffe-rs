@@ -21,7 +21,7 @@ macro_rules! table_struct {
         $($v:vis $field_name:ident: $field_type:ty,)+
     }) => {
         #[allow(dead_code)]
-        #[derive(Default, Clone)]
+        #[derive(Default, Clone, Debug)]
         $sv struct $name { $($v $field_name: $field_type),+ }
         impl $crate::data::schema::Schema for $name {
             fn get_columns(&self) -> Vec<$crate::data::schema::ColumnInfo> {

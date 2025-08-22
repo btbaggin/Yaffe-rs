@@ -8,7 +8,8 @@ crate::widget!(
     pub struct PlatformDetailModal {
         controls: UiContainer<(), ModalAction> = UiContainer::column(),
         control_map: HashMap<String, WidgetId> = HashMap::new(),
-        platform_id: i64 = 0
+        platform_id: i64 = 0,
+        focus: Option<WidgetId> = None
     }
 );
 
@@ -34,9 +35,9 @@ impl PlatformDetailModal {
         let executable = TextBox::from("Executable", path);
         let args = TextBox::from("Args", args);
 
-        modal.control_map.insert("Name".to_string(), name.id());
-        modal.control_map.insert("Executable".to_string(), executable.id());
-        modal.control_map.insert("Args".to_string(), args.id());
+        modal.control_map.insert("Name".to_string(), name.get_id());
+        modal.control_map.insert("Executable".to_string(), executable.get_id());
+        modal.control_map.insert("Args".to_string(), args.get_id());
 
         modal.controls.add_child(name, ContainerSize::Shrink)
                 .add_child(executable, ContainerSize::Shrink)
@@ -45,16 +46,36 @@ impl PlatformDetailModal {
 }
 
 impl UiElement<(), ModalAction> for PlatformDetailModal {
-    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
-        // TODO focus or something
-        handler.close_if_accept(action) || self.controls.action(state, animations, action, handler)
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        self.controls.calc_size(graphics)
     }
 
-    fn render(&mut self, graphics: &mut Graphics, state: &(), current_focus: &WidgetId) {
-        let rect = self.layout();
-        self.controls.render(graphics, state, current_focus);
-        // TODO it sucks i need to call this
-        self.set_layout(self.controls.layout())
+    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+        // TODO this is duplicated from settings_modal. eh?
+        let handled = match action {
+            Actions::Up => {
+                self.focus = self.controls.move_focus(self.focus, false);
+                true
+            }
+            Actions::Down => {
+                self.focus = self.controls.move_focus(self.focus, true);
+                true
+            }
+            _ => false
+        };
+        let close = handler.close_if_accept(action);
+        if !handled && !close {
+            if let Some(focus) = self.focus {
+                if let Some(widget) = self.controls.find_widget_mut(focus) {
+                    return widget.action(state, animations, action, handler);
+                }
+            }
+        }
+        handled || close
+    }
+
+    fn render(&mut self, graphics: &mut Graphics, state: &(), _: &WidgetId) {
+        self.controls.render(graphics, state, &self.focus.unwrap_or(WidgetId::random()));
     }
 }
 

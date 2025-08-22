@@ -8,14 +8,16 @@ use std::rc::Rc;
  * TODO
  * Search bar doesnt work well on plugins
  * allow reloading plugins?
- * Make UI placement better? Somethign that can remember where you place things and auto account for margins and stuff?
+ * Search bar needs to disappear
+ * InfoPane
+ * Combine Game and Platform scraper modals?
+ * Focus outline for controls?
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PLATFORM_LIST_ID: WidgetId = WidgetId::static_id(2);
 const APP_LIST_ID: WidgetId = WidgetId::static_id(3);
 const SEARCH_BAR_ID: WidgetId = WidgetId::static_id(4);
-const INFO_PANE_ID: WidgetId = WidgetId::static_id(5);
 
 mod assets;
 mod data;
@@ -108,7 +110,7 @@ pub fn build_main_tree() -> UiContainer<YaffeState, DeferredAction> {
     use ui::ContainerSize;
 
     let mut root = UiContainer::row();
-    root.background_image(crate::assets::Images::Background)
+    root.background_image(crate::assets::Images::Background).margin(0.)
         .add_child(PlatformList::new_with_id(PLATFORM_LIST_ID), ContainerSize::Percent(0.25))
         .with_child(UiContainer::column(), ContainerSize::Fill)
             .add_child(SearchBar::new_with_id(SEARCH_BAR_ID), ContainerSize::Percent(0.05))

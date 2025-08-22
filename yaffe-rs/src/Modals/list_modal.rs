@@ -1,8 +1,6 @@
-use crate::ui::{List, ListItem, UiElement, WidgetId, ModalAction, AnimationManager, UiContainer, ContainerSize, LayoutElement};
-use crate::{Actions, Graphics};
+use crate::ui::{List, ListItem, UiElement, WidgetId, ModalAction, AnimationManager, UiContainer, ContainerSize};
+use crate::{Actions, Graphics, LogicalSize};
 
-// Allow displaying a list of items that can be selected
-// Items must implement `ListItem` trait
 crate::widget!(
     pub struct ListModal {
         container: UiContainer<(), ModalAction> = UiContainer::column()
@@ -24,13 +22,15 @@ impl ListModal {
 }
 
 impl UiElement<(), ModalAction> for ListModal {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        self.container.calc_size(graphics)
+    }
+
     fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
         handler.close_if_accept(action) || self.container.action(state, animations, action, handler)
     }
 
     fn render(&mut self, graphics: &mut Graphics, state: &(), current_focus: &WidgetId) {
-        // TODO this is soooooo fucked
         self.container.render(graphics, state, current_focus);
-        self.set_layout(self.container.layout());
     }
 }

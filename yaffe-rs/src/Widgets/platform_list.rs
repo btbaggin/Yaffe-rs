@@ -34,7 +34,7 @@ impl UiElement<YaffeState, DeferredAction> for PlatformList {
                 let group = state.get_selected_group();
                 if group.kind.allow_edit() {
                     let modal = PlatformDetailModal::from_existing(group);
-                    display_modal(state, "Platform Info", Some("Save"), modal, Some(on_update_platform_close));
+                    display_modal(state, "Platform Info", Some("Save"), modal, crate::ui::ModalSize::Third, Some(on_update_platform_close));
                 }
                 true
             }

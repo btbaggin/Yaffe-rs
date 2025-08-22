@@ -1,7 +1,7 @@
 use crate::input::{Actions, InputType};
 use crate::restrictions::RestrictedPasscode;
-use crate::ui::{UiElement, WidgetId, AnimationManager, LayoutElement};
-use crate::{LogicalPosition, Graphics};
+use crate::ui::{UiElement, WidgetId, AnimationManager, LayoutElement, ModalAction};
+use crate::{LogicalPosition, LogicalSize, Graphics};
 use std::hash::{Hash, Hasher};
 
 crate::widget!(
@@ -10,21 +10,19 @@ crate::widget!(
     }
 );
 impl SetRestrictedModal {
-    // pub fn new() -> SetRestrictedModal { SetRestrictedModal { pass: RestrictedPasscode::default() } }
-
     pub fn get_passcode(&self) -> RestrictedPasscode { self.pass }
 }
 
-impl<T: 'static, D: 'static> UiElement<T, D> for SetRestrictedModal {
-    // fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-    //     let height = graphics.font_size() + MARGIN;
-    //     LogicalSize::new(Self::modal_width(rect, ModalSize::Third), height)
-    // }
+impl UiElement<(), ModalAction> for SetRestrictedModal {
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
+        LogicalSize::new(graphics.bounds.width(), graphics.font_size())
+    }
 
-    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _: &mut D) -> bool {
+    fn action(&mut self, _state: &mut (), _: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
         let code = match action {
-            Actions::Accept => return true,
-            Actions::Back => return true,
+            Actions::Accept | Actions::Back => {
+                return handler.close_if_accept(action)
+            },
             Actions::KeyPress(InputType::Key(code, _, _)) => *code as u8 as char,
             Actions::KeyPress(InputType::Gamepad(g)) => *g as u8 as char,
             _ => action_to_char(action),
@@ -33,7 +31,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for SetRestrictedModal {
         false
     }
 
-    fn render(&mut self, graphics: &mut Graphics, _: &T, _: &WidgetId) {
+    fn render(&mut self, graphics: &mut Graphics, _: &(), _: &WidgetId) {
         let font_size = graphics.font_size();
         let rect = self.layout();
 
