@@ -99,16 +99,6 @@ const JS_EVENT_AXIS: u8 = 0x02; /* joystick moved */
 const JS_EVENT_INIT: u8 = 0x80; /* initial state of device */
 
 impl crate::input::PlatformGamepad for LinuxInput {
-    // fn update(&mut self, user_index: u32) -> Result<(), u32> {
-    //     self.previous_state = self.current_state;
-
-    //     let path = format!("/dev/input/js{}", user_index);
-    //     if self.check_for_joystick(&path) {
-    //         self.get_joystick();
-    //     }
-    //     Ok(())
-    // }
-
     fn get_gamepad(&mut self, user_index: u32) -> Vec<super::ControllerInput> {
         fn is_pressed(input: &LinuxInput, button: u16) -> bool {
             input.current_state.w_buttons & button != 0 && input.previous_state.w_buttons & button == 0
@@ -277,72 +267,6 @@ macro_rules! intern_atom {
         XInternAtom($display as *mut x11::xlib::_XDisplay, c_str.as_ptr(), $b)
     }};
 }
-// pub(super) fn get_clipboard(window: &glutin::window::Window) -> Option<String> {
-//     let mut result = None;
-//     unsafe {
-//         let w = window.xlib_window().log_and_panic("Unable to get xlib window");
-//         let d = window.xlib_display().log_and_panic("Unable to get xlib display");
-//         let d = &mut *(d as *mut x11::xlib::_XDisplay);
-
-//         let utf8 = intern_atom!(d, "UTF8_STRING", 1);
-//         if utf8 != 0 {
-//             result = x_paste_type(utf8, d, w, utf8);
-//         }
-//         if result.is_none() {
-//             result = x_paste_type(XA_STRING, d, w, utf8);
-//         }
-//     }
-//     result
-// }
-
-// unsafe fn x_paste_type(atom: u64, display: &mut x11::xlib::Display, window: u64, utf8: u64) -> Option<String> {
-//     let mut result = None;
-//     let clipboard = intern_atom!(display, "CLIPBOARD", 0);
-//     let xsel_data = intern_atom!(display, "XSEL_DATA", 0);
-//     XConvertSelection(display, clipboard, atom, xsel_data, window, CurrentTime);
-//     XSync(display, 0);
-
-//     let mut event: XEvent = std::mem::zeroed();
-//     XNextEvent(display, &mut event as *mut XEvent);
-
-//     if event.type_ == SelectionNotify {
-//         if event.selection.selection != clipboard {
-//             return None;
-//         }
-
-//         if event.selection.property != 0 {
-//             let mut target = 0u64;
-//             let mut size = 0u64;
-//             let mut format = 0;
-
-//             let mut data: *mut u8 = std::ptr::null_mut();
-//             XGetWindowProperty(
-//                 event.selection.display,
-//                 event.selection.requestor,
-//                 event.selection.property,
-//                 0,
-//                 !0,
-//                 0,
-//                 AnyPropertyType as u64,
-//                 &mut target as *mut u64,
-//                 &mut format as *mut i32,
-//                 &mut size as *mut u64,
-//                 &mut 0u64 as *mut u64,
-//                 &mut data as *mut *mut u8,
-//             );
-
-//             if target == utf8 || target == XA_STRING {
-//                 result = Some(
-//                     data.as_ref().into_iter().take(size.try_into().unwrap()).map(|c| *c as char).collect::<String>(),
-//                 );
-//                 XFree(data as *mut std::ffi::c_void);
-//             }
-//             XDeleteProperty(event.selection.display, event.selection.requestor, event.selection.property);
-//         }
-//     }
-
-//     result
-// }
 
 pub(super) fn get_volume() -> VolumeResult<f32> {
     //https://stackoverflow.com/questions/6787318/set-alsa-master-volume-from-c-code
@@ -368,7 +292,6 @@ pub(super) fn set_volume(volume: f32) -> VolumeResult<()> {
     //https://stackoverflow.com/questions/57918821/how-to-get-and-set-volume-in-linux-using-alsa-using-c
     let mixer = alsa::Mixer::new("default", true)?;
     let id = alsa::mixer::SelemId::new("Master", 0);
-    // let id = alsa::mixer::SelemId::new("PCM", 0);
 
     let selem = mixer.find_selem(&id);
     if let Some(selem) = selem {

@@ -39,10 +39,6 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
             graphics.cache_settings(&self.data.settings);
 
-            // // Draw background
-            // let base = graphics.accent_color();
-            // graphics.draw_image_tinted(base, graphics.bounds, crate::assets::Images::Background);
-
             self.render(graphics);
 
             //Render modal last, on top of everything

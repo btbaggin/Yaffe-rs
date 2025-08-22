@@ -86,15 +86,3 @@ pub fn image_fill(graphics: &mut crate::Graphics, slot: &AssetKey, size: &Logica
 
     LogicalSize::new(width, height)
 }
-
-pub fn outline_rectangle(graphics: &mut crate::Graphics, rect: &Rect, size: f32, color: speedy2d::color::Color) {
-    let top_left = *rect.top_left();
-    let bottom_right = *rect.bottom_right();
-    let top_right = LogicalPosition::new(bottom_right.x, top_left.y);
-    let bottom_left = LogicalPosition::new(top_left.x, bottom_right.y);
-
-    graphics.draw_line(top_left, top_right, size, color);
-    graphics.draw_line(top_right, bottom_right, size, color);
-    graphics.draw_line(bottom_right, bottom_left, size, color);
-    graphics.draw_line(bottom_left, top_left, size, color);
-}

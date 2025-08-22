@@ -31,13 +31,6 @@ impl MessageModalContent {
     }
 }
 impl UiElement<(), ModalAction> for MessageModalContent {
-    // fn as_any(&self) -> &dyn std::any::Any { self }
-    // fn size(&self, rect: Rect, graphics: &crate::Graphics) -> LogicalSize {
-    //     let width = Self::modal_width(rect, ModalSize::Half);
-    //     let rows = self.message.len() as f32 / 80.;
-    //     LogicalSize::new(width, (graphics.font_size() * rows) + crate::ui::MARGIN)
-    // }
-
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         let rows = self.message.len() as f32 / 80.;
         LogicalSize::new(graphics.bounds.width(), graphics.font_size() * rows)

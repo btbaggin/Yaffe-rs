@@ -100,10 +100,10 @@ impl Graphics {
         let top_right = LogicalPosition::new(rect.right(), rect.top());
         let bottom_right = *rect.bottom_right();
         let bottom_left = LogicalPosition::new(rect.left(), rect.bottom());
-        self.draw_line(top_left, top_right, 2., color);
-        self.draw_line(top_right, bottom_right, 2., color);
-        self.draw_line(bottom_right, bottom_left, 2., color);
-        self.draw_line(bottom_left, top_left, 2., color);
+        self.draw_line(top_left, top_right, width, color);
+        self.draw_line(top_right, bottom_right, width, color);
+        self.draw_line(bottom_right, bottom_left, width, color);
+        self.draw_line(bottom_left, top_left, width, color);
     }
     pub fn draw_text_cropped(
         &mut self,

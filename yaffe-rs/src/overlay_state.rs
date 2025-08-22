@@ -66,7 +66,6 @@ impl OverlayState {
                 *process = None;
                 helper.set_visibility(false);
                 self.showing = false;
-                // self.hide(helper);
                 return false;
             }
             return true;

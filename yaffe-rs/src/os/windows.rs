@@ -36,11 +36,8 @@ pub fn get_run_at_startup(task_name: &str) -> PlatformResult<bool> {
 
         // Create task service
         let task_service: ITaskService = CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)?;
-
-        // Connect to task service
         task_service.Connect(&VARIANT::default(), &VARIANT::default(), &VARIANT::default(), &VARIANT::default())?;
 
-        // Get root folder
         let root_folder = task_service.GetFolder(&BSTR::from("\\"))?;
 
         // Try to get the task
@@ -78,11 +75,8 @@ unsafe fn create_startup_task(task_name: &str) -> Result<()> {
 
     // Create task service
     let task_service: ITaskService = CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)?;
-
-    // Connect to task service
     task_service.Connect(&VARIANT::default(), &VARIANT::default(), &VARIANT::default(), &VARIANT::default())?;
 
-    // Get root folder
     let root_folder = task_service.GetFolder(&BSTR::from("\\"))?;
 
     // Delete existing task if it exists (ignore errors)

@@ -111,7 +111,7 @@ fn draw_volume_bar(graphics: &mut Graphics, position: LogicalPosition, size: Log
     let position = LogicalPosition::new(position.x + LABEL_SIZE, position.y);
     //Background rectangle
     let rect = Rect::point_and_size(position, size);
-    crate::ui::outline_rectangle(graphics, &rect, 2., Color::GRAY);
+    graphics.outline_rect(rect, 2., Color::GRAY);
 
     //Progress rectangle
     let pos = *rect.top_left();

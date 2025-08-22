@@ -33,7 +33,7 @@ pub struct AnimationBuilder<'a, T: Animator> {
     field: FieldOffset,
     target: T,
     duration: f32,
-    current_value: T, // Store the current value
+    current_value: T,
 }
 impl<'a, T: Animator> AnimationBuilder<'a, T> {
     pub fn duration(mut self, duration: f32) -> Self {
@@ -76,7 +76,7 @@ impl AnimationManager {
             field,
             target,
             current_value,
-            duration: 0.3, // Default duration
+            duration: 0.3,
         }
     }
 
