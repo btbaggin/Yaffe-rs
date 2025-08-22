@@ -1,4 +1,4 @@
-use crate::ui::{List, ListItem, UiElement, WidgetId, ModalAction, AnimationManager, UiContainer, ContainerSize};
+use crate::ui::{AnimationManager, ContainerSize, List, ListItem, ModalAction, UiContainer, UiElement, WidgetId};
 use crate::{Actions, Graphics, LogicalSize};
 
 crate::widget!(
@@ -8,7 +8,7 @@ crate::widget!(
 );
 
 impl ListModal {
-    pub fn from<T: ListItem + 'static>(items: Vec<T>) -> ListModal { 
+    pub fn from<T: ListItem + 'static>(items: Vec<T>) -> ListModal {
         let mut modal = ListModal::new();
         let list = List::<T>::from(items);
         modal.container.add_child(list, ContainerSize::Shrink);
@@ -22,11 +22,15 @@ impl ListModal {
 }
 
 impl UiElement<(), ModalAction> for ListModal {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
-        self.container.calc_size(graphics)
-    }
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.container.calc_size(graphics) }
 
-    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        state: &mut (),
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         handler.close_if_accept(action) || self.container.action(state, animations, action, handler)
     }
 

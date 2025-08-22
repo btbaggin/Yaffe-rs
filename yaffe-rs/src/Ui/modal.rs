@@ -1,7 +1,7 @@
 use crate::assets::Images;
 use crate::ui::controls::{change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
-use crate::ui::{RightAlignment, UiElement, AnimationManager, WidgetId, UiContainer, ContainerSize, LayoutElement};
-use crate::{Actions, LogicalPosition, LogicalSize, Rect, YaffeState, Graphics};
+use crate::ui::{AnimationManager, ContainerSize, LayoutElement, RightAlignment, UiContainer, UiElement, WidgetId};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect, YaffeState};
 use std::collections::HashMap;
 
 #[allow(dead_code)]
@@ -14,7 +14,7 @@ pub enum ModalSize {
 }
 
 pub struct ModalAction {
-    close: Option<bool>
+    close: Option<bool>,
 }
 impl ModalAction {
     pub fn close_if_accept(&mut self, action: &Actions) -> bool {
@@ -27,7 +27,7 @@ impl ModalAction {
                 self.close = Some(false);
                 true
             }
-            _ => false
+            _ => false,
         }
     }
 }
@@ -44,13 +44,12 @@ pub struct Modal {
 impl Modal {
     pub fn overlay(content: impl UiElement<(), ModalAction> + 'static) -> Modal {
         let mut control = UiContainer::column();
-        control.background_color(MODAL_BACKGROUND)
-               .add_child(content, ContainerSize::Fixed(36.));
+        control.background_color(MODAL_BACKGROUND).add_child(content, ContainerSize::Fixed(36.));
         Modal {
             confirmation_button: Some(String::from("Exit")),
             content: Box::new(control),
             on_close: None,
-            width: ModalSize::Full
+            width: ModalSize::Full,
         }
     }
 }
@@ -73,7 +72,7 @@ impl crate::ui::UiElement<(), ModalAction> for ModalTitlebar {
         const PADDING: f32 = 2.;
         let titlebar_color = graphics.accent_color();
         let titlebar_color = change_brightness(&titlebar_color, graphics.light_shade_factor());
-        let titlebar = 
+        let titlebar =
             Rect::point_and_size(*layout.top_left(), layout.size() - LogicalSize::new(PADDING * 2., PADDING));
         graphics.draw_rectangle(titlebar, titlebar_color);
 
@@ -119,11 +118,16 @@ impl crate::ui::UiElement<(), ModalAction> for ModalToolbar {
     }
 }
 
-fn build_modal(title: String, confirmation_button: Option<String>, content: impl UiElement<(), ModalAction> + 'static) -> UiContainer<(), ModalAction> {
+fn build_modal(
+    title: String,
+    confirmation_button: Option<String>,
+    content: impl UiElement<(), ModalAction> + 'static,
+) -> UiContainer<(), ModalAction> {
     let mut control = UiContainer::column();
-    control.background_color(MODAL_BACKGROUND)
-           .add_child(ModalTitlebar::from(title), ContainerSize::Fixed(36.))
-           .add_child(content, ContainerSize::Shrink);
+    control
+        .background_color(MODAL_BACKGROUND)
+        .add_child(ModalTitlebar::from(title), ContainerSize::Fixed(36.))
+        .add_child(content, ContainerSize::Shrink);
 
     if let Some(confirm) = confirmation_button {
         control.add_child(ModalToolbar::from(confirm), ContainerSize::Fixed(24.));
@@ -142,12 +146,7 @@ pub fn display_modal(
     let confirm = confirmation_button.map(String::from);
 
     let content = build_modal(String::from(title), confirm.clone(), content);
-    let m = Modal {
-        confirmation_button: confirm,
-        content: Box::new(content),
-        on_close,
-        width
-    };
+    let m = Modal { confirmation_button: confirm, content: Box::new(content), on_close, width };
 
     let mut modals = state.modals.lock().unwrap();
     modals.push(m);

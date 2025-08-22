@@ -9,8 +9,6 @@ use std::rc::Rc;
  * Search bar doesnt work well on plugins
  * allow reloading plugins?
  * Search bar needs to disappear
- * InfoPane
- * Combine Game and Platform scraper modals?
  * Focus outline for controls?
 */
 
@@ -110,12 +108,13 @@ pub fn build_main_tree() -> UiContainer<YaffeState, DeferredAction> {
     use ui::ContainerSize;
 
     let mut root = UiContainer::row();
-    root.background_image(crate::assets::Images::Background).margin(0.)
+    root.background_image(crate::assets::Images::Background)
+        .margin(0.)
         .add_child(PlatformList::new_with_id(PLATFORM_LIST_ID), ContainerSize::Percent(0.25))
         .with_child(UiContainer::column(), ContainerSize::Fill)
-            .add_child(SearchBar::new_with_id(SEARCH_BAR_ID), ContainerSize::Percent(0.05))
-            .add_child(AppList::new_with_id(APP_LIST_ID), ContainerSize::Fill)
-            .add_child(Toolbar::new(), ContainerSize::Percent(0.05));
+        .add_child(SearchBar::new_with_id(SEARCH_BAR_ID), ContainerSize::Percent(0.05))
+        .add_child(AppList::new_with_id(APP_LIST_ID), ContainerSize::Fill)
+        .add_child(Toolbar::new(), ContainerSize::Percent(0.05));
 
     root
 }

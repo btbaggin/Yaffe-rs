@@ -1,19 +1,19 @@
+mod info_modal;
 mod list_modal;
 mod platform_detail_modal;
-mod scraper_modal;
 mod restricted_modal;
+mod scraper_modal;
 mod settings_modal;
-mod info_modal;
 
-use crate::ui::{UiElement, WidgetId, AnimationManager, LayoutElement, ModalAction};
-use crate::input::{Actions};
+use crate::input::Actions;
+use crate::ui::{AnimationManager, LayoutElement, ModalAction, UiElement, WidgetId};
 use crate::{Graphics, LogicalSize};
 
-pub use list_modal::ListModal;
 pub use info_modal::InfoModal;
+pub use list_modal::ListModal;
 pub use platform_detail_modal::{on_add_platform_close, on_update_platform_close, PlatformDetailModal};
-pub use scraper_modal::{on_platform_found_close, on_game_found_close, ScraperModal};
 pub use restricted_modal::SetRestrictedModal;
+pub use scraper_modal::{on_game_found_close, on_platform_found_close, ScraperModal};
 pub use settings_modal::{on_settings_close, SettingsModal};
 
 //Modal for displaying a simple string
@@ -38,12 +38,18 @@ impl UiElement<(), ModalAction> for MessageModalContent {
     //     LogicalSize::new(width, (graphics.font_size() * rows) + crate::ui::MARGIN)
     // }
 
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { 
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         let rows = self.message.len() as f32 / 80.;
         LogicalSize::new(graphics.bounds.width(), graphics.font_size() * rows)
-     }
+    }
 
-    fn action(&mut self, _state: &mut (), _: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        _state: &mut (),
+        _: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         handler.close_if_accept(action)
     }
 

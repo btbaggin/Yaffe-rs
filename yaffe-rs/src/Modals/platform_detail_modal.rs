@@ -1,6 +1,6 @@
 use crate::logger::{PanicLogEntry, UserMessage};
 use crate::modals::*;
-use crate::ui::{TextBox, UiElement, ModalContent, UiContainer, ContainerSize, ValueElement};
+use crate::ui::{ContainerSize, ModalContent, TextBox, UiContainer, UiElement, ValueElement};
 use crate::{Actions, YaffeState};
 use std::collections::HashMap;
 
@@ -39,18 +39,24 @@ impl PlatformDetailModal {
         modal.control_map.insert("Executable".to_string(), executable.get_id());
         modal.control_map.insert("Args".to_string(), args.get_id());
 
-        modal.controls.add_child(name, ContainerSize::Shrink)
-                .add_child(executable, ContainerSize::Shrink)
-                .add_child(args, ContainerSize::Shrink);
+        modal
+            .controls
+            .add_child(name, ContainerSize::Shrink)
+            .add_child(executable, ContainerSize::Shrink)
+            .add_child(args, ContainerSize::Shrink);
     }
 }
 
 impl UiElement<(), ModalAction> for PlatformDetailModal {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
-        self.controls.calc_size(graphics)
-    }
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.controls.calc_size(graphics) }
 
-    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        state: &mut (),
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         // TODO this is duplicated from settings_modal. eh?
         let handled = match action {
             Actions::Up => {
@@ -61,7 +67,7 @@ impl UiElement<(), ModalAction> for PlatformDetailModal {
                 self.focus = self.controls.move_focus(self.focus, true);
                 true
             }
-            _ => false
+            _ => false,
         };
         let close = handler.close_if_accept(action);
         if !handled && !close {

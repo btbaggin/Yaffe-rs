@@ -1,8 +1,11 @@
 use crate::input::Actions;
-use crate::scraper::{PlatformScrapeResult, GameScrapeResult};
-use crate::ui::{List, ListItem, UiElement, WidgetId, AnimationManager, ModalAction, ModalContent, UiContainer, LayoutElement, ContainerSize};
+use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
+use crate::ui::{
+    AnimationManager, ContainerSize, LayoutElement, List, ListItem, ModalAction, ModalContent, UiContainer, UiElement,
+    WidgetId,
+};
 use crate::widgets::InfoPane;
-use crate::{LogicalSize, YaffeState, Graphics};
+use crate::{Graphics, LogicalSize, YaffeState};
 
 crate::widget!(
     pub struct ScraperModal<L: ListItem> {
@@ -25,20 +28,25 @@ impl<L: ListItem> ScraperModal<L> {
         modal.build = Some(builder);
         modal.info_id = info.get_id();
 
-        modal.container
+        modal
+            .container
             .with_child(UiContainer::row(), ContainerSize::Percent(0.60))
-                .add_child(list, ContainerSize::Percent(0.40))
-                .add_child(info, ContainerSize::Fill);
+            .add_child(list, ContainerSize::Percent(0.40))
+            .add_child(info, ContainerSize::Fill);
         modal
     }
 }
 
 impl<L: ListItem> UiElement<(), ModalAction> for ScraperModal<L> {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
-        self.container.calc_size(graphics)
-    }
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.container.calc_size(graphics) }
 
-    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        state: &mut (),
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         if handler.close_if_accept(action) {
             return true;
         }
@@ -48,7 +56,7 @@ impl<L: ListItem> UiElement<(), ModalAction> for ScraperModal<L> {
 
             let info = self.build.unwrap()(item);
             let new_info_id = info.get_id();
-            
+
             self.container.replace_child(self.info_id, info);
             self.info_id = new_info_id;
             return true;
@@ -65,7 +73,8 @@ pub fn on_platform_found_close(state: &mut YaffeState, result: bool, content: &M
     if result {
         let content = content.as_any().downcast_ref::<ScraperModal<PlatformScrapeResult>>().unwrap();
 
-        let list = crate::convert_to!(content.container.find_widget(content.list_id).unwrap(), List<PlatformScrapeResult>);
+        let list =
+            crate::convert_to!(content.container.find_widget(content.list_id).unwrap(), List<PlatformScrapeResult>);
         let item = list.get_selected();
         crate::platform::insert_platform(state, &item.info);
     }

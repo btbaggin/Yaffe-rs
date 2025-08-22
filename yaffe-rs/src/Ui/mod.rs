@@ -1,20 +1,20 @@
-use crate::{Actions, Graphics, Rect, LogicalSize};
+use crate::{Actions, Graphics, LogicalSize, Rect};
 use speedy2d::color::Color;
 
 mod animations;
 mod controls;
 mod deferred_action;
 mod modal;
+mod ui_container;
 mod utils;
 mod widget_tree;
-mod ui_container;
 pub use animations::{AnimationManager, FieldOffset};
 pub use controls::*;
 pub use deferred_action::DeferredAction;
 pub use modal::*;
+pub use ui_container::*;
 pub use utils::*;
 pub use widget_tree::{WidgetTree, WindowState};
-pub use ui_container::*;
 
 #[repr(u8)]
 enum FocusType {
@@ -32,9 +32,7 @@ pub trait LayoutElement {
 pub trait UiElement<T: 'static, D: 'static>: LayoutElement {
     fn calc_size(&mut self, _: &mut Graphics) -> LogicalSize { LogicalSize::new(0., 0.) }
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId);
-    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, _: &Actions, _handler: &mut D) -> bool {
-        false
-    }
+    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, _: &Actions, _handler: &mut D) -> bool { false }
     fn got_focus(&mut self, _: &T, _: &mut AnimationManager) {}
     fn lost_focus(&mut self, _: &T, _: &mut AnimationManager) {}
 }

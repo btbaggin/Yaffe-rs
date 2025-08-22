@@ -1,8 +1,8 @@
 use crate::logger::UserMessage;
-use crate::state::GroupType;
-use crate::ui::{get_drawable_text, display_modal, AnimationManager, LayoutElement, UiElement, WidgetId, ModalSize};
-use crate::widgets::AppTile;
 use crate::modals::InfoModal;
+use crate::state::GroupType;
+use crate::ui::{display_modal, get_drawable_text, AnimationManager, LayoutElement, ModalSize, UiElement, WidgetId};
+use crate::widgets::AppTile;
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
 };
@@ -59,7 +59,7 @@ impl UiElement<YaffeState, DeferredAction> for AppList {
             }
             Actions::Info => {
                 if let Some(exe) = state.get_selected_tile() {
-                    let info = InfoModal::from(&exe);
+                    let info = InfoModal::from(exe);
                     display_modal(state, &exe.name.clone(), None, info, ModalSize::Half, None);
                 }
                 true

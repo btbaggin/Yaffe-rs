@@ -1,5 +1,5 @@
-use crate::{Actions, LogicalSize, LogicalPosition, Rect, Graphics};
-use crate::ui::{AnimationManager, WidgetId, UiElement, LayoutElement, Color};
+use crate::ui::{AnimationManager, Color, LayoutElement, UiElement, WidgetId};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 
 struct ContainerChild<T, D> {
     element: Box<dyn UiElement<T, D>>,
@@ -12,7 +12,7 @@ pub enum ContainerSize {
     Percent(f32),
     Fixed(f32),
     Fill,
-    Shrink
+    Shrink,
 }
 
 #[derive(Debug)]
@@ -55,7 +55,7 @@ impl<T, D> UiContainer<T, D> {
             children: vec![],
             background: BackgroundType::None,
             direction: FlexDirection::Row,
-            margin: 5.
+            margin: 5.,
         }
     }
 
@@ -67,7 +67,7 @@ impl<T, D> UiContainer<T, D> {
             children: vec![],
             background: BackgroundType::None,
             direction: FlexDirection::Column,
-            margin: 5.
+            margin: 5.,
         }
     }
 
@@ -86,9 +86,7 @@ impl<T, D> UiContainer<T, D> {
         self
     }
 
-    pub fn get_child(&self, index: usize) -> &Box<dyn UiElement<T, D>> {
-        &self.children[index].element
-    }
+    pub fn get_child(&self, index: usize) -> &Box<dyn UiElement<T, D>> { &self.children[index].element }
 
     pub fn add_child(&mut self, child: impl UiElement<T, D> + 'static, size: ContainerSize) -> &mut Self {
         let child = ContainerChild { element: Box::new(child), size, realized_size: 0. };
@@ -153,15 +151,11 @@ impl<T, D> UiContainer<T, D> {
         for (i, c) in self.children.iter_mut().enumerate() {
             if c.element.get_id() == widget_id {
                 let size = c.size;
-                self.children[i] = ContainerChild { 
-                    element: child, 
-                    size, 
-                    realized_size: 0. 
-                };
+                self.children[i] = ContainerChild { element: child, size, realized_size: 0. };
                 return;
             }
         }
-        
+
         // Search recursively
         for c in &mut self.children {
             if let Some(container) = c.element.as_any_mut().downcast_mut::<UiContainer<T, D>>() {
@@ -213,11 +207,7 @@ impl<T, D> UiContainer<T, D> {
 
         // Calculate the remaining space for Fill elements
         let available_space = total - total_fixed - total_percent - total_shrink;
-        let fill_size = if fill_count > 0 {
-            available_space / fill_count as f32
-        } else {
-            0.0
-        };
+        let fill_size = if fill_count > 0 { available_space / fill_count as f32 } else { 0.0 };
 
         for child in &mut self.children {
             if let ContainerSize::Fill = child.size {
@@ -226,7 +216,7 @@ impl<T, D> UiContainer<T, D> {
         }
 
         // Calculate the total size of the container
-        let total_size = match self.direction {
+        match self.direction {
             FlexDirection::Row => LogicalSize::new(
                 total_fixed + total_percent + total_shrink + (fill_size * fill_count as f32) + margin_size,
                 parent_size.y,
@@ -235,9 +225,7 @@ impl<T, D> UiContainer<T, D> {
                 parent_size.x,
                 total_fixed + total_percent + total_shrink + (fill_size * fill_count as f32) + margin_size,
             ),
-        };
-
-        total_size
+        }
     }
 
     pub fn move_focus(&mut self, current_focus: Option<WidgetId>, next: bool) -> Option<WidgetId> {
@@ -246,13 +234,21 @@ impl<T, D> UiContainer<T, D> {
         let child_count = self.children.len() as isize;
         let index = match current_focus {
             None => {
-                if next { 0isize } else { child_count - 1 }
+                if next {
+                    0isize
+                } else {
+                    child_count - 1
+                }
             }
             Some(_) => {
                 let index = self.children.iter().position(|c| Some(c.element.get_id()) == current_focus);
                 if let Some(index) = index {
                     let index = index as isize;
-                    if next { index + 1 } else { index - 1 }
+                    if next {
+                        index + 1
+                    } else {
+                        index - 1
+                    }
                 } else {
                     child_count
                 }
@@ -284,7 +280,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
                 // TODO tinted is jank
                 let base = graphics.accent_color();
                 graphics.draw_image_tinted(base, graphics.bounds, i);
-            },
+            }
             BackgroundType::Color(c) => graphics.draw_rectangle(graphics.bounds, c),
             BackgroundType::None => {}
         }

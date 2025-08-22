@@ -157,14 +157,14 @@ pub(super) fn shutdown() -> PlatformResult<()> {
         let mut luid = LUID::default();
         LookupPrivilegeValueW(None, SE_SHUTDOWN_NAME, &mut luid)?;
 
-        let mut token_privileges = TOKEN_PRIVILEGES {
+        let token_privileges = TOKEN_PRIVILEGES {
             PrivilegeCount: 1,
             Privileges: [windows::Win32::Security::LUID_AND_ATTRIBUTES {
                 Luid: luid,
                 Attributes: windows::Win32::Security::SE_PRIVILEGE_ENABLED,
             }],
         };
-        AdjustTokenPrivileges(token_handle, false, Some(&mut token_privileges), 0, None, None)?;
+        AdjustTokenPrivileges(token_handle, false, Some(&token_privileges), 0, None, None)?;
 
         ExitWindowsEx(EWX_SHUTDOWN | EWX_FORCEIFHUNG, SHUTDOWN_REASON(0))?;
 
@@ -265,7 +265,7 @@ impl crate::input::PlatformGamepad for WindowsInput {
 
         // Read current state if we have a gamepad
         if let Some(ref gamepad) = self.gamepad {
-            self.previous_reading = self.current_reading.clone();
+            self.previous_reading = self.current_reading;
             self.current_reading = Some(gamepad.GetCurrentReading()?);
         }
 

@@ -34,7 +34,8 @@ pub fn app_ext() -> &'static str { os_impl::app_ext() }
 pub fn shutdown() -> PlatformResult<()> { os_impl::shutdown() }
 
 pub fn set_run_at_startup(task: &str, value: bool) -> PlatformResult<()> {
-    Ok(os_impl::set_run_at_startup(task, value).unwrap())
+    os_impl::set_run_at_startup(task, value).unwrap();
+    Ok(())
 }
 
 pub fn get_run_at_startup(task: &str) -> PlatformResult<bool> { os_impl::get_run_at_startup(task) }

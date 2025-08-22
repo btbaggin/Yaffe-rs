@@ -1,7 +1,7 @@
 use crate::input::{Actions, InputType};
 use crate::restrictions::RestrictedPasscode;
-use crate::ui::{UiElement, WidgetId, AnimationManager, LayoutElement, ModalAction};
-use crate::{LogicalPosition, LogicalSize, Graphics};
+use crate::ui::{AnimationManager, LayoutElement, ModalAction, UiElement, WidgetId};
+use crate::{Graphics, LogicalPosition, LogicalSize};
 use std::hash::{Hash, Hasher};
 
 crate::widget!(
@@ -18,11 +18,15 @@ impl UiElement<(), ModalAction> for SetRestrictedModal {
         LogicalSize::new(graphics.bounds.width(), graphics.font_size())
     }
 
-    fn action(&mut self, _state: &mut (), _: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        _state: &mut (),
+        _: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         let code = match action {
-            Actions::Accept | Actions::Back => {
-                return handler.close_if_accept(action)
-            },
+            Actions::Accept | Actions::Back => return handler.close_if_accept(action),
             Actions::KeyPress(InputType::Key(code, _, _)) => *code as u8 as char,
             Actions::KeyPress(InputType::Gamepad(g)) => *g as u8 as char,
             _ => action_to_char(action),

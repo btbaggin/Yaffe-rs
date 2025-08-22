@@ -1,8 +1,8 @@
 use super::{draw_label_and_box, LABEL_SIZE};
 use crate::input::InputType;
-use crate::ui::{get_drawable_text, ValueElement, LayoutElement, AnimationManager, WidgetId, UiElement};
+use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, ValueElement, WidgetId};
 use crate::utils::Rect;
-use crate::{Actions, LogicalPosition, Graphics, LogicalSize};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize};
 use copypasta::ClipboardProvider;
 use winit::keyboard::{KeyCode, ModifiersState};
 
@@ -162,8 +162,10 @@ impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
                         self.selection = None;
                     }
                 }
-                _ => if let Some(text) = text {
-                    self.insert_text(text);
+                _ => {
+                    if let Some(text) = text {
+                        self.insert_text(text);
+                    }
                 }
             }
             true

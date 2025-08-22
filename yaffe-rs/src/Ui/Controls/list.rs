@@ -1,5 +1,5 @@
-use crate::{Actions, LogicalSize, Rect, Graphics};
-use crate::ui::{WidgetId, AnimationManager, UiElement, LayoutElement};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::{Actions, Graphics, LogicalSize, Rect};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;

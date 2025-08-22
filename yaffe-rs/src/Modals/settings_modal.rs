@@ -1,7 +1,7 @@
-use crate::logger::{UserMessage, LogEntry};
+use crate::logger::{LogEntry, UserMessage};
 use crate::modals::*;
 use crate::settings::SettingsFile;
-use crate::ui::{UiContainer, ContainerSize, CheckBox, TextBox, ValueElement, ModalContent};
+use crate::ui::{CheckBox, ContainerSize, ModalContent, TextBox, UiContainer, ValueElement};
 use crate::{Actions, YaffeState};
 
 const STARTUP_TASK: &str = "Yaffe";
@@ -34,16 +34,20 @@ impl SettingsModal {
 }
 
 impl UiElement<(), ModalAction> for SettingsModal {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
-        self.settings.calc_size(graphics)
-    }
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.settings.calc_size(graphics) }
 
     fn render(&mut self, graphics: &mut Graphics, state: &(), _: &WidgetId) {
         self.settings.render(graphics, state, &self.focus.unwrap_or(WidgetId::random()));
         self.set_layout(self.settings.layout())
     }
 
-    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        state: &mut (),
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         let handled = match action {
             Actions::Up => {
                 self.focus = self.settings.move_focus(self.focus, false);
@@ -53,7 +57,7 @@ impl UiElement<(), ModalAction> for SettingsModal {
                 self.focus = self.settings.move_focus(self.focus, true);
                 true
             }
-            _ => false
+            _ => false,
         };
         let close = handler.close_if_accept(action);
         if !handled && !close {
@@ -75,11 +79,15 @@ pub fn on_settings_close(state: &mut YaffeState, result: bool, content: &ModalCo
             match name.as_str() {
                 "run_at_startup" => {
                     let run_at_startup = crate::convert_to!(content.settings.get_child(i), CheckBox);
-                    crate::os::set_run_at_startup(STARTUP_TASK, run_at_startup.value()).display_failure("Unable to save settings", state);
+                    crate::os::set_run_at_startup(STARTUP_TASK, run_at_startup.value())
+                        .display_failure("Unable to save settings", state);
                 }
                 _ => {
                     let control = crate::convert_to!(content.settings.get_child(i), TextBox);
-                    state.settings.set_setting(&name, &control.value()).display_failure("Unable to save settings", state);
+                    state
+                        .settings
+                        .set_setting(name, &control.value())
+                        .display_failure("Unable to save settings", state);
                 }
             };
         }

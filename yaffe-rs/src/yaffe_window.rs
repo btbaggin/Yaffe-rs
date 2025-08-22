@@ -1,14 +1,15 @@
+use crate::assets::AssetKey;
 use crate::graphics::Graphics;
 use crate::input::Actions;
-use crate::assets::AssetKey;
 use crate::job_system::JobResult;
 use crate::logger::{LogEntry, UserMessage};
-use crate::scraper::{PlatformScrapeResult, GameScrapeResult};
 use crate::modals::{
-    on_add_platform_close, on_settings_close, PlatformDetailModal, SetRestrictedModal, SettingsModal, ListModal, ScraperModal
+    on_add_platform_close, on_settings_close, ListModal, PlatformDetailModal, ScraperModal, SetRestrictedModal,
+    SettingsModal,
 };
 use crate::restrictions::{on_restricted_modal_close, RestrictedMode};
-use crate::ui::{display_modal, AnimationManager, DeferredAction, WidgetTree, ModalContent, ModalSize, ModalAction};
+use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
+use crate::ui::{display_modal, AnimationManager, DeferredAction, ModalAction, ModalContent, ModalSize, WidgetTree};
 use crate::widgets::InfoPane;
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
@@ -49,7 +50,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
             if let Some(m) = modals.last_mut() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_modal(m,  graphics);
+                crate::ui::render_modal(m, graphics);
             }
 
             if !self.data.toasts.is_empty() {
@@ -119,7 +120,14 @@ fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
         match list_content.get_selected::<String>().as_str() {
             "Add Emulator" => {
                 let content = PlatformDetailModal::emulator();
-                display_modal(state, "New Emulator", Some("Confirm"), content, ModalSize::Third, Some(on_add_platform_close));
+                display_modal(
+                    state,
+                    "New Emulator",
+                    Some("Confirm"),
+                    content,
+                    ModalSize::Third,
+                    Some(on_add_platform_close),
+                );
             }
             "Settings" => {
                 let content = SettingsModal::from(&state.settings);
@@ -127,7 +135,14 @@ fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
             }
             "Disable Restricted Mode" | "Enable Restricted Mode" => {
                 let content = SetRestrictedModal::new();
-                display_modal(state, "Restricted Mode", Some("Set passcode"), content, ModalSize::Third, Some(on_restricted_modal_close))
+                display_modal(
+                    state,
+                    "Restricted Mode",
+                    Some("Set passcode"),
+                    content,
+                    ModalSize::Third,
+                    Some(on_restricted_modal_close),
+                )
             }
             "Scan For New Roms" => crate::platform::scan_new_files(state),
             "Exit Yaffe" => state.exit(),
@@ -191,14 +206,15 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
 }
 
 fn build_platform_info(item: &PlatformScrapeResult) -> InfoPane<(), ModalAction> {
-    let attributes = vec!();
+    let attributes = vec![];
     InfoPane::from(AssetKey::Url(item.boxart.clone()), item.overview.clone(), attributes)
 }
 
 fn build_game_info(item: &GameScrapeResult) -> InfoPane<(), ModalAction> {
-    let mut attributes = vec!();
-    attributes.push(("Players".to_string(), item.info.players.to_string()));
-    attributes.push(("Rating".to_string(), item.info.rating.clone()));
-    attributes.push(("Released".to_string(), item.info.released.clone()));
+    let attributes = vec![
+        ("Players".to_string(), item.info.players.to_string()),
+        ("Rating".to_string(), item.info.rating.clone()),
+        ("Released".to_string(), item.info.released.clone()),
+    ];
     InfoPane::from(AssetKey::Url(item.boxart.clone()), item.info.overview.clone(), attributes)
 }

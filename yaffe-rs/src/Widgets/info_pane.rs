@@ -1,6 +1,6 @@
-use crate::ui::{AnimationManager, UiContainer, Image, Label, UiElement, WidgetId, ContainerSize};
-use crate::{widget, Actions, Graphics, LogicalSize};
 use crate::assets::AssetKey;
+use crate::ui::{AnimationManager, ContainerSize, Image, Label, UiContainer, UiElement, WidgetId};
+use crate::{widget, Actions, Graphics, LogicalSize};
 
 widget!(
     pub struct InfoPane<T, D> {
@@ -10,11 +10,10 @@ widget!(
 impl<T, D> InfoPane<T, D> {
     pub fn from(art: AssetKey, overview: String, attributes: Vec<(String, String)>) -> InfoPane<T, D> {
         let mut pane = InfoPane::new();
-        pane.container
-            .add_child(Image::from(art), ContainerSize::Percent(0.25));
+        pane.container.add_child(Image::from(art), ContainerSize::Percent(0.25));
         let attribute_container = pane.container.with_child(UiContainer::column(), ContainerSize::Fill);
         for (name, value) in &attributes {
-            attribute_container.add_child(Label::simple(&format!("{}: {}", name, value)), ContainerSize::Shrink);
+            attribute_container.add_child(Label::simple(&format!("{name}: {value}")), ContainerSize::Shrink);
         }
         attribute_container.add_child(Label::wrapping(&overview, None), ContainerSize::Shrink);
         pane
@@ -22,15 +21,19 @@ impl<T, D> InfoPane<T, D> {
 }
 
 impl<T, D> UiElement<T, D> for InfoPane<T, D> {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
-        self.container.calc_size(graphics)
-    }
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.container.calc_size(graphics) }
 
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId) {
         self.container.render(graphics, state, current_focus);
     }
 
-    fn action(&mut self, _state: &mut T, _animations: &mut AnimationManager, _action: &Actions, _handler: &mut D) -> bool {
+    fn action(
+        &mut self,
+        _state: &mut T,
+        _animations: &mut AnimationManager,
+        _action: &Actions,
+        _handler: &mut D,
+    ) -> bool {
         false
     }
 }

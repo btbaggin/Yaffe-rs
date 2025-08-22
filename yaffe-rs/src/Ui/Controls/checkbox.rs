@@ -1,6 +1,6 @@
 use super::draw_label_and_box;
 use crate::input::{Actions, InputType};
-use crate::ui::{ValueElement, UiElement, WidgetId, AnimationManager, LayoutElement, LABEL_SIZE};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, ValueElement, WidgetId, LABEL_SIZE};
 use crate::utils::Rect;
 use crate::{Graphics, LogicalSize};
 use winit::keyboard::KeyCode;
@@ -48,7 +48,5 @@ impl<T: 'static, D: 'static> UiElement<T, D> for CheckBox {
     }
 }
 impl ValueElement<bool> for CheckBox {
-    fn value(&self) -> bool {
-        self.checked
-    }
+    fn value(&self) -> bool { self.checked }
 }

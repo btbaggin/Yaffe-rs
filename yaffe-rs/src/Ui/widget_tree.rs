@@ -37,7 +37,10 @@ impl<T: WindowState, D> WidgetTree<T, D> {
         }
     }
 
-    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut UiContainer<T, D>) -> Option<&'a mut dyn UiElement<T, D>> {
+    fn current_focus<'a>(
+        focus: &'a [WidgetId],
+        root: &'a mut UiContainer<T, D>,
+    ) -> Option<&'a mut dyn UiElement<T, D>> {
         if let Some(last) = focus.last() {
             return root.find_widget_mut(*last);
         }

@@ -1,4 +1,4 @@
-use crate::ui::{AnimationManager, WidgetId, UiElement, LayoutElement};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
 use crate::{Actions, Graphics, LogicalSize};
 
 crate::widget!(
@@ -25,7 +25,7 @@ impl Label {
     }
 }
 impl<T: 'static, D: 'static> UiElement<T, D> for Label {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { 
+    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         let size = self.font_size.unwrap_or(graphics.font_size());
         let width = graphics.bounds.width();
         // TODO im double drawing. eewww
@@ -42,7 +42,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for Label {
 
         let size = text.size();
         LogicalSize::new(size.x, size.y)
-     }
+    }
 
     fn render(&mut self, graphics: &mut Graphics, _: &T, _: &WidgetId) {
         let rect = self.layout();
