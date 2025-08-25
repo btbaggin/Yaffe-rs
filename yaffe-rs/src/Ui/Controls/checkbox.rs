@@ -2,7 +2,7 @@ use super::draw_label_and_box;
 use crate::input::{Actions, InputType};
 use crate::ui::{AnimationManager, LayoutElement, UiElement, ValueElement, WidgetId, LABEL_SIZE};
 use crate::utils::Rect;
-use crate::{Graphics, LogicalSize, LogicalPosition};
+use crate::{Graphics, LogicalSize};
 use winit::keyboard::KeyCode;
 
 crate::widget!(

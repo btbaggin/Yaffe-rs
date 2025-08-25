@@ -1,4 +1,4 @@
-use crate::ui::ModalContent;
+use crate::modals::ModalContent;
 use crate::{modals::SetRestrictedModal, YaffeState};
 
 const PIN_SIZE: usize = 8;

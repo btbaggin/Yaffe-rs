@@ -1,5 +1,5 @@
-use crate::modals::{on_update_platform_close, PlatformDetailModal};
-use crate::ui::{display_modal, AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN, MENU_BACKGROUND};
+use crate::modals::{display_modal, on_update_platform_close, PlatformDetailModal};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN, MENU_BACKGROUND};
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
 };
@@ -39,7 +39,7 @@ impl UiElement<YaffeState, DeferredAction> for PlatformList {
                         "Platform Info",
                         Some("Save"),
                         modal,
-                        crate::ui::ModalSize::Third,
+                        crate::modals::ModalSize::Third,
                         Some(on_update_platform_close),
                     );
                 }
@@ -120,8 +120,6 @@ fn draw_header(graphics: &mut crate::Graphics, y: f32, width: f32, kind: GroupTy
         Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)),
         image,
     );
-    // let i = crate::assets::request_image(graphics, image).unwrap();
-    // i.render(graphics, Rect::point_and_size(LogicalPosition::new(MARGIN, y), LogicalSize::new(ICON_SIZE, ICON_SIZE)));
 
     let y = y + ICON_SIZE;
     graphics.draw_line(

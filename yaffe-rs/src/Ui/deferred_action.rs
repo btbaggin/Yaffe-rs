@@ -1,5 +1,6 @@
 use crate::state::{GroupType, YaffeState};
-use crate::ui::{display_modal, AnimationManager, FocusType, WidgetId, WidgetTree};
+use crate::ui::{AnimationManager, FocusType, WidgetId, WidgetTree};
+use crate::modals::{display_modal, ModalSize, MessageModal};
 
 pub struct DeferredAction {
     focus: Option<FocusType>,
@@ -29,15 +30,15 @@ impl DeferredAction {
                 }
                 if let Err(e) = crate::plugins::load_plugin_items(state, index) {
                     let message = format!("Error loading plugin items: {e:?}");
-                    let message = crate::modals::MessageModalContent::from(&message);
-                    display_modal(&mut ui.data, "Error", None, message, crate::ui::ModalSize::Half, None);
+                    let message = MessageModal::from(&message);
+                    display_modal(&mut ui.data, "Error", None, message, ModalSize::Half, None);
                 }
             }
         }
 
         if let Some(message) = self.message {
-            let message = crate::modals::MessageModalContent::from(&message);
-            display_modal(&mut ui.data, "Error", None, message, crate::ui::ModalSize::Half, None);
+            let message = MessageModal::from(&message);
+            display_modal(&mut ui.data, "Error", None, message, ModalSize::Half, None);
         }
     }
 }

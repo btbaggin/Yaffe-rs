@@ -1,4 +1,4 @@
-use crate::ui::{AnimationManager, Color, LayoutElement, UiElement, WidgetId};
+use crate::ui::{AnimationManager, Color, LayoutElement, UiElement, WidgetId, MARGIN};
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 
 struct ContainerChild<T, D> {
@@ -62,7 +62,7 @@ impl<T, D> UiContainer<T, D> {
             background: BackgroundType::None,
             direction: FlexDirection::Row,
             justification: Justification::Start,
-            margin: 5.,
+            margin: MARGIN,
         }
     }
 
@@ -75,7 +75,7 @@ impl<T, D> UiContainer<T, D> {
             background: BackgroundType::None,
             direction: FlexDirection::Column,
             justification: Justification::Start,
-            margin: 5.,
+            margin: MARGIN,
         }
     }
 

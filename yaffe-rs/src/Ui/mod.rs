@@ -4,14 +4,12 @@ use speedy2d::color::Color;
 mod animations;
 mod controls;
 mod deferred_action;
-mod modal;
 mod ui_container;
 mod utils;
 mod widget_tree;
 pub use animations::{AnimationManager, FieldOffset};
 pub use controls::*;
 pub use deferred_action::DeferredAction;
-pub use modal::*;
 pub use ui_container::*;
 pub use utils::*;
 pub use widget_tree::{WidgetTree, WindowState};
@@ -70,7 +68,7 @@ macro_rules! widget {
             $($elevis $element: $ty),*
         }
         impl $(<$($generic : 'static $(+ $bound)?),+>)? $crate::ui::LayoutElement for $name $(<$($generic),+>)? {
-            fn layout(&self) -> $crate::Rect { $crate::Rect::new(self.position, self.position + self.size) }
+            fn layout(&self) -> $crate::Rect { $crate::Rect::point_and_size(self.position, self.size) }
             fn set_layout(&mut self, layout: $crate::Rect) {
                 self.position = *layout.top_left();
                 self.size = layout.size();

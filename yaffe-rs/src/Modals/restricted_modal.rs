@@ -1,6 +1,7 @@
 use crate::input::{Actions, InputType};
 use crate::restrictions::RestrictedPasscode;
-use crate::ui::{AnimationManager, LayoutElement, ModalAction, UiElement, WidgetId};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::modals::ModalAction;
 use crate::{Graphics, LogicalPosition, LogicalSize};
 use std::hash::{Hash, Hasher};
 

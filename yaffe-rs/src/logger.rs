@@ -2,6 +2,7 @@ use crate::{DeferredAction, YaffeState};
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::sync::Mutex;
+use crate::modals::{display_modal, ModalSize, MessageModal};
 
 #[allow(unused_imports)]
 pub use log::{debug, error, info, trace, warn};
@@ -101,8 +102,8 @@ impl<T, E: Debug> UserMessage<T> for Result<T, E> {
         match self {
             Err(e) => {
                 let message = format!("{message}: {e:?}");
-                let message = crate::modals::MessageModalContent::from(&message);
-                crate::ui::display_modal(state, "Error", None, message, crate::ui::ModalSize::Half, None);
+                let message = MessageModal::from(&message);
+                display_modal(state, "Error", None, message, ModalSize::Half, None);
                 None
             }
             Ok(r) => Some(r),

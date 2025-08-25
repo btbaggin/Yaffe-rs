@@ -1,8 +1,8 @@
 use crate::logger::{LogEntry, UserMessage};
-use crate::modals::*;
+use crate::modals::{ModalContent, ModalAction};
 use crate::settings::SettingsFile;
-use crate::ui::{CheckBox, ContainerSize, ModalContent, TextBox, UiContainer, ValueElement};
-use crate::{Actions, YaffeState};
+use crate::ui::{CheckBox, ContainerSize, TextBox, UiContainer, ValueElement, AnimationManager, WidgetId, UiElement};
+use crate::{Actions, YaffeState, Graphics, LogicalSize};
 
 const STARTUP_TASK: &str = "Yaffe";
 
@@ -38,7 +38,6 @@ impl UiElement<(), ModalAction> for SettingsModal {
 
     fn render(&mut self, graphics: &mut Graphics, state: &(), _: &WidgetId) {
         self.settings.render(graphics, state, &self.focus.unwrap_or(WidgetId::random()));
-        self.set_layout(self.settings.layout())
     }
 
     fn action(

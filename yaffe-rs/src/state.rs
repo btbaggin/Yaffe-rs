@@ -13,7 +13,7 @@ use crate::overlay_state::{ExternalProcess, YaffeProcess};
 use crate::plugins::Plugin;
 use crate::restrictions::RestrictedMode;
 use crate::settings::SettingsFile;
-use crate::ui::Modal;
+use crate::modals::Modal;
 use yaffe_lib::{NavigationEntry, PluginFilter, PluginTile, SelectedAction, TileType};
 
 #[derive(PartialEq, Copy, Clone, Debug)]

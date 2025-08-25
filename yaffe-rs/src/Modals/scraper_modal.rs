@@ -1,9 +1,10 @@
 use crate::input::Actions;
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
 use crate::ui::{
-    AnimationManager, ContainerSize, LayoutElement, List, ListItem, ModalAction, ModalContent, UiContainer, UiElement,
+    AnimationManager, ContainerSize, LayoutElement, List, ListItem, UiContainer, UiElement,
     WidgetId,
 };
+use crate::modals::{ModalAction, ModalContent};
 use crate::widgets::InfoPane;
 use crate::{Graphics, LogicalSize, YaffeState};
 

@@ -1,7 +1,8 @@
 use crate::logger::UserMessage;
 use crate::modals::InfoModal;
 use crate::state::GroupType;
-use crate::ui::{display_modal, get_drawable_text, AnimationManager, LayoutElement, ModalSize, UiElement, WidgetId};
+use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::modals::{display_modal, ModalSize};
 use crate::widgets::AppTile;
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,

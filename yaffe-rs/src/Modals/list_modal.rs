@@ -1,4 +1,5 @@
-use crate::ui::{AnimationManager, ContainerSize, List, ListItem, ModalAction, UiContainer, UiElement, WidgetId};
+use crate::ui::{AnimationManager, ContainerSize, List, ListItem, UiContainer, UiElement, WidgetId};
+use crate::modals::ModalAction;
 use crate::{Actions, Graphics, LogicalSize};
 
 crate::widget!(

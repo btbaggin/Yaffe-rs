@@ -9,7 +9,8 @@ use crate::modals::{
 };
 use crate::restrictions::{on_restricted_modal_close, RestrictedMode};
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
-use crate::ui::{display_modal, AnimationManager, DeferredAction, ModalAction, ModalContent, ModalSize, WidgetTree};
+use crate::ui::{AnimationManager, DeferredAction, WidgetTree};
+use crate::modals::{display_modal, update_modal, is_modal_open, ModalSize, ModalAction, ModalContent};
 use crate::widgets::InfoPane;
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
@@ -46,13 +47,13 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
             if let Some(m) = modals.last_mut() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_modal(m, graphics);
+                crate::modals::render_modal(m, graphics);
             }
 
             if !self.data.toasts.is_empty() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
-                crate::ui::render_toasts(&self.data.toasts, graphics);
+                crate::modals::render_toasts(&self.data.toasts, graphics);
             }
         }
 
@@ -69,7 +70,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
         match action {
             Actions::ShowMenu => {
-                if !crate::ui::is_modal_open(&self.data) {
+                if !is_modal_open(&self.data) {
                     let items = vec![
                         "Scan For New Roms".to_string(),
                         "Add Emulator".to_string(),
@@ -83,7 +84,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
                     ];
 
                     let list = crate::modals::ListModal::from(items);
-                    crate::ui::display_modal(&mut self.data, "Menu", None, list, ModalSize::Third, Some(on_menu_close));
+                    display_modal(&mut self.data, "Menu", None, list, ModalSize::Third, Some(on_menu_close));
                     true
                 } else {
                     false
@@ -94,10 +95,10 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
             }
             _ => {
                 let mut handler = DeferredAction::new();
-                let result = if !crate::ui::is_modal_open(&self.data) {
+                let result = if !is_modal_open(&self.data) {
                     self.action(animations, action, &mut handler)
                 } else {
-                    crate::ui::update_modal(&mut self.data, animations, action);
+                    update_modal(&mut self.data, animations, action);
                     true
                 };
                 handler.resolve(self, animations);
@@ -171,7 +172,7 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                         &format!("Select Game: {}", result.request),
                         None,
                         content,
-                        crate::ui::ModalSize::Half,
+                        ModalSize::Half,
                         Some(crate::modals::on_game_found_close),
                     );
                 }
@@ -189,7 +190,7 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                         "Select Platform",
                         None,
                         content,
-                        crate::ui::ModalSize::Half,
+                        ModalSize::Half,
                         Some(crate::modals::on_platform_found_close),
                     );
                 }
