@@ -1,6 +1,6 @@
+use crate::modals::{display_modal, MessageModal, ModalSize};
 use crate::state::{GroupType, YaffeState};
 use crate::ui::{AnimationManager, FocusType, WidgetId, WidgetTree};
-use crate::modals::{display_modal, ModalSize, MessageModal};
 
 pub struct DeferredAction {
     focus: Option<FocusType>,

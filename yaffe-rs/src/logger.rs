@@ -1,8 +1,8 @@
+use crate::modals::{display_modal, MessageModal, ModalSize};
 use crate::{DeferredAction, YaffeState};
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::sync::Mutex;
-use crate::modals::{display_modal, ModalSize, MessageModal};
 
 #[allow(unused_imports)]
 pub use log::{debug, error, info, trace, warn};

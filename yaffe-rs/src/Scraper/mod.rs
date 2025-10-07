@@ -1,3 +1,4 @@
+use crate::controls::ListItem;
 use crate::data::{GameInfo, PlatformInfo};
 use crate::logger::{error, LogEntry};
 use reqwest::blocking::{Client, RequestBuilder, Response};
@@ -18,7 +19,7 @@ pub struct GameScrapeResult {
     pub info: GameInfo,
     pub boxart: PathBuf,
 }
-impl crate::ui::ListItem for GameScrapeResult {
+impl ListItem for GameScrapeResult {
     fn to_display(&self) -> String { self.info.name.clone() }
 }
 
@@ -28,7 +29,7 @@ pub struct PlatformScrapeResult {
     pub overview: String,
     pub boxart: PathBuf,
 }
-impl crate::ui::ListItem for PlatformScrapeResult {
+impl ListItem for PlatformScrapeResult {
     fn to_display(&self) -> String { self.info.platform.clone() }
 }
 

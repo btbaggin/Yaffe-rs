@@ -1,58 +1,53 @@
-use crate::input::{Actions, InputType};
-use crate::restrictions::RestrictedPasscode;
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
-use crate::modals::ModalAction;
-use crate::{Graphics, LogicalPosition, LogicalSize};
-use std::hash::{Hash, Hasher};
+use crate::controls::{PassBox, RestrictedPasscode};
+use crate::modals::{ModalContent, ModalContentElement};
+use crate::ui::{ContainerSize, LayoutElement, ValueElement};
+use crate::YaffeState;
 
-crate::widget!(
-    pub struct SetRestrictedModal {
-        pass: RestrictedPasscode = RestrictedPasscode::default()
-    }
-);
-impl SetRestrictedModal {
-    pub fn get_passcode(&self) -> RestrictedPasscode { self.pass }
+pub enum RestrictedMode {
+    On(RestrictedPasscode),
+    Off,
 }
 
-impl UiElement<(), ModalAction> for SetRestrictedModal {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
-        LogicalSize::new(graphics.bounds.width(), graphics.font_size())
+pub struct SetRestrictedModal;
+
+impl SetRestrictedModal {
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> ModalContentElement {
+        let mut modal = ModalContentElement::new(SetRestrictedModal, false);
+        let pass = PassBox::new();
+        let pass_id = pass.get_id();
+        modal.add_child(pass, ContainerSize::Shrink);
+        modal.focus = Some(pass_id);
+        modal
     }
+}
 
-    fn action(
-        &mut self,
-        _state: &mut (),
-        _: &mut AnimationManager,
-        action: &Actions,
-        handler: &mut ModalAction,
-    ) -> bool {
-        let code = match action {
-            Actions::Accept | Actions::Back => return handler.close_if_accept(action),
-            Actions::KeyPress(InputType::Key(code, _, _)) => *code as u8 as char,
-            Actions::KeyPress(InputType::Gamepad(g)) => *g as u8 as char,
-            _ => action_to_char(action),
-        };
-        self.pass.add_digit(code);
-        false
-    }
+impl ModalContent for SetRestrictedModal {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+}
 
-    fn render(&mut self, graphics: &mut Graphics, _: &(), _: &WidgetId) {
-        let font_size = graphics.font_size();
-        let rect = self.layout();
+pub fn on_restricted_modal_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+    if result {
+        let content = crate::convert_to!(content.get_child(0), PassBox);
+        let pass = content.value();
 
-        let item_label = crate::ui::get_drawable_text(graphics, font_size, "*");
-        for i in 0..self.pass.len() {
-            graphics.draw_text(
-                LogicalPosition::new(rect.left() + i as f32 * font_size, rect.top()),
-                graphics.font_color(),
-                &item_label,
-            );
+        match state.restricted_mode {
+            RestrictedMode::On(p) => {
+                if pass == p {
+                    state.restricted_mode = RestrictedMode::Off;
+                } else {
+                    // state.display_toast(0, );
+                    // TODO toast?
+                }
+            }
+            RestrictedMode::Off => state.restricted_mode = RestrictedMode::On(pass),
         }
     }
 }
 
-fn action_to_char(action: &Actions) -> char {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    action.hash(&mut hasher);
-    hasher.finish() as u8 as char
+pub fn verify_restricted_action(state: &mut YaffeState) -> bool {
+    if let RestrictedMode::On(_) = state.restricted_mode {
+        return false;
+    }
+    true
 }

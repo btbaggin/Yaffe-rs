@@ -2,17 +2,17 @@ use crate::{Actions, Graphics, LogicalSize, Rect};
 use speedy2d::color::Color;
 
 mod animations;
-mod controls;
 mod deferred_action;
 mod ui_container;
 mod utils;
 mod widget_tree;
 pub use animations::{AnimationManager, FieldOffset};
-pub use controls::*;
 pub use deferred_action::DeferredAction;
 pub use ui_container::*;
 pub use utils::*;
 pub use widget_tree::{WidgetTree, WindowState};
+
+pub const MARGIN: f32 = 10.;
 
 #[repr(u8)]
 enum FocusType {
@@ -94,4 +94,20 @@ macro_rules! widget {
             }
         }
     };
+}
+
+pub fn change_brightness(color: &Color, factor: f32) -> Color {
+    let r = color.r();
+    let g = color.g();
+    let b = color.b();
+    let a = color.a();
+
+    let (r, g, b) = if factor < 0. {
+        let factor = 1. + factor;
+        ((r * factor), (g * factor), (b * factor))
+    } else {
+        ((1. - r) * factor + r, (1. - g) * factor + g, (1. - b) * factor + b)
+    };
+
+    Color::from_rgba(r, g, b, a)
 }

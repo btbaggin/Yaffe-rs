@@ -8,7 +8,6 @@ use std::rc::Rc;
  * TODO
  * Search bar doesnt work well on plugins
  * allow reloading plugins?
- * Search bar needs to disappear
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,6 +16,7 @@ const APP_LIST_ID: WidgetId = WidgetId::static_id(3);
 const SEARCH_BAR_ID: WidgetId = WidgetId::static_id(4);
 
 mod assets;
+mod controls;
 mod data;
 mod graphics;
 mod input;
@@ -29,7 +29,6 @@ mod overlay_window;
 mod platform;
 mod plugins;
 mod pooled_cache;
-mod restrictions;
 mod scraper;
 mod settings;
 mod state;

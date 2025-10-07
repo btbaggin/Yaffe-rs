@@ -1,5 +1,6 @@
+use crate::controls::MENU_BACKGROUND;
 use crate::state::MetadataSearch;
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MENU_BACKGROUND};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
 use crate::{widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState};
 
 const NAME_WIDTH: f32 = 175.;
@@ -109,6 +110,7 @@ impl UiElement<YaffeState, DeferredAction> for SearchBar {
     fn render(&mut self, graphics: &mut crate::Graphics, _: &YaffeState, current_focus: &WidgetId) {
         let current_search = &self.searches[self.active_search];
         let rect = self.layout();
+        let rect = Rect::point_and_size(*rect.top_left() + (self.offset * rect.height()), rect.size());
         let filter_start = rect.left() + NAME_WIDTH;
         let name = &current_search.name;
 

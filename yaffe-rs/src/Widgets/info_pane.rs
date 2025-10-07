@@ -1,5 +1,6 @@
 use crate::assets::AssetKey;
-use crate::ui::{AnimationManager, ContainerSize, Image, Label, UiContainer, UiElement, WidgetId};
+use crate::controls::{Image, Label};
+use crate::ui::{AnimationManager, ContainerSize, UiContainer, UiElement, WidgetId};
 use crate::{widget, Actions, Graphics, LogicalSize};
 
 widget!(

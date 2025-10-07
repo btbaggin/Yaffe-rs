@@ -183,7 +183,7 @@ impl<T, D> UiContainer<T, D> {
         let mut total_shrink = 0.0;
         let mut fill_count = 0;
 
-        let margin_size = self.children.len() as f32 * 5.;
+        let margin_size = self.children.len() as f32 * self.margin;
 
         let total = match self.direction {
             FlexDirection::Row => parent_size.x,
@@ -286,7 +286,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
             Justification::Center => match self.direction {
                 FlexDirection::Row => LogicalPosition::new((graphics.bounds.width() - total_size.x) / 2., origin.y),
                 FlexDirection::Column => LogicalPosition::new(origin.x, (graphics.bounds.height() - total_size.y) / 2.),
-            } 
+            },
         };
 
         let layout = Rect::point_and_size(origin, total_size);
@@ -295,7 +295,6 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
 
         match self.background {
             BackgroundType::Image(i) => {
-                // TODO tinted is jank
                 let base = graphics.accent_color();
                 graphics.draw_image_tinted(base, graphics.bounds, i);
             }

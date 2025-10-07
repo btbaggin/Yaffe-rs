@@ -70,14 +70,7 @@ impl AnimationManager {
     ) -> AnimationBuilder<'a, T> {
         let current_value = apply::<_, T>(field, widget).clone();
 
-        AnimationBuilder {
-            manager: self,
-            widget_id: widget.get_id(),
-            field,
-            target,
-            current_value,
-            duration: 0.3,
-        }
+        AnimationBuilder { manager: self, widget_id: widget.get_id(), field, target, current_value, duration: 0.3 }
     }
 
     /// Processes any widgets that have running animations

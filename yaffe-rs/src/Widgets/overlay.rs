@@ -1,10 +1,8 @@
 use crate::assets::Images;
+use crate::controls::{LABEL_SIZE, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
 use crate::logger::LogEntry;
 use crate::os::{get_volume, set_volume};
-use crate::ui::{
-    image_fill, AnimationManager, RightAlignment, UiElement, WidgetId, LABEL_SIZE, MARGIN, MODAL_BACKGROUND,
-    MODAL_OVERLAY_COLOR,
-};
+use crate::ui::{image_fill, AnimationManager, RightAlignment, UiElement, WidgetId, MARGIN};
 use crate::{widget, Actions, Graphics, LogicalPosition, LogicalSize, OverlayState, Rect};
 use speedy2d::color::Color;
 

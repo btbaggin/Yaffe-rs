@@ -1,5 +1,6 @@
+use crate::controls::MENU_BACKGROUND;
 use crate::modals::{display_modal, on_update_platform_close, PlatformDetailModal};
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN, MENU_BACKGROUND};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN};
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
 };

@@ -1,102 +1,61 @@
+use crate::controls::TextBox;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::modals::{ModalContent, ModalAction};
-use crate::ui::{ContainerSize, TextBox, UiContainer, UiElement, ValueElement, WidgetId, AnimationManager, LayoutElement};
-use crate::{Actions, YaffeState, Graphics, LogicalSize};
+use crate::modals::{ModalContent, ModalContentElement};
+use crate::ui::{ContainerSize, LayoutElement, ValueElement, WidgetId};
+use crate::YaffeState;
 use std::collections::HashMap;
 
-crate::widget!(
-    pub struct PlatformDetailModal {
-        controls: UiContainer<(), ModalAction> = UiContainer::column(),
-        control_map: HashMap<String, WidgetId> = HashMap::new(),
-        platform_id: i64 = 0,
-        focus: Option<WidgetId> = None
-    }
-);
+pub struct PlatformDetailModal {
+    control_map: HashMap<String, WidgetId>,
+    platform_id: i64,
+}
 
 impl PlatformDetailModal {
-    pub fn emulator() -> PlatformDetailModal {
-        let mut detail = PlatformDetailModal::new();
-        PlatformDetailModal::_init("", "", "", &mut detail);
-        detail
-    }
+    pub fn emulator() -> ModalContentElement { PlatformDetailModal::_init(0, "", "", "") }
 
-    pub fn from_existing(plat: &crate::TileGroup) -> PlatformDetailModal {
+    pub fn from_existing(plat: &crate::TileGroup) -> ModalContentElement {
         //This should never fail since we orignally got it from the database
         let platform_id = plat.id;
         let (path, args) = crate::data::PlatformInfo::get_info(platform_id).log_and_panic();
 
-        let mut detail = PlatformDetailModal::new();
-        PlatformDetailModal::_init(&plat.name.clone(), &path, &args, &mut detail);
-        detail
+        PlatformDetailModal::_init(platform_id, &plat.name.clone(), &path, &args)
     }
 
-    fn _init(name: &str, path: &str, args: &str, modal: &mut PlatformDetailModal) {
+    fn _init(platform_id: i64, name: &str, path: &str, args: &str) -> ModalContentElement {
         let name = TextBox::from("Name", name);
         let executable = TextBox::from("Executable", path);
         let args = TextBox::from("Args", args);
 
-        modal.control_map.insert("Name".to_string(), name.get_id());
-        modal.control_map.insert("Executable".to_string(), executable.get_id());
-        modal.control_map.insert("Args".to_string(), args.get_id());
+        let mut control_map = HashMap::new();
+        control_map.insert("Name".to_string(), name.get_id());
+        control_map.insert("Executable".to_string(), executable.get_id());
+        control_map.insert("Args".to_string(), args.get_id());
 
+        let detail = PlatformDetailModal { control_map, platform_id };
+        let mut modal = ModalContentElement::new(detail, true);
         modal
-            .controls
             .add_child(name, ContainerSize::Shrink)
             .add_child(executable, ContainerSize::Shrink)
             .add_child(args, ContainerSize::Shrink);
+        modal
     }
 }
 
-impl UiElement<(), ModalAction> for PlatformDetailModal {
-    fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.controls.calc_size(graphics) }
-
-    fn action(
-        &mut self,
-        state: &mut (),
-        animations: &mut AnimationManager,
-        action: &Actions,
-        handler: &mut ModalAction,
-    ) -> bool {
-        // TODO this is duplicated from settings_modal. eh?
-        let handled = match action {
-            Actions::Up => {
-                self.focus = self.controls.move_focus(self.focus, false);
-                true
-            }
-            Actions::Down => {
-                self.focus = self.controls.move_focus(self.focus, true);
-                true
-            }
-            _ => false,
-        };
-        let close = handler.close_if_accept(action);
-        if !handled && !close {
-            if let Some(focus) = self.focus {
-                if let Some(widget) = self.controls.find_widget_mut(focus) {
-                    return widget.action(state, animations, action, handler);
-                }
-            }
-        }
-        handled || close
-    }
-
-    fn render(&mut self, graphics: &mut Graphics, state: &(), _: &WidgetId) {
-        self.controls.render(graphics, state, &self.focus.unwrap_or(WidgetId::random()));
-    }
+impl ModalContent for PlatformDetailModal {
+    fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
+pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
     if result {
-        let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
-
         let job_id = crate::job_system::generate_job_id();
 
-        let name = content.control_map["Name"];
-        let exe = content.control_map["Executable"];
-        let args = content.control_map["Args"];
-        let name = crate::convert_to!(content.controls.find_widget(name).unwrap(), TextBox);
-        let exe = crate::convert_to!(content.controls.find_widget(exe).unwrap(), TextBox);
-        let args = crate::convert_to!(content.controls.find_widget(args).unwrap(), TextBox);
+        let details = content.get_content::<PlatformDetailModal>();
+        let name = details.control_map["Name"];
+        let exe = details.control_map["Executable"];
+        let args = details.control_map["Args"];
+        let name = crate::convert_to!(content.find_widget(name).unwrap(), TextBox);
+        let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
+        let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
         let job = crate::Job::SearchPlatform {
             id: job_id,
             name: name.value().trim().to_string(),
@@ -109,16 +68,16 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &Mod
     }
 }
 
-pub fn on_update_platform_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
+pub fn on_update_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
     if result {
-        let content = content.as_any().downcast_ref::<PlatformDetailModal>().unwrap();
+        let details = content.get_content::<PlatformDetailModal>();
         state.refresh_list = true;
 
-        let exe = content.control_map["Executable"];
-        let args = content.control_map["Args"];
-        let exe = crate::convert_to!(content.controls.find_widget(exe).unwrap(), TextBox);
-        let args = crate::convert_to!(content.controls.find_widget(args).unwrap(), TextBox);
-        crate::data::PlatformInfo::update(content.platform_id, exe.value().trim(), args.value().trim())
+        let exe = details.control_map["Executable"];
+        let args = details.control_map["Args"];
+        let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
+        let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
+        crate::data::PlatformInfo::update(details.platform_id, exe.value().trim(), args.value().trim())
             .display_failure("Unable to update platform", state);
     }
 }

@@ -73,7 +73,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
                     LogicalPosition::new(selection_x, rect.top()),
                     LogicalPosition::new(selection_right, rect.top() + height),
                 ),
-                base
+                base,
             );
         }
 

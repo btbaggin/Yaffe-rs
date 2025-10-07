@@ -1,21 +1,26 @@
 use crate::assets::Images;
-use crate::ui::{AnimationManager, ContainerSize, LayoutElement, RightAlignment, UiContainer, UiElement, WidgetId, Justification, change_brightness, MARGIN, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
+use crate::controls::{MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
+use crate::ui::{
+    change_brightness, AnimationManager, ContainerSize, Justification, LayoutElement, RightAlignment, UiContainer,
+    UiElement, WidgetId, MARGIN,
+};
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect, YaffeState};
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 mod info_modal;
 mod list_modal;
+mod message_modal;
 mod platform_detail_modal;
 mod restricted_modal;
 mod scraper_modal;
 mod settings_modal;
-mod message_modal;
 
-pub use message_modal::MessageModal;
 pub use info_modal::InfoModal;
 pub use list_modal::ListModal;
+pub use message_modal::MessageModal;
 pub use platform_detail_modal::{on_add_platform_close, on_update_platform_close, PlatformDetailModal};
-pub use restricted_modal::SetRestrictedModal;
+pub use restricted_modal::{on_restricted_modal_close, verify_restricted_action, RestrictedMode, SetRestrictedModal};
 pub use scraper_modal::{on_game_found_close, on_platform_found_close, ScraperModal};
 pub use settings_modal::{on_settings_close, SettingsModal};
 
@@ -47,14 +52,20 @@ impl ModalAction {
     }
 }
 
-pub type ModalContent = dyn UiElement<(), ModalAction>;
-pub trait ModalContent2 {
-    fn action(&mut self, action: &Actions, container: &UiContainer<(), ModalAction>) -> bool {
-        self.container.action(state, animations, action, handler)
+pub trait ModalContent {
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn action(
+        &mut self,
+        _animations: &mut AnimationManager,
+        _action: &Actions,
+        _handler: &mut ModalAction,
+        _container: &mut UiContainer<(), ModalAction>,
+    ) -> bool {
+        false
     }
 }
 
-pub type ModalOnClose = fn(&mut YaffeState, bool, &ModalContent);
+pub type ModalOnClose = fn(&mut YaffeState, bool, &ModalContentElement);
 pub struct Modal {
     content: Box<UiContainer<(), ModalAction>>,
     on_close: Option<ModalOnClose>,
@@ -91,16 +102,15 @@ impl UiElement<(), ModalAction> for ModalTitlebar {
     }
 }
 
-//TODO
 #[allow(unused_variables)]
-struct ModalContentElement {
+pub struct ModalContentElement {
     position: LogicalPosition,
     size: LogicalSize,
     id: WidgetId,
     focus_group: bool,
     focus: Option<WidgetId>,
-    content: Box<dyn ModalContent2>,
-    container: UiContainer<(), ModalAction>
+    content: Box<dyn ModalContent>,
+    container: UiContainer<(), ModalAction>,
 }
 impl LayoutElement for ModalContentElement {
     fn layout(&self) -> Rect { Rect::point_and_size(self.position, self.size) }
@@ -113,8 +123,7 @@ impl LayoutElement for ModalContentElement {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 }
 impl ModalContentElement {
-    #[allow(dead_code)]
-    pub fn new(content: impl ModalContent2 + 'static, focus_group: bool) -> ModalContentElement {
+    pub fn new(content: impl ModalContent + 'static, focus_group: bool) -> ModalContentElement {
         ModalContentElement {
             position: LogicalPosition::new(0., 0.),
             size: LogicalSize::new(0., 0.),
@@ -122,18 +131,38 @@ impl ModalContentElement {
             focus_group,
             focus: None,
             content: Box::new(content),
-            container: UiContainer::column()
+            container: UiContainer::column(),
         }
     }
+    pub fn get_content<T: 'static>(&self) -> &T { crate::convert_to!(&self.content, T) }
 }
+impl Deref for ModalContentElement {
+    type Target = UiContainer<(), ModalAction>;
+    fn deref(&self) -> &Self::Target { &self.container }
+}
+impl DerefMut for ModalContentElement {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.container }
+}
+
 impl UiElement<(), ModalAction> for ModalContentElement {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.container.calc_size(graphics) }
 
     fn render(&mut self, graphics: &mut Graphics, state: &(), current_focus: &WidgetId) {
+        let rect = self.layout();
+        graphics.bounds = Rect::point_and_size(
+            LogicalPosition::new(rect.left() + MARGIN, rect.top()),
+            LogicalSize::new(rect.width() - (MARGIN * 2.), rect.height()),
+        );
         self.container.render(graphics, state, &self.focus.unwrap_or(*current_focus));
     }
 
-    fn action(&mut self, state: &mut (), animations: &mut AnimationManager, action: &Actions, handler: &mut ModalAction) -> bool {
+    fn action(
+        &mut self,
+        state: &mut (),
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut ModalAction,
+    ) -> bool {
         // See if we should close
         if handler.close_if_accept(action) {
             return true;
@@ -142,13 +171,14 @@ impl UiElement<(), ModalAction> for ModalContentElement {
         if self.focus_group {
             match action {
                 Actions::Up => {
-                    self.focus = self.settings.move_focus(self.focus, false);
+                    self.focus = self.container.move_focus(self.focus, false);
                     return true;
                 }
                 Actions::Down => {
-                    self.focus = self.settings.move_focus(self.focus, true);
+                    self.focus = self.container.move_focus(self.focus, true);
                     return true;
                 }
+                _ => {}
             }
         }
         // If current control is focused, handle that
@@ -157,8 +187,12 @@ impl UiElement<(), ModalAction> for ModalContentElement {
                 return widget.action(state, animations, action, handler);
             }
         }
+
         // Otherwise custom handling
-        self.content.action(action, &self.container)
+        if self.content.action(animations, action, handler, &mut self.container) {
+            return true;
+        }
+        self.container.action(state, animations, action, handler)
     }
 }
 
@@ -190,7 +224,7 @@ impl crate::ui::UiElement<(), ModalAction> for ModalToolbar {
 fn build_modal(
     title: String,
     confirmation_button: Option<String>,
-    content: impl UiElement<(), ModalAction> + 'static,
+    content: ModalContentElement,
 ) -> UiContainer<(), ModalAction> {
     let mut control = UiContainer::column();
     control
@@ -209,7 +243,7 @@ pub fn display_modal(
     state: &mut YaffeState,
     title: &str,
     confirmation_button: Option<&str>,
-    content: impl UiElement<(), ModalAction> + 'static,
+    content: ModalContentElement,
     width: ModalSize,
     on_close: Option<ModalOnClose>,
 ) {
@@ -236,7 +270,7 @@ pub fn update_modal(state: &mut YaffeState, animations: &mut AnimationManager, a
             let modal = modals.pop().unwrap();
             if let Some(close) = modal.on_close {
                 // Content will always be second (after title, before buttons)
-                let content = modal.content.get_child(1).as_ref();
+                let content = crate::convert_to!(modal.content.get_child(1).as_ref(), ModalContentElement);
                 close(state, accept, content);
             }
         }
@@ -262,7 +296,6 @@ pub fn render_modal(modal: &mut Modal, graphics: &mut crate::Graphics) {
     //Background
     graphics.draw_rectangle(graphics.bounds, MODAL_OVERLAY_COLOR);
 
-    // TODO need to have some margin around content. Try to make content another trait again
     graphics.bounds = Rect::point_and_size(window_position, content_size);
     modal.content.render(graphics, &(), &modal.content.get_id());
 }

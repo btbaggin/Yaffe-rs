@@ -1,8 +1,8 @@
 use crate::logger::UserMessage;
 use crate::modals::InfoModal;
+use crate::modals::{display_modal, ModalSize};
 use crate::state::GroupType;
 use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, WidgetId};
-use crate::modals::{display_modal, ModalSize};
 use crate::widgets::AppTile;
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
@@ -52,7 +52,7 @@ impl UiElement<YaffeState, DeferredAction> for AppList {
             }
             Actions::Accept => {
                 if let Some(exe) = state.get_selected_tile() {
-                    if !exe.restricted || crate::restrictions::verify_restricted_action(state) {
+                    if !exe.restricted || crate::modals::verify_restricted_action(state) {
                         start_app(state, handler)
                     }
                 }

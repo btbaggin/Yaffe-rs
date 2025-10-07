@@ -4,13 +4,12 @@ use crate::input::Actions;
 use crate::job_system::JobResult;
 use crate::logger::{LogEntry, UserMessage};
 use crate::modals::{
-    on_add_platform_close, on_settings_close, ListModal, PlatformDetailModal, ScraperModal, SetRestrictedModal,
+    display_modal, is_modal_open, on_add_platform_close, on_restricted_modal_close, on_settings_close, update_modal,
+    ModalAction, ModalContentElement, ModalSize, PlatformDetailModal, RestrictedMode, ScraperModal, SetRestrictedModal,
     SettingsModal,
 };
-use crate::restrictions::{on_restricted_modal_close, RestrictedMode};
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
 use crate::ui::{AnimationManager, DeferredAction, WidgetTree};
-use crate::modals::{display_modal, update_modal, is_modal_open, ModalSize, ModalAction, ModalContent};
 use crate::widgets::InfoPane;
 use crate::windowing::{WindowHandler, WindowHelper};
 use crate::YaffeState;
@@ -110,11 +109,12 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
     fn on_stop(&mut self) { crate::plugins::unload(&mut self.data.plugins); }
 }
 
-fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContent) {
+fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
     if result {
-        let list_content = content.as_any().downcast_ref::<ListModal>().unwrap();
+        let elements = crate::convert_to!(content.get_child(0), crate::controls::List<String>);
+        let selected = elements.get_selected().as_str();
 
-        match list_content.get_selected::<String>().as_str() {
+        match selected {
             "Add Emulator" => {
                 let content = PlatformDetailModal::emulator();
                 display_modal(
