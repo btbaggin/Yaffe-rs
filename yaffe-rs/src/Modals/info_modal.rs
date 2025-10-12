@@ -1,4 +1,4 @@
-use crate::modals::{ModalContent, ModalContentElement};
+use crate::modals::{ModalInputHandler, ModalContentElement};
 use crate::ui::{ContainerSize, UiContainer};
 use crate::widgets::InfoPane;
 use crate::Tile;
@@ -19,6 +19,6 @@ impl InfoModal {
     }
 }
 
-impl ModalContent for InfoModal {
+impl ModalInputHandler for InfoModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }

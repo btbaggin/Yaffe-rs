@@ -4,9 +4,9 @@ use crate::input::Actions;
 use crate::job_system::JobResult;
 use crate::logger::{LogEntry, UserMessage};
 use crate::modals::{
-    display_modal, is_modal_open, on_add_platform_close, on_restricted_modal_close, on_settings_close, update_modal,
+    on_add_platform_close, on_restricted_modal_close, on_settings_close, display_modal_raw,
     ModalAction, ModalContentElement, ModalSize, PlatformDetailModal, RestrictedMode, ScraperModal, SetRestrictedModal,
-    SettingsModal,
+    SettingsModal, ModalDisplay
 };
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
 use crate::ui::{AnimationManager, DeferredAction, WidgetTree};
@@ -19,12 +19,12 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
     fn on_fixed_update(&mut self, animations: &mut AnimationManager, delta_time: f32, _: &mut WindowHelper) -> bool {
         //Check for any updates to the settings file
-        animations.process(&mut self.root, delta_time);
+        animations.process(self, delta_time);
         crate::settings::update_settings(&mut self.data.settings).log("Unable to retrieve updated settings")
     }
 
     fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: Vec<JobResult>) {
-        process_jobs(&mut self.data, graphics, jobs);
+        process_jobs(self, graphics, jobs);
     }
 
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool {
@@ -41,13 +41,13 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
             self.render(graphics);
 
-            //Render modal last, on top of everything
-            let modals = &mut self.data.modals.lock().unwrap();
-            if let Some(m) = modals.last_mut() {
-                // Render calls will modify the bounds, so we must reset it
-                graphics.bounds = window_rect;
-                crate::modals::render_modal(m, graphics);
-            }
+            // //Render modal last, on top of everything
+            // let modals = &mut self.data.modals.lock().unwrap();
+            // if let Some(m) = modals.last_mut() {
+            //     // Render calls will modify the bounds, so we must reset it
+            //     graphics.bounds = window_rect;
+            //     crate::modals::render_modal(m, graphics);
+            // }
 
             if !self.data.toasts.is_empty() {
                 // Render calls will modify the bounds, so we must reset it
@@ -69,7 +69,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
         match action {
             Actions::ShowMenu => {
-                if !is_modal_open(&self.data) {
+                if !self.is_modal_open() {
                     let items = vec![
                         "Scan For New Roms".to_string(),
                         "Add Emulator".to_string(),
@@ -83,7 +83,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
                     ];
 
                     let list = crate::modals::ListModal::from(items);
-                    display_modal(&mut self.data, "Menu", None, list, ModalSize::Third, Some(on_menu_close));
+                    crate::modals::display_modal_raw(self, "Menu", None, list, ModalSize::Third, Some(on_menu_close));
                     true
                 } else {
                     false
@@ -94,13 +94,15 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
             }
             _ => {
                 let mut handler = DeferredAction::new();
-                let result = if !is_modal_open(&self.data) {
-                    self.action(animations, action, &mut handler)
-                } else {
-                    update_modal(&mut self.data, animations, action);
-                    true
-                };
+                let result = self.action(animations, action, &mut handler);
                 handler.resolve(self, animations);
+                // let result = if !is_modal_open(&self.data) {
+                //     self.action(animations, action, &mut handler)
+                // } else {
+                //     update_modal(&mut self.data, animations, action);
+                //     true
+                // };
+                // handler.resolve(self, animations);
                 result
             }
         }
@@ -109,7 +111,7 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
     fn on_stop(&mut self) { crate::plugins::unload(&mut self.data.plugins); }
 }
 
-fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, handler: &mut DeferredAction) {
     if result {
         let elements = crate::convert_to!(content.get_child(0), crate::controls::List<String>);
         let selected = elements.get_selected().as_str();
@@ -117,34 +119,32 @@ fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContentEle
         match selected {
             "Add Emulator" => {
                 let content = PlatformDetailModal::emulator();
-                display_modal(
-                    state,
+                handler.display_modal(ModalDisplay::new(
                     "New Emulator",
                     Some("Confirm"),
                     content,
                     ModalSize::Third,
                     Some(on_add_platform_close),
-                );
+                ));
             }
             "Settings" => {
                 let content = SettingsModal::from(&state.settings);
-                display_modal(state, "Settings", Some("Confirm"), content, ModalSize::Third, Some(on_settings_close));
+                handler.display_modal(ModalDisplay::new("Settings", Some("Confirm"), content, ModalSize::Third, Some(on_settings_close)));
             }
             "Disable Restricted Mode" | "Enable Restricted Mode" => {
                 let content = SetRestrictedModal::new();
-                display_modal(
-                    state,
+                handler.display_modal(ModalDisplay::new(
                     "Restricted Mode",
                     Some("Set passcode"),
                     content,
                     ModalSize::Third,
                     Some(on_restricted_modal_close),
-                )
+                ));
             }
             "Scan For New Roms" => crate::platform::scan_new_files(state),
             "Exit Yaffe" => state.exit(),
             "Shut Down" => {
-                if crate::os::shutdown().display_failure("Failed to shut down", state).is_some() {
+                if crate::os::shutdown().display_failure("Failed to shut down", handler).is_some() {
                     state.exit();
                 }
             }
@@ -153,7 +153,7 @@ fn on_menu_close(state: &mut YaffeState, result: bool, content: &ModalContentEle
     }
 }
 
-fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Vec<JobResult>) {
+fn process_jobs(ui: &mut WidgetTree<YaffeState, DeferredAction>, graphics: &mut Graphics, job_results: Vec<JobResult>) {
     for r in job_results {
         match r {
             JobResult::LoadImage { data, dimensions, key } => {
@@ -163,12 +163,12 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
             }
             JobResult::SearchGame(result) => {
                 if let Some(game) = result.get_exact() {
-                    crate::platform::insert_game(state, &game.info, game.boxart.clone());
+                    crate::platform::insert_game(&mut ui.data, &game.info, game.boxart.clone());
                 } else if result.count > 0 {
                     let items = result.results;
                     let content = ScraperModal::from(items, build_game_info);
-                    display_modal(
-                        state,
+                    display_modal_raw(
+                        ui,
                         &format!("Select Game: {}", result.request),
                         None,
                         content,
@@ -177,16 +177,16 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                     );
                 }
 
-                state.remove_toast(&result.id);
+                ui.data.remove_toast(&result.id);
             }
             JobResult::SearchPlatform(result) => {
                 if let Some(platform) = result.get_exact() {
-                    crate::platform::insert_platform(state, &platform.info);
+                    crate::platform::insert_platform(&mut ui.data, &platform.info);
                 } else if result.count > 0 {
                     let items = result.results;
                     let content = ScraperModal::from(items, build_platform_info);
-                    display_modal(
-                        state,
+                    display_modal_raw(
+                        ui,
                         "Select Platform",
                         None,
                         content,
@@ -195,7 +195,7 @@ fn process_jobs(state: &mut YaffeState, graphics: &mut Graphics, job_results: Ve
                     );
                 }
 
-                state.remove_toast(&result.id);
+                ui.data.remove_toast(&result.id);
             }
             _ => {}
         }

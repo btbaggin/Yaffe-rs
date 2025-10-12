@@ -1,5 +1,4 @@
-use crate::modals::{display_modal, MessageModal, ModalSize};
-use crate::{DeferredAction, YaffeState};
+use crate::DeferredAction;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::sync::Mutex;
@@ -56,8 +55,7 @@ pub trait LogEntry<T: Default> {
     fn log(self, message: &str) -> T;
 }
 pub trait UserMessage<T> {
-    fn display_failure(self, message: &str, state: &mut YaffeState) -> Option<T>;
-    fn display_failure_deferred(self, message: &str, handle: &mut DeferredAction) -> Option<T>;
+    fn display_failure(self, message: &str, handle: &mut DeferredAction) -> Option<T>;
 }
 impl<T, E: Debug> PanicLogEntry<T> for Result<T, E> {
     /// Logs the type with an additional message if it is `Err` then panics  
@@ -96,23 +94,9 @@ impl<T: Default, E: Debug> LogEntry<T> for Result<T, E> {
 }
 
 impl<T, E: Debug> UserMessage<T> for Result<T, E> {
-    /// Displays a message to the user if it is `Err`
-    /// Returns `Some(T)` when there was no error, otherwise `None`
-    fn display_failure(self, message: &str, state: &mut YaffeState) -> Option<T> {
-        match self {
-            Err(e) => {
-                let message = format!("{message}: {e:?}");
-                let message = MessageModal::from(&message);
-                display_modal(state, "Error", None, message, ModalSize::Half, None);
-                None
-            }
-            Ok(r) => Some(r),
-        }
-    }
-
     /// Displays a message to the user, but can be called with a DeferredAction when access there is no access to YaffeState
     /// Returns `Some(T)` when there was no error, otherwise `None`
-    fn display_failure_deferred(self, message: &str, handle: &mut DeferredAction) -> Option<T> {
+    fn display_failure(self, message: &str, handle: &mut DeferredAction) -> Option<T> {
         match self {
             Err(e) => {
                 let message = format!("{message}: {e:?}");

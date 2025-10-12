@@ -1,10 +1,10 @@
 use crate::controls::{List, ListItem};
 use crate::input::Actions;
-use crate::modals::{ModalAction, ModalContent, ModalContentElement};
+use crate::modals::{ModalAction, ModalInputHandler, ModalContentElement};
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
 use crate::ui::{AnimationManager, ContainerSize, LayoutElement, UiContainer, UiElement, WidgetId};
 use crate::widgets::InfoPane;
-use crate::YaffeState;
+use crate::{YaffeState, DeferredAction};
 
 pub struct ScraperModal<L: ListItem> {
     list_id: WidgetId,
@@ -28,7 +28,7 @@ impl<L: ListItem + 'static> ScraperModal<L> {
     }
 }
 
-impl<L: ListItem + 'static> ModalContent for ScraperModal<L> {
+impl<L: ListItem + 'static> ModalInputHandler for ScraperModal<L> {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn action(
         &mut self,
@@ -52,18 +52,18 @@ impl<L: ListItem + 'static> ModalContent for ScraperModal<L> {
     }
 }
 
-pub fn on_platform_found_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+pub fn on_platform_found_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
     if result {
-        let details = content.get_content::<ScraperModal<PlatformScrapeResult>>();
+        let details = content.get_handler::<ScraperModal<PlatformScrapeResult>>();
         let list = crate::convert_to!(content.find_widget(details.list_id).unwrap(), List<PlatformScrapeResult>);
         let item = list.get_selected();
         crate::platform::insert_platform(state, &item.info);
     }
 }
 
-pub fn on_game_found_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+pub fn on_game_found_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
     if result {
-        let details = content.get_content::<ScraperModal<GameScrapeResult>>();
+        let details = content.get_handler::<ScraperModal<GameScrapeResult>>();
         let list = crate::convert_to!(content.find_widget(details.list_id).unwrap(), List<GameScrapeResult>);
         let item = list.get_selected();
         crate::platform::insert_game(state, &item.info, item.boxart.clone());

@@ -1,7 +1,7 @@
 use crate::controls::{PassBox, RestrictedPasscode};
-use crate::modals::{ModalContent, ModalContentElement};
+use crate::modals::{ModalInputHandler, ModalContentElement};
 use crate::ui::{ContainerSize, LayoutElement, ValueElement};
-use crate::YaffeState;
+use crate::{YaffeState, DeferredAction};
 
 pub enum RestrictedMode {
     On(RestrictedPasscode),
@@ -22,11 +22,11 @@ impl SetRestrictedModal {
     }
 }
 
-impl ModalContent for SetRestrictedModal {
+impl ModalInputHandler for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_restricted_modal_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+pub fn on_restricted_modal_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
     if result {
         let content = crate::convert_to!(content.get_child(0), PassBox);
         let pass = content.value();

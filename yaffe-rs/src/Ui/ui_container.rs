@@ -99,6 +99,7 @@ impl<T, D> UiContainer<T, D> {
         self
     }
 
+    #[allow(clippy::borrowed_box)]
     pub fn get_child(&self, index: usize) -> &Box<dyn UiElement<T, D>> { &self.children[index].element }
 
     pub fn add_child(&mut self, child: impl UiElement<T, D> + 'static, size: ContainerSize) -> &mut Self {
@@ -124,7 +125,7 @@ impl<T, D> UiContainer<T, D> {
         for child in &self.children {
             if child.element.get_id() == widget_id {
                 return Some(child.element.as_ref());
-            } else if let Some(container) = child.element.as_any().downcast_ref::<UiContainer<T, D>>() {
+            } else if let Some(container) = child.element.as_container() {
                 if let Some(found) = container.find_widget(widget_id) {
                     return Some(found);
                 }
@@ -143,7 +144,7 @@ impl<T, D> UiContainer<T, D> {
         for child in &mut self.children {
             if child.element.get_id() == widget_id {
                 return Some(child.element.as_mut());
-            } else if let Some(container) = child.element.as_any_mut().downcast_mut::<UiContainer<T, D>>() {
+            } else if let Some(container) = child.element.as_container_mut() {
                 if let Some(found) = container.find_widget_mut(widget_id) {
                     return Some(found);
                 }
@@ -169,7 +170,7 @@ impl<T, D> UiContainer<T, D> {
 
         // Search recursively
         for c in &mut self.children {
-            if let Some(container) = c.element.as_any_mut().downcast_mut::<UiContainer<T, D>>() {
+            if let Some(container) = c.element.as_container_mut() {
                 container.replace_child_boxed(widget_id, child);
                 return;
             }
@@ -275,6 +276,9 @@ impl<T, D> UiContainer<T, D> {
 }
 
 impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
+    fn as_container(&self) -> Option<&UiContainer<T, D>> { Some(self) }
+    fn as_container_mut(&mut self) -> Option<&mut UiContainer<T, D>> { Some(self) }
+
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.calc_container_size(graphics) }
 
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId) {

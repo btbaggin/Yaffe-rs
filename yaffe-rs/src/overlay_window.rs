@@ -23,7 +23,7 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
         delta_time: f32,
         helper: &mut WindowHelper,
     ) -> bool {
-        animations.process(&mut self.root, delta_time);
+        animations.process(self, delta_time);
         self.data.process_is_running(helper)
     }
 

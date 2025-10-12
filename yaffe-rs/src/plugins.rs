@@ -1,5 +1,7 @@
-use crate::logger::{info, PanicLogEntry, UserMessage};
-use crate::state::YaffeState;
+use crate::logger::{info, PanicLogEntry};
+use crate::{YaffeState, DeferredAction};
+use crate::ui::WidgetTree;
+use crate::modals::{display_modal_raw, MessageModal, ModalSize};
 use libloading::Library;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -25,7 +27,7 @@ impl DerefMut for Plugin {
     fn deref_mut(&mut self) -> &mut Box<dyn YaffePlugin> { &mut self.plugin }
 }
 
-fn load(state: &mut YaffeState, path: &mut PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn load(ui: &mut WidgetTree<YaffeState, DeferredAction>, path: &mut PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     unsafe {
         let lib = libloading::Library::new(path.clone())?;
         let create_plugin: libloading::Symbol<unsafe extern "C" fn() -> Box<dyn YaffePlugin>> =
@@ -39,15 +41,19 @@ fn load(state: &mut YaffeState, path: &mut PathBuf) -> Result<(), Box<dyn std::e
         let settings = crate::settings::load_settings_from_path(path.clone(), false).unwrap_or_default();
         plugin
             .initialize(&settings)
-            .display_failure(&format!("Unable to load plugin {plugin_name}"), state)
+            .map_err(|e| {
+                let message = MessageModal::from(&format!("Unable to load plugin {plugin_name}: {e:?}"));
+                display_modal_raw(ui, "Error", None, message, ModalSize::Half, None);
+                e
+            })
             .unwrap_or_default();
         let filters = plugin.filters();
-        state.plugins.push(Plugin { lib, filters, plugin, navigation_hash: 0, done_loading: false });
+        ui.data.plugins.push(Plugin { lib, filters, plugin, navigation_hash: 0, done_loading: false });
     }
     Ok(())
 }
 
-pub fn load_plugins(state: &mut YaffeState, directory: &str) {
+pub fn load_plugins(ui: &mut WidgetTree<YaffeState, DeferredAction>, directory: &str) {
     if !std::path::Path::new(directory).exists() {
         std::fs::create_dir(directory).log_and_panic();
     }
@@ -61,7 +67,11 @@ pub fn load_plugins(state: &mut YaffeState, directory: &str) {
 
             if ext == crate::os::lib_ext() && path.is_file() {
                 info!("Found plugin {}", path.display());
-                load(state, &mut path).display_failure(&format!("Failed to load plugin {path:?}"), state);
+                let _ = load(ui, &mut path).map_err(|e| {
+                    let message = MessageModal::from(&format!("Failed to load plugin {path:?}: {e:?}"));
+                    display_modal_raw(ui, "Error", None, message, ModalSize::Half, None);
+                    e
+                });
             }
         }
     }

@@ -10,7 +10,7 @@ pub use animations::{AnimationManager, FieldOffset};
 pub use deferred_action::DeferredAction;
 pub use ui_container::*;
 pub use utils::*;
-pub use widget_tree::{WidgetTree, WindowState};
+pub use widget_tree::WidgetTree;
 
 pub const MARGIN: f32 = 10.;
 
@@ -33,6 +33,8 @@ pub trait UiElement<T: 'static, D: 'static>: LayoutElement {
     fn action(&mut self, _state: &mut T, _: &mut AnimationManager, _: &Actions, _handler: &mut D) -> bool { false }
     fn got_focus(&mut self, _: &T, _: &mut AnimationManager) {}
     fn lost_focus(&mut self, _: &T, _: &mut AnimationManager) {}
+    fn as_container(&self) -> Option<&UiContainer<T, D>> { None }
+    fn as_container_mut(&mut self) -> Option<&mut UiContainer<T, D>> { None }
 }
 pub trait ValueElement<T> {
     fn value(&self) -> T;

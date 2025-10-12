@@ -2,11 +2,12 @@ use crate::assets::Images;
 use crate::controls::{MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
 use crate::ui::{
     change_brightness, AnimationManager, ContainerSize, Justification, LayoutElement, RightAlignment, UiContainer,
-    UiElement, WidgetId, MARGIN,
+    UiElement, WidgetId, MARGIN, WidgetTree
 };
-use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect, YaffeState};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+use std::sync::Mutex;
 
 mod info_modal;
 mod list_modal;
@@ -52,7 +53,7 @@ impl ModalAction {
     }
 }
 
-pub trait ModalContent {
+pub trait ModalInputHandler {
     fn as_any(&self) -> &dyn std::any::Any;
     fn action(
         &mut self,
@@ -65,11 +66,18 @@ pub trait ModalContent {
     }
 }
 
-pub type ModalOnClose = fn(&mut YaffeState, bool, &ModalContentElement);
-pub struct Modal {
+pub type ModalOnClose<T, D> = fn(&mut T, bool, &ModalContentElement, &mut D);
+pub struct Modal<T, D> {
     content: Box<UiContainer<(), ModalAction>>,
-    on_close: Option<ModalOnClose>,
+    on_close: Option<ModalOnClose<T, D>>,
     width: ModalSize,
+}
+impl<T, D> Deref for Modal<T, D> {
+    type Target = UiContainer<(), ModalAction>;
+    fn deref(&self) -> &Self::Target { &self.content }
+}
+impl<T, D> DerefMut for Modal<T, D> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.content }
 }
 
 crate::widget!(
@@ -109,7 +117,7 @@ pub struct ModalContentElement {
     id: WidgetId,
     focus_group: bool,
     focus: Option<WidgetId>,
-    content: Box<dyn ModalContent>,
+    handler: Box<dyn ModalInputHandler>,
     container: UiContainer<(), ModalAction>,
 }
 impl LayoutElement for ModalContentElement {
@@ -123,18 +131,18 @@ impl LayoutElement for ModalContentElement {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 }
 impl ModalContentElement {
-    pub fn new(content: impl ModalContent + 'static, focus_group: bool) -> ModalContentElement {
+    pub fn new(handler: impl ModalInputHandler + 'static, focus_group: bool) -> ModalContentElement {
         ModalContentElement {
             position: LogicalPosition::new(0., 0.),
             size: LogicalSize::new(0., 0.),
             id: WidgetId::random(),
             focus_group,
             focus: None,
-            content: Box::new(content),
+            handler: Box::new(handler),
             container: UiContainer::column(),
         }
     }
-    pub fn get_content<T: 'static>(&self) -> &T { crate::convert_to!(&self.content, T) }
+    pub fn get_handler<T: 'static>(&self) -> &T { crate::convert_to!(&self.handler, T) }
 }
 impl Deref for ModalContentElement {
     type Target = UiContainer<(), ModalAction>;
@@ -145,6 +153,9 @@ impl DerefMut for ModalContentElement {
 }
 
 impl UiElement<(), ModalAction> for ModalContentElement {
+    fn as_container(&self) -> Option<&UiContainer<(), ModalAction>> { Some(&self.container) }
+    fn as_container_mut(&mut self) -> Option<&mut UiContainer<(), ModalAction>> { Some(&mut self.container) }
+
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.container.calc_size(graphics) }
 
     fn render(&mut self, graphics: &mut Graphics, state: &(), current_focus: &WidgetId) {
@@ -189,7 +200,7 @@ impl UiElement<(), ModalAction> for ModalContentElement {
         }
 
         // Otherwise custom handling
-        if self.content.action(animations, action, handler, &mut self.container) {
+        if self.handler.action(animations, action, handler, &mut self.container) {
             return true;
         }
         self.container.action(state, animations, action, handler)
@@ -239,29 +250,41 @@ fn build_modal(
     control
 }
 
-pub fn display_modal(
-    state: &mut YaffeState,
+pub struct ModalDisplay<T, D> {
+    title: String,
+    confirmation_button: Option<String>,
+    content: ModalContentElement,
+    width: ModalSize,
+    on_close: Option<ModalOnClose<T, D>>,
+}
+impl<T, D> ModalDisplay<T, D> {
+    pub fn new(title: &str, confirmation_button: Option<&str>, content: ModalContentElement, width: ModalSize, on_close: Option<ModalOnClose<T, D>>) -> ModalDisplay<T, D> {
+        ModalDisplay { title: String::from(title), confirmation_button: confirmation_button.map(String::from), content, width, on_close }
+    }
+    pub fn display(self, ui: &mut WidgetTree<T, D>) {
+        display_modal_raw(ui, &self.title, self.confirmation_button.as_deref(), self.content, self.width, self.on_close)
+    }
+}
+
+pub fn display_modal_raw<T, D>(
+    ui: &mut WidgetTree<T, D>,
     title: &str,
     confirmation_button: Option<&str>,
     content: ModalContentElement,
     width: ModalSize,
-    on_close: Option<ModalOnClose>,
+    on_close: Option<ModalOnClose<T, D>>,
 ) {
     let confirm = confirmation_button.map(String::from);
 
     let content = build_modal(String::from(title), confirm, content);
     let m = Modal { content: Box::new(content), on_close, width };
 
-    let mut modals = state.modals.lock().unwrap();
+    let mut modals = ui.modals.lock().unwrap();
     modals.push(m);
 }
 
-pub fn update_modal(state: &mut YaffeState, animations: &mut AnimationManager, action: &Actions) {
-    //This method can call into display_modal above, which locks the mutex
-    //If we lock here that call will wait infinitely
-    //We can get_mut here to ensure compile time exclusivity instead of locking
-    //That allows us to call display_modal in close() below
-    let modals = state.modals.get_mut().unwrap();
+pub fn update_modal<T, D>(modals: &mut Mutex<Vec<Modal<T, D>>>, state: &mut T, animations: &mut AnimationManager, action: &Actions, handler: &mut D) -> bool {
+    let modals = modals.get_mut().unwrap();
     if let Some(modal) = modals.last_mut() {
         let mut h = ModalAction { close: None };
         modal.content.action(&mut (), animations, action, &mut h);
@@ -271,19 +294,17 @@ pub fn update_modal(state: &mut YaffeState, animations: &mut AnimationManager, a
             if let Some(close) = modal.on_close {
                 // Content will always be second (after title, before buttons)
                 let content = crate::convert_to!(modal.content.get_child(1).as_ref(), ModalContentElement);
-                close(state, accept, content);
+                close(state, accept, content, handler);
             }
         }
+        true
+    } else {
+        false
     }
 }
 
-pub fn is_modal_open(state: &YaffeState) -> bool {
-    let modals = state.modals.lock().unwrap();
-    !modals.is_empty()
-}
-
 /// Renders a modal window along with its contents
-pub fn render_modal(modal: &mut Modal, graphics: &mut crate::Graphics) {
+pub fn render_modal<T, D>(modal: &mut Modal<T, D>, graphics: &mut crate::Graphics) {
     let rect = graphics.bounds;
     let width = match modal.width {
         ModalSize::Third => graphics.bounds.width() * 0.33,

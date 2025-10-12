@@ -42,14 +42,21 @@ pub struct NavigationEntry {
 pub struct PluginFilter {
     pub name: String,
     pub options: Vec<String>,
+    pub allow_all: bool,
 }
 impl PluginFilter {
     pub fn new(name: &str, options: &[&str]) -> PluginFilter {
-        PluginFilter { name: name.to_string(), options: options.iter().map(|o| o.to_string()).collect() }
+        PluginFilter { name: name.to_string(), options: options.iter().map(|o| o.to_string()).collect(), allow_all: false }
     }
 
     pub fn from_range(name: &str, start: &str, end: &str) -> PluginFilter {
-        PluginFilter { name: name.to_string(), options: Self::generate_string_range(start, end) }
+        PluginFilter { name: name.to_string(), options: Self::generate_string_range(start, end), allow_all: false }
+    }
+
+    pub fn search() -> PluginFilter {
+        let mut options = Self::generate_string_range("A", "Z");
+        options.push(String::from("Go"));
+        PluginFilter { name: String::from("Search"), options, allow_all: true }
     }
 
     fn generate_string_range(start: &str, end: &str) -> Vec<String> {

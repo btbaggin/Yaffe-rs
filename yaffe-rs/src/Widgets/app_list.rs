@@ -1,6 +1,6 @@
 use crate::logger::UserMessage;
 use crate::modals::InfoModal;
-use crate::modals::{display_modal, ModalSize};
+use crate::modals::{ModalSize, ModalDisplay};
 use crate::state::GroupType;
 use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, WidgetId};
 use crate::widgets::AppTile;
@@ -61,7 +61,7 @@ impl UiElement<YaffeState, DeferredAction> for AppList {
             Actions::Info => {
                 if let Some(exe) = state.get_selected_tile() {
                     let info = InfoModal::from(exe);
-                    display_modal(state, &exe.name.clone(), None, info, ModalSize::Half, None);
+                    handler.display_modal(ModalDisplay::new(&exe.name.clone(), None, info, ModalSize::Half, None));
                 }
                 true
             }
@@ -343,7 +343,7 @@ fn start_app(state: &mut YaffeState, handler: &mut DeferredAction) {
             TileType::App => {
                 if let Some(group) = state.find_group(tile.group_id) {
                     let child = tile.get_tile_process(state, group);
-                    if let Some(Some(process)) = child.display_failure_deferred("Unable to start process", handler) {
+                    if let Some(Some(process)) = child.display_failure("Unable to start process", handler) {
                         state.set_process(process);
                         //We could refresh so our recent games page updates, but I dont think that's desirable
                     }

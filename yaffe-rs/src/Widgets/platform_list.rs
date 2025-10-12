@@ -1,5 +1,5 @@
 use crate::controls::MENU_BACKGROUND;
-use crate::modals::{display_modal, on_update_platform_close, PlatformDetailModal};
+use crate::modals::{on_update_platform_close, PlatformDetailModal, ModalDisplay};
 use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN};
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
@@ -35,14 +35,13 @@ impl UiElement<YaffeState, DeferredAction> for PlatformList {
                 let group = state.get_selected_group();
                 if group.kind.allow_edit() {
                     let modal = PlatformDetailModal::from_existing(group);
-                    display_modal(
-                        state,
+                    handler.display_modal(ModalDisplay::new(
                         "Platform Info",
                         Some("Save"),
                         modal,
                         crate::modals::ModalSize::Third,
-                        Some(on_update_platform_close),
-                    );
+                        Some(on_update_platform_close)
+                    ));
                 }
                 true
             }

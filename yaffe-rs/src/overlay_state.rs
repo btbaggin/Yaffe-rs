@@ -1,6 +1,5 @@
 use crate::assets::AssetKey;
 use crate::logger::LogEntry;
-use crate::ui::WindowState;
 use crate::windowing::WindowHelper;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
@@ -78,7 +77,4 @@ impl OverlayState {
         self.showing = !self.showing;
         helper.set_visibility(self.showing);
     }
-}
-impl WindowState for OverlayState {
-    fn on_revert_focus(&mut self) -> bool { true }
 }

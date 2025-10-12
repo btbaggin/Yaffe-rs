@@ -1,5 +1,5 @@
 use crate::controls::Label;
-use crate::modals::{ModalContent, ModalContentElement};
+use crate::modals::{ModalInputHandler, ModalContentElement};
 use crate::ui::ContainerSize;
 
 pub struct MessageModal;
@@ -11,6 +11,6 @@ impl MessageModal {
         modal
     }
 }
-impl ModalContent for MessageModal {
+impl ModalInputHandler for MessageModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }

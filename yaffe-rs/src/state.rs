@@ -3,13 +3,11 @@ use std::collections::HashMap;
 use std::iter::Step;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::Mutex;
 
 use crate::assets::AssetKey;
 use crate::data::GameInfo;
 use crate::job_system::ThreadSafeJobQueue;
-use crate::logger::{LogEntry, PanicLogEntry, UserMessage};
-use crate::modals::Modal;
+use crate::logger::{LogEntry, PanicLogEntry};
 use crate::modals::RestrictedMode;
 use crate::overlay_state::{ExternalProcess, YaffeProcess};
 use crate::plugins::Plugin;
@@ -34,6 +32,7 @@ pub struct MetadataSearch {
     pub options: Vec<String>,
     pub mask: usize,
     pub selected: Option<usize>,
+    allow_all: bool
 }
 impl MetadataSearch {
     pub fn new(name: &str, options: &[&str]) -> MetadataSearch {
@@ -42,11 +41,12 @@ impl MetadataSearch {
             options: options.iter().map(|o| o.to_string()).collect(),
             mask: 0,
             selected: None,
+            allow_all: false,
         }
     }
 
     pub fn from_filter(filter: &PluginFilter) -> MetadataSearch {
-        MetadataSearch { name: filter.name.to_string(), options: filter.options.clone(), mask: 0, selected: None }
+        MetadataSearch { name: filter.name.to_string(), options: filter.options.clone(), mask: 0, selected: None, allow_all: filter.allow_all }
     }
 
     pub fn from_range<T: Step + ToString + PartialOrd + Copy>(name: &str, start: T, end: T) -> MetadataSearch {
@@ -55,6 +55,7 @@ impl MetadataSearch {
             options: Self::generate_string_range(start, end),
             mask: 0,
             selected: None,
+            allow_all: false,
         }
     }
 
@@ -62,18 +63,23 @@ impl MetadataSearch {
 
     pub fn set_mask(&mut self, tiles: &[Tile]) {
         let mut mask = 0usize;
-        for tile in tiles.iter() {
-            if let Some(m) = tile.get_metadata(&self.name) {
-                let m = m.to_ascii_lowercase();
+        if self.allow_all {
+            mask = usize::MAX;
+        } else {
+            for tile in tiles.iter() {
+                if let Some(m) = tile.get_metadata(&self.name) {
+                    let m = m.to_ascii_lowercase();
 
-                for (i, o) in self.options.iter().enumerate() {
-                    let o = o.to_ascii_lowercase();
-                    if m.starts_with(&o) || m == o {
-                        mask |= 1 << i;
+                    for (i, o) in self.options.iter().enumerate() {
+                        let o = o.to_ascii_lowercase();
+                        if m.starts_with(&o) || m == o {
+                            mask |= 1 << i;
+                        }
                     }
                 }
             }
         }
+
         self.mask = mask;
     }
 
@@ -83,14 +89,11 @@ impl MetadataSearch {
         //this loop is guaranteed to end because either the index will hit -1 or self.end
         loop {
             i += amount;
-            if i <= -1 {
+            if i <= -1 || i >= self.options.len() as isize {
                 self.selected = None;
                 return;
             } else if self.mask & 1 << i != 0 {
                 self.selected = Some(i as usize);
-                return;
-            } else if i >= self.options.len() as isize {
-                self.selected = None;
                 return;
             }
         }
@@ -142,6 +145,7 @@ impl TileGroup {
             tiles: vec![],
             kind: GroupType::Emulator,
             search: vec![
+                MetadataSearch::from_range("Name", 'A', 'Z'),
                 MetadataSearch::from_range("Players", 1, 4),
                 MetadataSearch::new(
                     "Rating",
@@ -302,7 +306,6 @@ pub struct YaffeState {
     pub selected: SelectedItem,
     pub groups: Vec<TileGroup>,
     pub plugins: Vec<Plugin>,
-    pub modals: Mutex<Vec<Modal>>,
     pub toasts: HashMap<u64, String>,
     pub queue: ThreadSafeJobQueue,
     pub filter: Option<MetadataSearch>,
@@ -325,7 +328,6 @@ impl YaffeState {
             plugins: vec![],
             filter: None,
             restricted_mode: RestrictedMode::Off,
-            modals: Mutex::new(vec![]),
             toasts: HashMap::new(),
             queue,
             refresh_list: true,
@@ -360,21 +362,5 @@ impl YaffeState {
     pub fn navigate_to(&self, tile: &Tile) {
         let mut stack = self.navigation_stack.borrow_mut();
         stack.push(NavigationEntry { path: tile.file.clone(), display: tile.name.clone() });
-    }
-}
-
-impl crate::ui::WindowState for YaffeState {
-    fn on_revert_focus(&mut self) -> bool {
-        if self.navigation_stack.borrow_mut().pop().is_some() {
-            self.selected.tile_index = 0;
-
-            let group = &mut self.groups[self.selected.group_index];
-            group.tiles.clear();
-            if let crate::state::GroupType::Plugin(index) = group.kind {
-                crate::plugins::load_plugin_items(self, index).display_failure("Error loading plugin items", self);
-            }
-            return false;
-        }
-        true
     }
 }

@@ -7,6 +7,7 @@ use std::rc::Rc;
 /*
  * TODO
  * Search bar doesnt work well on plugins
+ * allow generic search filter
  * allow reloading plugins?
 */
 
@@ -85,7 +86,7 @@ fn main() {
     let overlay = ui::WidgetTree::<OverlayState, ()>::new(build_overlay_tree(), overlay_state, WidgetId::static_id(1));
     let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(build_main_tree(), yaffe_state, PLATFORM_LIST_ID);
 
-    plugins::load_plugins(&mut ui.data, "./plugins");
+    plugins::load_plugins(&mut ui, "./plugins");
 
     let main = WindowAttributes::default().with_title("Yaffe").with_visible(true);
     let overlay_att = WindowAttributes::default()

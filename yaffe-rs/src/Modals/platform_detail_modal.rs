@@ -1,8 +1,8 @@
 use crate::controls::TextBox;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::modals::{ModalContent, ModalContentElement};
+use crate::modals::{ModalInputHandler, ModalContentElement};
 use crate::ui::{ContainerSize, LayoutElement, ValueElement, WidgetId};
-use crate::YaffeState;
+use crate::{YaffeState, DeferredAction};
 use std::collections::HashMap;
 
 pub struct PlatformDetailModal {
@@ -41,15 +41,15 @@ impl PlatformDetailModal {
     }
 }
 
-impl ModalContent for PlatformDetailModal {
+impl ModalInputHandler for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
     if result {
         let job_id = crate::job_system::generate_job_id();
 
-        let details = content.get_content::<PlatformDetailModal>();
+        let details = content.get_handler::<PlatformDetailModal>();
         let name = details.control_map["Name"];
         let exe = details.control_map["Executable"];
         let args = details.control_map["Args"];
@@ -68,9 +68,9 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &Mod
     }
 }
 
-pub fn on_update_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+pub fn on_update_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, handler: &mut DeferredAction) {
     if result {
-        let details = content.get_content::<PlatformDetailModal>();
+        let details = content.get_handler::<PlatformDetailModal>();
         state.refresh_list = true;
 
         let exe = details.control_map["Executable"];
@@ -78,6 +78,6 @@ pub fn on_update_platform_close(state: &mut YaffeState, result: bool, content: &
         let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
         let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
         crate::data::PlatformInfo::update(details.platform_id, exe.value().trim(), args.value().trim())
-            .display_failure("Unable to update platform", state);
+            .display_failure("Unable to update platform", handler);
     }
 }

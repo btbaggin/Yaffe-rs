@@ -1,9 +1,9 @@
 use crate::controls::{CheckBox, TextBox};
 use crate::logger::{LogEntry, UserMessage};
-use crate::modals::{ModalContent, ModalContentElement};
+use crate::modals::{ModalInputHandler, ModalContentElement};
 use crate::settings::SettingsFile;
 use crate::ui::{ContainerSize, ValueElement};
-use crate::YaffeState;
+use crate::{YaffeState, DeferredAction};
 
 const STARTUP_TASK: &str = "Yaffe";
 
@@ -34,32 +34,32 @@ impl SettingsModal {
     }
 }
 
-impl ModalContent for SettingsModal {
+impl ModalInputHandler for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_settings_close(state: &mut YaffeState, result: bool, content: &ModalContentElement) {
+pub fn on_settings_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, handler: &mut DeferredAction) {
     if result {
-        let details = content.get_content::<SettingsModal>();
+        let details = content.get_handler::<SettingsModal>();
 
         for (i, name) in details.names.iter().enumerate() {
             match name.as_str() {
                 "run_at_startup" => {
                     let run_at_startup = crate::convert_to!(content.get_child(i), CheckBox);
                     crate::os::set_run_at_startup(STARTUP_TASK, run_at_startup.value())
-                        .display_failure("Unable to save settings", state);
+                        .display_failure("Unable to save settings", handler);
                 }
                 _ => {
                     let control = crate::convert_to!(content.get_child(i), TextBox);
                     state
                         .settings
                         .set_setting(name, &control.value())
-                        .display_failure("Unable to save settings", state);
+                        .display_failure("Unable to save settings", handler);
                 }
             };
         }
 
         //Save settings
-        state.settings.serialize().display_failure("Unable to save settings", state);
+        state.settings.serialize().display_failure("Unable to save settings", handler);
     }
 }

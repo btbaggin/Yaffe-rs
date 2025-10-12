@@ -1,17 +1,18 @@
 use crate::controls::MENU_BACKGROUND;
 use crate::state::MetadataSearch;
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN};
 use crate::{widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState};
 
-const NAME_WIDTH: f32 = 175.;
+const MIN_NAME_WIDTH: f32 = 175.;
 
 widget!(
     pub struct SearchBar {
         active_search: usize = 0,
         highlight_offset: f32 = 0.,
         cached_platform: i64 = -1,
-        searches: Vec<MetadataSearch> = vec!(MetadataSearch::from_range("Name", 'A', 'Z')),
-        offset: LogicalPosition = LogicalPosition::new(0., -1.)
+        searches: Vec<MetadataSearch> = vec!(),
+        offset: LogicalPosition = LogicalPosition::new(0., -1.),
+        name_width: f32 = 0.
     }
 );
 impl UiElement<YaffeState, DeferredAction> for SearchBar {
@@ -84,7 +85,7 @@ impl UiElement<YaffeState, DeferredAction> for SearchBar {
         // Make sure we always have the name search since thats default
         let group = state.get_selected_group();
         if group.id != self.cached_platform {
-            self.searches.truncate(1);
+            self.searches.clear();
             self.searches.extend(group.search.clone());
 
             self.active_search = 0;
@@ -108,14 +109,19 @@ impl UiElement<YaffeState, DeferredAction> for SearchBar {
     }
 
     fn render(&mut self, graphics: &mut crate::Graphics, _: &YaffeState, current_focus: &WidgetId) {
-        let current_search = &self.searches[self.active_search];
+        let Some(current_search) = &self.searches.get(self.active_search) else {
+            return;
+        };
+
         let rect = self.layout();
         let rect = Rect::point_and_size(*rect.top_left() + (self.offset * rect.height()), rect.size());
-        let filter_start = rect.left() + NAME_WIDTH;
-        let name = &current_search.name;
 
-        let item_size = (rect.right() - filter_start) / current_search.options.len() as f32;
         let font_size = graphics.font_size();
+        let name_label = crate::ui::get_drawable_text(graphics, font_size, &current_search.name);
+        self.name_width = f32::max(MIN_NAME_WIDTH, name_label.width() + MARGIN * 2.);
+
+        let filter_start = rect.left() + self.name_width;
+        let item_size = (rect.right() - filter_start) / current_search.options.len() as f32;
 
         graphics.draw_rectangle(rect, MENU_BACKGROUND);
         let focused_color = if current_focus == &crate::SEARCH_BAR_ID {
@@ -126,13 +132,13 @@ impl UiElement<YaffeState, DeferredAction> for SearchBar {
 
         //Filter option name
         let filter_rect =
-            Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + NAME_WIDTH, rect.top() + rect.height()));
+            Rect::new(*rect.top_left(), LogicalSize::new(rect.left() + self.name_width, rect.top() + rect.height()));
 
         //Highlight
         let mut highlight_position = rect.left() + self.highlight_offset;
-        let mut highlight_width = NAME_WIDTH;
+        let mut highlight_width = self.name_width;
         if current_search.selected.is_some() {
-            highlight_position += NAME_WIDTH;
+            highlight_position += self.name_width;
             highlight_width = item_size;
         }
 
@@ -141,8 +147,6 @@ impl UiElement<YaffeState, DeferredAction> for SearchBar {
         graphics.draw_rectangle(r, graphics.accent_color());
 
         let mid = filter_rect.left() + filter_rect.width() / 2.;
-
-        let name_label = crate::ui::get_drawable_text(graphics, font_size, name);
         let half = name_label.width().to_logical(graphics) / 2.;
         graphics.draw_text(
             LogicalPosition::new(
@@ -221,7 +225,7 @@ impl SearchBar {
     }
 
     fn switch_option(&mut self, state: &mut YaffeState, increment: isize, animations: &mut AnimationManager) {
-        let filter_start = self.position.x + NAME_WIDTH;
+        let filter_start = self.position.x + self.name_width;
         let item_size =
             (self.position.x + self.size.x - filter_start) / self.searches[self.active_search].options.len() as f32;
         self.searches[self.active_search].increment_index(increment);

@@ -1,5 +1,5 @@
 use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
-use crate::{Actions, Graphics, LogicalSize, Rect};
+use crate::{Actions, Graphics, LogicalSize, LogicalPosition, Rect};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;
@@ -12,7 +12,8 @@ impl ListItem for String {
 crate::widget!(
     pub struct List<L: ListItem> {
         pub items: Vec<L> = vec!(),
-        index: usize = 0
+        index: usize = 0,
+        highlight_offset: f32 = 0.
     }
 );
 impl<L: ListItem> List<L> {
@@ -23,6 +24,20 @@ impl<L: ListItem> List<L> {
     }
 
     pub fn get_selected(&self) -> &L { &self.items[self.index] }
+
+    fn move_index(&mut self, new_index: usize, animations: &mut AnimationManager) {
+        let item_size = self.size.y / self.items.len() as f32;
+        self.index = new_index;
+
+        animations
+            .animate(
+                self,
+                crate::offset_of!(List<L> => highlight_offset),
+                item_size * self.index as f32,
+            )
+            .duration(0.1)
+            .start();
+    }
 }
 
 impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
@@ -30,21 +45,21 @@ impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
         LogicalSize::new(graphics.bounds.width(), self.items.len() as f32 * graphics.font_size())
     }
 
-    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
+    fn action(&mut self, _state: &mut T, animations: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
         match action {
             Actions::Down => {
                 if self.index < self.items.len() - 1 {
-                    self.index += 1;
+                    self.move_index(self.index + 1, animations);
                 } else {
-                    self.index = 0;
+                    self.move_index(0, animations);
                 }
                 true
             }
             Actions::Up => {
                 if self.index > 0 {
-                    self.index -= 1;
+                    self.move_index(self.index - 1, animations);
                 } else {
-                    self.index = self.items.len() - 1;
+                    self.move_index(self.items.len() - 1, animations);
                 }
                 true
             }
@@ -57,14 +72,12 @@ impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
         let mut pos = *rect.top_left();
         let font_size = graphics.font_size();
 
-        //Item list
-        for (i, item) in self.items.iter().enumerate() {
-            let display = item.to_display();
+        let rect = Rect::point_and_size(LogicalPosition::new(pos.x, pos.y + self.highlight_offset), LogicalSize::new(rect.width(), font_size));
+        graphics.draw_rectangle(rect, graphics.accent_color());
 
-            if self.index == i {
-                let rect = Rect::point_and_size(pos, LogicalSize::new(rect.width(), font_size));
-                graphics.draw_rectangle(rect, graphics.accent_color());
-            }
+        //Item list
+        for item in self.items.iter() {
+            let display = item.to_display();
 
             graphics.simple_text(pos, &display);
             pos.y += font_size;

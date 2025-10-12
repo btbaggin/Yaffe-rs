@@ -1,5 +1,5 @@
 use crate::controls::{List, ListItem};
-use crate::modals::{ModalContent, ModalContentElement};
+use crate::modals::{ModalInputHandler, ModalContentElement};
 use crate::ui::ContainerSize;
 
 pub struct ListModal;
@@ -13,6 +13,6 @@ impl ListModal {
     }
 }
 
-impl ModalContent for ListModal {
+impl ModalInputHandler for ListModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
