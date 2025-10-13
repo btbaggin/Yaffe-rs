@@ -2,7 +2,7 @@ use crate::assets::Images;
 use crate::controls::{MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
 use crate::ui::{
     change_brightness, AnimationManager, ContainerSize, Justification, LayoutElement, RightAlignment, UiContainer,
-    UiElement, WidgetId, MARGIN, WidgetTree
+    UiElement, WidgetId, MARGIN, WidgetTree, DeferredAction, DeferredActionTrait
 };
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 use std::collections::HashMap;
@@ -37,14 +37,31 @@ pub enum ModalSize {
 pub struct ModalAction {
     close: Option<bool>,
 }
+impl DeferredActionTrait for ModalAction {
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<crate::YaffeState, DeferredAction>, _animations: &mut AnimationManager) -> Option<DeferredAction> {
+        let modals = ui.modals.get_mut().unwrap();
+        if let Some(accept) = self.close {
+            let modal = modals.pop().unwrap();
+            if let Some(close) = modal.on_close {
+                // Content will always be second (after title, before buttons)
+                let content = crate::convert_to!(modal.content.get_child(1).as_ref(), ModalContentElement);
+
+                let mut new_actions = DeferredAction::new();
+                close(&mut ui.data, accept, content, &mut new_actions);
+                return Some(new_actions);
+            }
+        }
+        None
+    }
+}
 impl ModalAction {
-    pub fn close_if_accept(&mut self, action: &Actions) -> bool {
+    pub fn close_if_accept(&mut self, action: &crate::Actions) -> bool {
         match action {
-            Actions::Accept => {
+            crate::Actions::Accept => {
                 self.close = Some(true);
                 true
             }
-            Actions::Back => {
+            crate::Actions::Back => {
                 self.close = Some(false);
                 true
             }
@@ -283,7 +300,9 @@ pub fn display_modal_raw<T, D>(
     modals.push(m);
 }
 
-pub fn update_modal<T, D>(modals: &mut Mutex<Vec<Modal<T, D>>>, state: &mut T, animations: &mut AnimationManager, action: &Actions, handler: &mut D) -> bool {
+pub fn update_modal<T, D>(ui: &mut WidgetTree<T, D>, animations: &mut AnimationManager, action: &Actions, handler: &mut D) -> bool {
+    let modals = &mut ui.modals;
+    let state = &mut ui.data;
     let modals = modals.get_mut().unwrap();
     if let Some(modal) = modals.last_mut() {
         let mut h = ModalAction { close: None };

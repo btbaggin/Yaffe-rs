@@ -41,14 +41,6 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
 
             self.render(graphics);
 
-            // //Render modal last, on top of everything
-            // let modals = &mut self.data.modals.lock().unwrap();
-            // if let Some(m) = modals.last_mut() {
-            //     // Render calls will modify the bounds, so we must reset it
-            //     graphics.bounds = window_rect;
-            //     crate::modals::render_modal(m, graphics);
-            // }
-
             if !self.data.toasts.is_empty() {
                 // Render calls will modify the bounds, so we must reset it
                 graphics.bounds = window_rect;
@@ -96,13 +88,6 @@ impl WindowHandler for WidgetTree<YaffeState, DeferredAction> {
                 let mut handler = DeferredAction::new();
                 let result = self.action(animations, action, &mut handler);
                 handler.resolve(self, animations);
-                // let result = if !is_modal_open(&self.data) {
-                //     self.action(animations, action, &mut handler)
-                // } else {
-                //     update_modal(&mut self.data, animations, action);
-                //     true
-                // };
-                // handler.resolve(self, animations);
                 result
             }
         }

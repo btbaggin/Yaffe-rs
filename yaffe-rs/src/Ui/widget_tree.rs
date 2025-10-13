@@ -40,7 +40,7 @@ impl<T, D> WidgetTree<T, D> {
         //If we lock here that call will wait infinitely
         //We can get_mut here to ensure compile time exclusivity instead of locking
         //That allows us to call display_modal in close() below
-        if update_modal(&mut self.modals, &mut self.data, animations, action, handler) {
+        if update_modal(self, animations, action, handler) {
             true
         } else {
             let focus = self.focus.last().unwrap();

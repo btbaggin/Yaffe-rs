@@ -7,7 +7,7 @@ mod ui_container;
 mod utils;
 mod widget_tree;
 pub use animations::{AnimationManager, FieldOffset};
-pub use deferred_action::DeferredAction;
+pub use deferred_action::{DeferredAction, DeferredActionTrait};
 pub use ui_container::*;
 pub use utils::*;
 pub use widget_tree::WidgetTree;
