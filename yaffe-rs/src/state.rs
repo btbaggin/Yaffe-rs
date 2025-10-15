@@ -32,7 +32,7 @@ pub struct MetadataSearch {
     pub options: Vec<String>,
     pub mask: usize,
     pub selected: Option<usize>,
-    allow_all: bool
+    allow_all: bool,
 }
 impl MetadataSearch {
     pub fn new(name: &str, options: &[&str]) -> MetadataSearch {
@@ -46,7 +46,13 @@ impl MetadataSearch {
     }
 
     pub fn from_filter(filter: &PluginFilter) -> MetadataSearch {
-        MetadataSearch { name: filter.name.to_string(), options: filter.options.clone(), mask: 0, selected: None, allow_all: filter.allow_all }
+        MetadataSearch {
+            name: filter.name.to_string(),
+            options: filter.options.clone(),
+            mask: 0,
+            selected: None,
+            allow_all: filter.allow_all,
+        }
     }
 
     pub fn from_range<T: Step + ToString + PartialOrd + Copy>(name: &str, start: T, end: T) -> MetadataSearch {
@@ -306,7 +312,6 @@ pub struct YaffeState {
     pub selected: SelectedItem,
     pub groups: Vec<TileGroup>,
     pub plugins: Vec<Plugin>,
-    pub toasts: HashMap<u64, String>,
     pub queue: ThreadSafeJobQueue,
     pub filter: Option<MetadataSearch>,
     pub restricted_mode: RestrictedMode,
@@ -328,7 +333,6 @@ impl YaffeState {
             plugins: vec![],
             filter: None,
             restricted_mode: RestrictedMode::Off,
-            toasts: HashMap::new(),
             queue,
             refresh_list: true,
             settings,
@@ -348,10 +352,6 @@ impl YaffeState {
     }
 
     pub fn find_group(&self, id: i64) -> Option<&TileGroup> { self.groups.iter().find(|p| p.id == id) }
-
-    pub fn display_toast(&mut self, id: u64, toast: &str) { self.toasts.insert(id, toast.to_string()); }
-
-    pub fn remove_toast(&mut self, id: &u64) { self.toasts.remove(id); }
 
     pub fn exit(&mut self) { self.running = false; }
 

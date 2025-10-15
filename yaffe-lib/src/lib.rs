@@ -46,7 +46,11 @@ pub struct PluginFilter {
 }
 impl PluginFilter {
     pub fn new(name: &str, options: &[&str]) -> PluginFilter {
-        PluginFilter { name: name.to_string(), options: options.iter().map(|o| o.to_string()).collect(), allow_all: false }
+        PluginFilter {
+            name: name.to_string(),
+            options: options.iter().map(|o| o.to_string()).collect(),
+            allow_all: false,
+        }
     }
 
     pub fn from_range(name: &str, start: &str, end: &str) -> PluginFilter {

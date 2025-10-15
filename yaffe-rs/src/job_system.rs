@@ -65,14 +65,14 @@ fn poll_pending_jobs(queue: spmc::Receiver<(Option<WindowId>, Job)>, notify: Sen
 
             Job::DownloadUrl { url, file_path } => crate::scraper::download_file(url, file_path),
 
-            Job::SearchPlatform { id, name, path, args } => match search_platform(id, &name, path, args) {
-                Ok(result) => send_reply(window_id, JobResult::SearchPlatform(result)),
-                Err(e) => error!("Error occured while searching platforms {e:?}"),
+            Job::SearchPlatform { name, path, args } => {
+                let result = search_platform(&name, path, args);
+                send_reply(window_id, JobResult::SearchPlatform(result));
             },
 
-            Job::SearchGame { id, exe, name, platform } => match search_game(id, &name, exe, platform) {
-                Ok(result) => send_reply(window_id, JobResult::SearchGame(result)),
-                Err(e) => error!("Error occured while searching games {e:?}"),
+            Job::SearchGame { exe, name, platform } => {
+                let result = search_game(&name, exe, platform);
+                send_reply(window_id, JobResult::SearchGame(result));
             },
 
             Job::CheckUpdates => {
@@ -82,8 +82,6 @@ fn poll_pending_jobs(queue: spmc::Receiver<(Option<WindowId>, Job)>, notify: Sen
         }
     }
 }
-
-pub fn generate_job_id() -> u64 { rand::rng().random::<u64>() }
 
 #[derive(Debug)]
 pub enum Job {
@@ -101,7 +99,6 @@ pub enum Job {
 
     /// Searches TheGamesDb for a given platform
     SearchPlatform {
-        id: u64,
         name: String,
         path: String,
         args: String,
@@ -109,7 +106,6 @@ pub enum Job {
 
     /// Searches TheGamesDb for a given game
     SearchGame {
-        id: u64,
         exe: String,
         name: String,
         platform: i64,
@@ -118,10 +114,9 @@ pub enum Job {
     CheckUpdates,
 }
 
-#[derive(Clone)]
 pub enum JobResult {
     LoadImage { data: Vec<u8>, dimensions: (u32, u32), key: AssetKey },
-    SearchPlatform(ServiceResponse<PlatformScrapeResult>),
-    SearchGame(ServiceResponse<GameScrapeResult>),
+    SearchPlatform(ServiceResult<ServiceResponse<PlatformScrapeResult>>),
+    SearchGame(ServiceResult<ServiceResponse<GameScrapeResult>>),
     CheckUpdates(bool),
 }

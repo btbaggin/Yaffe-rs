@@ -1,6 +1,6 @@
 use crate::controls::MENU_BACKGROUND;
-use crate::modals::{on_update_platform_close, PlatformDetailModal, ModalDisplay};
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN};
+use crate::modals::{on_update_platform_close, DisplayModal, PlatformDetailModal};
+use crate::ui::{AnimationManager, LayoutElement, LoadPluginAction, UiElement, WidgetId, MARGIN};
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
 };
@@ -8,13 +8,13 @@ use crate::{
 widget!(
     pub struct PlatformList {}
 );
-impl UiElement<YaffeState, DeferredAction> for PlatformList {
+impl UiElement<YaffeState> for PlatformList {
     fn action(
         &mut self,
         state: &mut YaffeState,
         _: &mut AnimationManager,
         action: &Actions,
-        handler: &mut DeferredAction,
+        handler: &mut DeferredAction<YaffeState>,
     ) -> bool {
         match action {
             Actions::Down => {
@@ -27,7 +27,7 @@ impl UiElement<YaffeState, DeferredAction> for PlatformList {
             }
             Actions::Accept => {
                 handler.focus_widget(crate::APP_LIST_ID);
-                handler.load_plugin(true);
+                handler.defer(LoadPluginAction(true));
 
                 true
             }
@@ -35,12 +35,12 @@ impl UiElement<YaffeState, DeferredAction> for PlatformList {
                 let group = state.get_selected_group();
                 if group.kind.allow_edit() {
                     let modal = PlatformDetailModal::from_existing(group);
-                    handler.display_modal(ModalDisplay::new(
+                    handler.display_modal(DisplayModal::new(
                         "Platform Info",
                         Some("Save"),
                         modal,
                         crate::modals::ModalSize::Third,
-                        Some(on_update_platform_close)
+                        Some(on_update_platform_close),
                     ));
                 }
                 true

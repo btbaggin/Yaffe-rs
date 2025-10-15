@@ -1,5 +1,5 @@
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId};
-use crate::{Actions, Graphics, LogicalSize, LogicalPosition, Rect};
+use crate::ui::{AnimationManager, DeferredAction, LayoutElement, UiElement, WidgetId};
+use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 
 pub trait ListItem: std::marker::Sync {
     fn to_display(&self) -> String;
@@ -30,22 +30,24 @@ impl<L: ListItem> List<L> {
         self.index = new_index;
 
         animations
-            .animate(
-                self,
-                crate::offset_of!(List<L> => highlight_offset),
-                item_size * self.index as f32,
-            )
+            .animate(self, crate::offset_of!(List<L> => highlight_offset), item_size * self.index as f32)
             .duration(0.1)
             .start();
     }
 }
 
-impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
+impl<T: 'static, L: ListItem> UiElement<T> for List<L> {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         LogicalSize::new(graphics.bounds.width(), self.items.len() as f32 * graphics.font_size())
     }
 
-    fn action(&mut self, _state: &mut T, animations: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
+    fn action(
+        &mut self,
+        _state: &mut T,
+        animations: &mut AnimationManager,
+        action: &Actions,
+        _handler: &mut DeferredAction<T>,
+    ) -> bool {
         match action {
             Actions::Down => {
                 if self.index < self.items.len() - 1 {
@@ -72,7 +74,10 @@ impl<T: 'static, D: 'static, L: ListItem> UiElement<T, D> for List<L> {
         let mut pos = *rect.top_left();
         let font_size = graphics.font_size();
 
-        let rect = Rect::point_and_size(LogicalPosition::new(pos.x, pos.y + self.highlight_offset), LogicalSize::new(rect.width(), font_size));
+        let rect = Rect::point_and_size(
+            LogicalPosition::new(pos.x, pos.y + self.highlight_offset),
+            LogicalSize::new(rect.width(), font_size),
+        );
         graphics.draw_rectangle(rect, graphics.accent_color());
 
         //Item list

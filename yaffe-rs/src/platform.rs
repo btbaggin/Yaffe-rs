@@ -1,6 +1,6 @@
 use crate::logger::PanicLogEntry;
 use crate::state::{GroupType, Tile, TileGroup};
-use crate::YaffeState;
+use crate::{YaffeState, DeferredAction};
 use std::path::{Path, PathBuf};
 
 pub fn get_database_info(state: &mut YaffeState) {
@@ -25,9 +25,8 @@ pub fn get_database_info(state: &mut YaffeState) {
     state.groups = platforms;
 }
 
-pub fn scan_new_files(state: &mut YaffeState) {
+pub fn scan_new_files(state: &mut YaffeState, handler: &mut DeferredAction<YaffeState>) {
     let mut count = 0;
-    let job_id = crate::job_system::generate_job_id();
     for p in &state.groups {
         if let GroupType::Emulator = p.kind {
             for entry in std::fs::read_dir(p.get_rom_path()).log_and_panic() {
@@ -45,7 +44,6 @@ pub fn scan_new_files(state: &mut YaffeState) {
 
                         crate::logger::info!("{name} not found in database, performing search");
                         let job = crate::Job::SearchGame {
-                            id: job_id,
                             exe: file.to_string(),
                             name: name.to_string(),
                             platform: p.id,
@@ -60,7 +58,7 @@ pub fn scan_new_files(state: &mut YaffeState) {
     }
 
     if count != 0 {
-        state.display_toast(job_id, &format!("Found {count} new files, searching for information..."));
+        handler.display_toast(&format!("Found {count} new files, searching for information..."), 2.);
     }
 }
 

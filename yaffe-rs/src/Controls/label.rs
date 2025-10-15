@@ -1,4 +1,7 @@
-use crate::ui::{get_drawable_text, get_drawable_text_with_wrap, AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::ui::{
+    get_drawable_text, get_drawable_text_with_wrap, AnimationManager, DeferredAction, LayoutElement, UiElement,
+    WidgetId,
+};
 use crate::{Actions, Graphics, LogicalSize};
 use speedy2d::font::FormattedTextBlock;
 
@@ -25,7 +28,7 @@ impl Label {
         label
     }
 }
-impl<T: 'static, D: 'static> UiElement<T, D> for Label {
+impl<T: 'static> UiElement<T> for Label {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         let text = self.get_text(graphics);
         let size = text.size();
@@ -38,7 +41,7 @@ impl<T: 'static, D: 'static> UiElement<T, D> for Label {
         graphics.draw_text_cropped(*rect.top_left(), rect, graphics.font_color(), &text);
     }
 
-    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut D) -> bool { false }
+    fn action(&mut self, _: &mut T, _: &mut AnimationManager, _: &Actions, _: &mut DeferredAction<T>) -> bool { false }
 }
 impl Label {
     fn get_text(&self, graphics: &mut Graphics) -> FormattedTextBlock {

@@ -1,7 +1,7 @@
 use crate::controls::{PassBox, RestrictedPasscode};
-use crate::modals::{ModalInputHandler, ModalContentElement};
+use crate::modals::{ModalContentElement, ModalInputHandler};
 use crate::ui::{ContainerSize, LayoutElement, ValueElement};
-use crate::{YaffeState, DeferredAction};
+use crate::{DeferredAction, YaffeState};
 
 pub enum RestrictedMode {
     On(RestrictedPasscode),
@@ -12,21 +12,26 @@ pub struct SetRestrictedModal;
 
 impl SetRestrictedModal {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> ModalContentElement {
+    pub fn new() -> ModalContentElement<YaffeState> {
         let mut modal = ModalContentElement::new(SetRestrictedModal, false);
         let pass = PassBox::new();
         let pass_id = pass.get_id();
         modal.add_child(pass, ContainerSize::Shrink);
-        modal.focus = Some(pass_id);
+            modal.focus(pass_id);
         modal
     }
 }
 
-impl ModalInputHandler for SetRestrictedModal {
+impl ModalInputHandler<YaffeState> for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_restricted_modal_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
+pub fn on_restricted_modal_close(
+    state: &mut YaffeState,
+    result: bool,
+    content: &ModalContentElement<YaffeState>,
+    _: &mut DeferredAction<YaffeState>,
+) {
     if result {
         let content = crate::convert_to!(content.get_child(0), PassBox);
         let pass = content.value();

@@ -75,7 +75,7 @@ impl AnimationManager {
 
     /// Processes any widgets that have running animations
     /// Currently only position animations are allowed
-    pub fn process<T: 'static, D: 'static>(&mut self, tree: &mut crate::ui::WidgetTree<T, D>, delta_time: f32) {
+    pub fn process<T: 'static>(&mut self, tree: &mut crate::ui::WidgetTree<T>, delta_time: f32) {
         //We do this at the beginning because we need animations to persist 1 fram longer than they go
         //This is because we only redraw the screen if animations are playing
         //If we removed them at the end we wouldn't redraw the last frame of the animation
@@ -88,11 +88,11 @@ impl AnimationManager {
 
             if let Some(modal) = modals.last_mut() {
                 if let Some(widget) = modal.find_widget_mut(animation.widget) {
-                    Self::apply_animation::<(), crate::modals::ModalAction>(animation, widget, delta_time);
+                    Self::apply_animation(animation, widget, delta_time); // TODO can i remove the type arg?
                     continue;
                 }
             }
-            
+
             if let Some(widget) = tree.root.find_widget_mut(animation.widget) {
                 Self::apply_animation(animation, widget, delta_time);
                 continue;
@@ -102,11 +102,11 @@ impl AnimationManager {
             animation.remaining = 0.;
         }
     }
-    
-    fn apply_animation<T, D>(animation: &Animation, widget: &mut dyn crate::ui::UiElement<T, D>, delta_time: f32) {
+
+    fn apply_animation<T>(animation: &Animation, widget: &mut dyn crate::ui::UiElement<T>, delta_time: f32) {
         match animation.data {
             AnimationData::F32 { from, to } => {
-                let animator = apply_mut::<dyn crate::ui::UiElement<T, D>, f32>(animation.offset, widget);
+                let animator = apply_mut::<dyn crate::ui::UiElement<T>, f32>(animation.offset, widget);
                 *animator = animator.slerp(from, to, delta_time / animation.duration);
                 if animation.remaining <= 0. {
                     *animator = to

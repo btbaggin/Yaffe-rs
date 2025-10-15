@@ -7,18 +7,12 @@ mod ui_container;
 mod utils;
 mod widget_tree;
 pub use animations::{AnimationManager, FieldOffset};
-pub use deferred_action::{DeferredAction, DeferredActionTrait};
+pub use deferred_action::{DeferredAction, DeferredActionTrait, LoadPluginAction, RevertFocusAction};
 pub use ui_container::*;
 pub use utils::*;
 pub use widget_tree::WidgetTree;
 
 pub const MARGIN: f32 = 10.;
-
-#[repr(u8)]
-enum FocusType {
-    Revert,
-    Focus(WidgetId),
-}
 
 pub trait LayoutElement {
     fn layout(&self) -> Rect;
@@ -27,14 +21,22 @@ pub trait LayoutElement {
     fn as_any(&self) -> &dyn std::any::Any;
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
-pub trait UiElement<T: 'static, D: 'static>: LayoutElement {
+pub trait UiElement<T: 'static>: LayoutElement {
     fn calc_size(&mut self, _: &mut Graphics) -> LogicalSize { LogicalSize::new(0., 0.) }
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId);
-    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, _: &Actions, _handler: &mut D) -> bool { false }
+    fn action(
+        &mut self,
+        _state: &mut T,
+        _: &mut AnimationManager,
+        _: &Actions,
+        _handler: &mut DeferredAction<T>,
+    ) -> bool {
+        false
+    }
     fn got_focus(&mut self, _: &T, _: &mut AnimationManager) {}
     fn lost_focus(&mut self, _: &T, _: &mut AnimationManager) {}
-    fn as_container(&self) -> Option<&UiContainer<T, D>> { None }
-    fn as_container_mut(&mut self) -> Option<&mut UiContainer<T, D>> { None }
+    fn as_container(&self) -> Option<&UiContainer<T>> { None }
+    fn as_container_mut(&mut self) -> Option<&mut UiContainer<T>> { None }
 }
 pub trait ValueElement<T> {
     fn value(&self) -> T;

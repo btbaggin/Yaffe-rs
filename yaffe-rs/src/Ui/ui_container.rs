@@ -1,8 +1,8 @@
-use crate::ui::{AnimationManager, Color, LayoutElement, UiElement, WidgetId, MARGIN};
+use crate::ui::{AnimationManager, Color, DeferredAction, LayoutElement, UiElement, WidgetId, MARGIN};
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 
-struct ContainerChild<T, D> {
-    element: Box<dyn UiElement<T, D>>,
+struct ContainerChild<T> {
+    element: Box<dyn UiElement<T>>,
     size: ContainerSize,
     realized_size: f32,
 }
@@ -32,17 +32,17 @@ enum BackgroundType {
     None,
 }
 
-pub struct UiContainer<T: 'static, D: 'static> {
+pub struct UiContainer<T: 'static> {
     position: LogicalPosition,
     size: LogicalSize,
     id: WidgetId,
-    children: Vec<ContainerChild<T, D>>,
+    children: Vec<ContainerChild<T>>,
     background: BackgroundType,
     direction: FlexDirection,
     justification: Justification,
     margin: f32,
 }
-impl<T, D> LayoutElement for UiContainer<T, D> {
+impl<T> LayoutElement for UiContainer<T> {
     fn layout(&self) -> Rect { Rect::new(self.position, self.position + self.size) }
     fn set_layout(&mut self, layout: Rect) {
         self.position = *layout.top_left();
@@ -52,8 +52,8 @@ impl<T, D> LayoutElement for UiContainer<T, D> {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 }
-impl<T, D> UiContainer<T, D> {
-    pub fn row() -> UiContainer<T, D> {
+impl<T> UiContainer<T> {
+    pub fn row() -> UiContainer<T> {
         UiContainer {
             position: LogicalPosition::new(0., 0.),
             size: LogicalSize::new(0., 0.),
@@ -66,7 +66,7 @@ impl<T, D> UiContainer<T, D> {
         }
     }
 
-    pub fn column() -> UiContainer<T, D> {
+    pub fn column() -> UiContainer<T> {
         UiContainer {
             position: LogicalPosition::new(0., 0.),
             size: LogicalSize::new(0., 0.),
@@ -100,22 +100,22 @@ impl<T, D> UiContainer<T, D> {
     }
 
     #[allow(clippy::borrowed_box)]
-    pub fn get_child(&self, index: usize) -> &Box<dyn UiElement<T, D>> { &self.children[index].element }
+    pub fn get_child(&self, index: usize) -> &Box<dyn UiElement<T>> { &self.children[index].element }
 
-    pub fn add_child(&mut self, child: impl UiElement<T, D> + 'static, size: ContainerSize) -> &mut Self {
+    pub fn add_child(&mut self, child: impl UiElement<T> + 'static, size: ContainerSize) -> &mut Self {
         let child = ContainerChild { element: Box::new(child), size, realized_size: 0. };
         self.children.push(child);
         self
     }
 
-    pub fn with_child(&mut self, child: UiContainer<T, D>, size: ContainerSize) -> &mut UiContainer<T, D> {
+    pub fn with_child(&mut self, child: UiContainer<T>, size: ContainerSize) -> &mut UiContainer<T> {
         self.add_child(child, size);
 
         let count = self.children.len();
-        self.children[count - 1].element.as_mut().as_any_mut().downcast_mut::<UiContainer<T, D>>().unwrap()
+        self.children[count - 1].element.as_mut().as_any_mut().downcast_mut::<UiContainer<T>>().unwrap()
     }
 
-    pub fn find_widget(&self, widget_id: WidgetId) -> Option<&dyn UiElement<T, D>> {
+    pub fn find_widget(&self, widget_id: WidgetId) -> Option<&dyn UiElement<T>> {
         // Check if the current container matches the widget_id
         if self.get_id() == widget_id {
             return Some(self);
@@ -134,7 +134,7 @@ impl<T, D> UiContainer<T, D> {
         None
     }
 
-    pub fn find_widget_mut(&mut self, widget_id: WidgetId) -> Option<&mut dyn UiElement<T, D>> {
+    pub fn find_widget_mut(&mut self, widget_id: WidgetId) -> Option<&mut dyn UiElement<T>> {
         // Check if the current container matches the widget_id
         if self.get_id() == widget_id {
             return Some(self);
@@ -153,12 +153,12 @@ impl<T, D> UiContainer<T, D> {
         None
     }
 
-    pub fn replace_child(&mut self, widget_id: WidgetId, child: impl UiElement<T, D> + 'static) {
+    pub fn replace_child(&mut self, widget_id: WidgetId, child: impl UiElement<T> + 'static) {
         let child = Box::new(child);
         self.replace_child_boxed(widget_id, child);
     }
 
-    fn replace_child_boxed(&mut self, widget_id: WidgetId, child: Box<dyn UiElement<T, D>>) {
+    fn replace_child_boxed(&mut self, widget_id: WidgetId, child: Box<dyn UiElement<T>>) {
         // Check direct children
         for (i, c) in self.children.iter_mut().enumerate() {
             if c.element.get_id() == widget_id {
@@ -275,9 +275,9 @@ impl<T, D> UiContainer<T, D> {
     }
 }
 
-impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
-    fn as_container(&self) -> Option<&UiContainer<T, D>> { Some(self) }
-    fn as_container_mut(&mut self) -> Option<&mut UiContainer<T, D>> { Some(self) }
+impl<T: 'static> UiElement<T> for UiContainer<T> {
+    fn as_container(&self) -> Option<&UiContainer<T>> { Some(self) }
+    fn as_container_mut(&mut self) -> Option<&mut UiContainer<T>> { Some(self) }
 
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.calc_container_size(graphics) }
 
@@ -332,7 +332,13 @@ impl<T: 'static, D: 'static> UiElement<T, D> for UiContainer<T, D> {
         }
     }
 
-    fn action(&mut self, state: &mut T, animations: &mut AnimationManager, action: &Actions, handler: &mut D) -> bool {
+    fn action(
+        &mut self,
+        state: &mut T,
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut DeferredAction<T>,
+    ) -> bool {
         for child in &mut self.children {
             if child.element.action(state, animations, action, handler) {
                 return true;

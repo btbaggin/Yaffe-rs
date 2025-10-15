@@ -1,5 +1,5 @@
 use crate::input::InputType;
-use crate::ui::{AnimationManager, LayoutElement, UiElement, ValueElement, WidgetId};
+use crate::ui::{AnimationManager, DeferredAction, LayoutElement, UiElement, ValueElement, WidgetId};
 use crate::{Actions, Graphics, LogicalSize};
 use std::hash::{Hash, Hasher};
 
@@ -43,7 +43,7 @@ crate::widget!(
     }
 );
 
-impl<T: 'static, D: 'static> UiElement<T, D> for PassBox {
+impl<T: 'static> UiElement<T> for PassBox {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         LogicalSize::new(graphics.bounds.width(), graphics.font_size())
     }
@@ -56,7 +56,13 @@ impl<T: 'static, D: 'static> UiElement<T, D> for PassBox {
         graphics.draw_text(*rect.top_left(), graphics.font_color(), &item_label);
     }
 
-    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
+    fn action(
+        &mut self,
+        _state: &mut T,
+        _: &mut AnimationManager,
+        action: &Actions,
+        _handler: &mut DeferredAction<T>,
+    ) -> bool {
         let code = match action {
             Actions::KeyPress(InputType::Key(code, _, _)) => *code as u8 as char,
             Actions::KeyPress(InputType::Gamepad(g)) => *g as u8 as char,

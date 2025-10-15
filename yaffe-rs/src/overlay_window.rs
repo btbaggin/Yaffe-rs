@@ -2,11 +2,11 @@ use crate::input::Actions;
 use crate::job_system::JobResult;
 use crate::logger::LogEntry;
 use crate::overlay_state::OverlayState;
-use crate::ui::{AnimationManager, WidgetTree};
+use crate::ui::{AnimationManager, DeferredAction, WidgetTree};
 use crate::windowing::WindowHelper;
 use crate::Graphics;
 
-impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
+impl crate::windowing::WindowHandler for WidgetTree<OverlayState> {
     fn on_init(&mut self, graphics: &mut Graphics) { crate::assets::preload_assets(graphics); }
 
     fn on_frame_begin(&mut self, graphics: &mut Graphics, jobs: Vec<JobResult>) { process_jobs(graphics, jobs); }
@@ -38,7 +38,9 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState, ()> {
             }
             _ => {
                 if self.data.showing {
-                    self.action(animations, action, &mut ());
+                    let mut handler = DeferredAction::new();
+                    self.action(animations, action, &mut handler);
+                    handler.resolve(self, animations);
 
                     if let Actions::Accept = action {
                         let mut process = self.data.process.borrow_mut();

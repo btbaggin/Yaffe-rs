@@ -8,7 +8,6 @@ use std::path::Path;
 const GAMESDB_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../api_key.txt")) };
 
 pub fn search_game(
-    id: u64,
     name: &str,
     exe: String,
     platform: i64,
@@ -29,14 +28,14 @@ pub fn search_game(
     assert!(resp["data"]["games"].is_array());
     let array = resp["data"]["games"].as_array().unwrap();
     if array.is_empty() {
-        return Ok(ServiceResponse::no_results(id));
+        return Ok(ServiceResponse::no_results());
     }
 
     let base_url = resp["include"]["boxart"]["base_url"]["medium"].as_str().unwrap();
     let images = resp["include"]["boxart"]["data"].as_object().unwrap();
 
     let (count, exact) = get_count_and_exact(array, "game_title", name);
-    let mut result = ServiceResponse::new(id, String::from(name), count, exact);
+    let mut result = ServiceResponse::new(String::from(name), count, exact);
 
     for game in array {
         let id = game["id"].as_i64().unwrap().to_string();
@@ -70,7 +69,6 @@ pub fn search_game(
 }
 
 pub fn search_platform(
-    id: u64,
     name: &str,
     path: String,
     args: String,
@@ -85,11 +83,11 @@ pub fn search_platform(
     assert!(resp["data"]["platforms"].is_array());
     let array = resp["data"]["platforms"].as_array().unwrap();
     if array.is_empty() {
-        return Ok(ServiceResponse::no_results(id));
+        return Ok(ServiceResponse::no_results());
     }
 
     let (count, exact) = get_count_and_exact(array, "name", name);
-    let mut result = ServiceResponse::new(id, String::from(name), count, exact);
+    let mut result = ServiceResponse::new(String::from(name), count, exact);
 
     if !array.is_empty() {
         let ids = array.iter().map(|v| v["id"].as_i64().unwrap().to_string()).collect::<Vec<String>>();

@@ -1,8 +1,8 @@
 use crate::controls::TextBox;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::modals::{ModalInputHandler, ModalContentElement};
+use crate::modals::{ModalContentElement, ModalInputHandler};
 use crate::ui::{ContainerSize, LayoutElement, ValueElement, WidgetId};
-use crate::{YaffeState, DeferredAction};
+use crate::{DeferredAction, YaffeState};
 use std::collections::HashMap;
 
 pub struct PlatformDetailModal {
@@ -11,9 +11,9 @@ pub struct PlatformDetailModal {
 }
 
 impl PlatformDetailModal {
-    pub fn emulator() -> ModalContentElement { PlatformDetailModal::_init(0, "", "", "") }
+    pub fn emulator() -> ModalContentElement<YaffeState> { PlatformDetailModal::_init(0, "", "", "") }
 
-    pub fn from_existing(plat: &crate::TileGroup) -> ModalContentElement {
+    pub fn from_existing(plat: &crate::TileGroup) -> ModalContentElement<YaffeState> {
         //This should never fail since we orignally got it from the database
         let platform_id = plat.id;
         let (path, args) = crate::data::PlatformInfo::get_info(platform_id).log_and_panic();
@@ -21,7 +21,7 @@ impl PlatformDetailModal {
         PlatformDetailModal::_init(platform_id, &plat.name.clone(), &path, &args)
     }
 
-    fn _init(platform_id: i64, name: &str, path: &str, args: &str) -> ModalContentElement {
+    fn _init(platform_id: i64, name: &str, path: &str, args: &str) -> ModalContentElement<YaffeState> {
         let name = TextBox::from("Name", name);
         let executable = TextBox::from("Executable", path);
         let args = TextBox::from("Args", args);
@@ -41,14 +41,17 @@ impl PlatformDetailModal {
     }
 }
 
-impl ModalInputHandler for PlatformDetailModal {
+impl ModalInputHandler<YaffeState> for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
+pub fn on_add_platform_close(
+    state: &mut YaffeState,
+    result: bool,
+    content: &ModalContentElement<YaffeState>,
+    handler: &mut DeferredAction<YaffeState>,
+) {
     if result {
-        let job_id = crate::job_system::generate_job_id();
-
         let details = content.get_handler::<PlatformDetailModal>();
         let name = details.control_map["Name"];
         let exe = details.control_map["Executable"];
@@ -57,18 +60,22 @@ pub fn on_add_platform_close(state: &mut YaffeState, result: bool, content: &Mod
         let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
         let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
         let job = crate::Job::SearchPlatform {
-            id: job_id,
             name: name.value().trim().to_string(),
             path: exe.value().trim().to_string(),
             args: args.value().trim().to_string(),
         };
         state.queue.start_job(job);
 
-        state.display_toast(job_id, "Searching for platform information...");
+        handler.display_toast("Searching for platform information...", 2.);
     }
 }
 
-pub fn on_update_platform_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, handler: &mut DeferredAction) {
+pub fn on_update_platform_close(
+    state: &mut YaffeState,
+    result: bool,
+    content: &ModalContentElement<YaffeState>,
+    handler: &mut DeferredAction<YaffeState>,
+) {
     if result {
         let details = content.get_handler::<PlatformDetailModal>();
         state.refresh_list = true;

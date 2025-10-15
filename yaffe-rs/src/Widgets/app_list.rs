@@ -1,8 +1,10 @@
 use crate::logger::UserMessage;
 use crate::modals::InfoModal;
-use crate::modals::{ModalSize, ModalDisplay};
+use crate::modals::{DisplayModal, ModalSize};
 use crate::state::GroupType;
-use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, WidgetId};
+use crate::ui::{
+    get_drawable_text, AnimationManager, LayoutElement, LoadPluginAction, RevertFocusAction, UiElement, WidgetId,
+};
 use crate::widgets::AppTile;
 use crate::{
     widget, Actions, DeferredAction, LogicalPosition, LogicalSize, PhysicalSize, Rect, SettingNames, YaffeState,
@@ -23,13 +25,13 @@ widget!(
     }
 );
 
-impl UiElement<YaffeState, DeferredAction> for AppList {
+impl UiElement<YaffeState> for AppList {
     fn action(
         &mut self,
         state: &mut YaffeState,
         animations: &mut AnimationManager,
         action: &Actions,
-        handler: &mut DeferredAction,
+        handler: &mut DeferredAction<YaffeState>,
     ) -> bool {
         match action {
             Actions::Up => {
@@ -61,7 +63,7 @@ impl UiElement<YaffeState, DeferredAction> for AppList {
             Actions::Info => {
                 if let Some(exe) = state.get_selected_tile() {
                     let info = InfoModal::from(exe);
-                    handler.display_modal(ModalDisplay::new(&exe.name.clone(), None, info, ModalSize::Half, None));
+                    handler.display_modal(DisplayModal::new(&exe.name.clone(), None, info, ModalSize::Half, None));
                 }
                 true
             }
@@ -70,7 +72,7 @@ impl UiElement<YaffeState, DeferredAction> for AppList {
                 true
             }
             Actions::Back => {
-                handler.revert_focus();
+                handler.defer(RevertFocusAction);
                 true
             }
             _ => false,
@@ -311,7 +313,7 @@ impl AppList {
         state: &mut YaffeState,
         amount: i32,
         forward: bool,
-        handler: &mut DeferredAction,
+        handler: &mut DeferredAction<YaffeState>,
         animations: &mut AnimationManager,
     ) {
         let group_id = state.get_selected_group().id;
@@ -330,14 +332,14 @@ impl AppList {
 
             if let crate::state::GroupType::Plugin(_) = state.get_selected_group().kind {
                 if visible + self.tiles_x * self.tiles_y >= self.tiles.len() {
-                    handler.load_plugin(false);
+                    handler.defer(LoadPluginAction(false));
                 }
             }
         }
     }
 }
 
-fn start_app(state: &mut YaffeState, handler: &mut DeferredAction) {
+fn start_app(state: &mut YaffeState, handler: &mut DeferredAction<YaffeState>) {
     if let Some(tile) = state.get_selected_tile() {
         match tile.tile_type {
             TileType::App => {
@@ -354,7 +356,7 @@ fn start_app(state: &mut YaffeState, handler: &mut DeferredAction) {
                 match tile.get_containing_group_type(state) {
                     GroupType::Recents => unreachable!(),
                     GroupType::Emulator => unimplemented!(),
-                    GroupType::Plugin(_) => handler.load_plugin(true),
+                    GroupType::Plugin(_) => handler.defer(LoadPluginAction(true)),
                 }
             }
         }

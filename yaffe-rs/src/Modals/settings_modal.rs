@@ -1,9 +1,9 @@
 use crate::controls::{CheckBox, TextBox};
 use crate::logger::{LogEntry, UserMessage};
-use crate::modals::{ModalInputHandler, ModalContentElement};
+use crate::modals::{ModalContentElement, ModalInputHandler};
 use crate::settings::SettingsFile;
 use crate::ui::{ContainerSize, ValueElement};
-use crate::{YaffeState, DeferredAction};
+use crate::{DeferredAction, YaffeState};
 
 const STARTUP_TASK: &str = "Yaffe";
 
@@ -12,7 +12,7 @@ pub struct SettingsModal {
 }
 
 impl SettingsModal {
-    pub fn from(settings: &SettingsFile) -> ModalContentElement {
+    pub fn from(settings: &SettingsFile) -> ModalContentElement<YaffeState> {
         let mut setting_names = settings.get_full_settings();
         setting_names.sort_by(|x, y| x.0.cmp(&y.0));
 
@@ -24,21 +24,26 @@ impl SettingsModal {
 
         let mut modal = ModalContentElement::new(content, true);
         let set = crate::os::get_run_at_startup(STARTUP_TASK).log("Unable to get if Yaffe runs at startup");
-        modal.container.add_child(CheckBox::from("run_at_startup".to_string(), set), ContainerSize::Shrink);
+        modal.add_child(CheckBox::from("run_at_startup".to_string(), set), ContainerSize::Shrink);
 
         for (name, default) in setting_names {
             let element = TextBox::from(&name.clone(), &default.to_string());
-            modal.container.add_child(element, ContainerSize::Shrink);
+            modal.add_child(element, ContainerSize::Shrink);
         }
         modal
     }
 }
 
-impl ModalInputHandler for SettingsModal {
+impl ModalInputHandler<YaffeState> for SettingsModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
-pub fn on_settings_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, handler: &mut DeferredAction) {
+pub fn on_settings_close(
+    state: &mut YaffeState,
+    result: bool,
+    content: &ModalContentElement<YaffeState>,
+    handler: &mut DeferredAction<YaffeState>,
+) {
     if result {
         let details = content.get_handler::<SettingsModal>();
 

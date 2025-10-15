@@ -1,12 +1,12 @@
-use crate::modals::{ModalInputHandler, ModalContentElement};
+use crate::modals::{ModalContentElement, ModalInputHandler};
 use crate::ui::{ContainerSize, UiContainer};
 use crate::widgets::InfoPane;
-use crate::Tile;
+use crate::{Tile, YaffeState};
 
 pub struct InfoModal;
 
 impl InfoModal {
-    pub fn from(items: &Tile) -> ModalContentElement {
+    pub fn from(items: &Tile) -> ModalContentElement<YaffeState> {
         let mut attributes = vec![];
         for (name, value) in &items.metadata {
             attributes.push((name.clone(), value.clone()))
@@ -19,6 +19,6 @@ impl InfoModal {
     }
 }
 
-impl ModalInputHandler for InfoModal {
+impl ModalInputHandler<YaffeState> for InfoModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 }

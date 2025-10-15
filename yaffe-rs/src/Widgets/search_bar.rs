@@ -1,6 +1,6 @@
 use crate::controls::MENU_BACKGROUND;
 use crate::state::MetadataSearch;
-use crate::ui::{AnimationManager, LayoutElement, UiElement, WidgetId, MARGIN};
+use crate::ui::{AnimationManager, LayoutElement, RevertFocusAction, UiElement, WidgetId, MARGIN};
 use crate::{widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState};
 
 const MIN_NAME_WIDTH: f32 = 175.;
@@ -15,17 +15,17 @@ widget!(
         name_width: f32 = 0.
     }
 );
-impl UiElement<YaffeState, DeferredAction> for SearchBar {
+impl UiElement<YaffeState> for SearchBar {
     fn action(
         &mut self,
         state: &mut YaffeState,
         animations: &mut AnimationManager,
         action: &Actions,
-        handler: &mut DeferredAction,
+        handler: &mut DeferredAction<YaffeState>,
     ) -> bool {
         match action {
             Actions::Back => {
-                handler.revert_focus();
+                handler.defer(RevertFocusAction);
                 state.filter = None;
                 true
             }

@@ -9,6 +9,8 @@ use std::rc::Rc;
  * Search bar doesnt work well on plugins
  * allow generic search filter
  * allow reloading plugins?
+ * have toasts be time based
+ * can all "overlay" type things be combined? (modals and toast)
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -83,8 +85,8 @@ fn main() {
     let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
     let overlay_state = OverlayState::new(process.clone(), settings.clone());
 
-    let overlay = ui::WidgetTree::<OverlayState, ()>::new(build_overlay_tree(), overlay_state, WidgetId::static_id(1));
-    let mut ui = ui::WidgetTree::<YaffeState, DeferredAction>::new(build_main_tree(), yaffe_state, PLATFORM_LIST_ID);
+    let overlay = ui::WidgetTree::<OverlayState>::new(build_overlay_tree(), overlay_state, WidgetId::static_id(1));
+    let mut ui = ui::WidgetTree::<YaffeState>::new(build_main_tree(), yaffe_state, PLATFORM_LIST_ID);
 
     plugins::load_plugins(&mut ui, "./plugins");
 
@@ -103,7 +105,7 @@ fn main() {
     windowing::run_app(queue, handlers, notify);
 }
 
-pub fn build_main_tree() -> UiContainer<YaffeState, DeferredAction> {
+pub fn build_main_tree() -> UiContainer<YaffeState> {
     use ui::ContainerSize;
 
     let mut root = UiContainer::row();
@@ -119,7 +121,7 @@ pub fn build_main_tree() -> UiContainer<YaffeState, DeferredAction> {
 }
 
 use ui::ContainerSize;
-fn build_overlay_tree() -> UiContainer<OverlayState, ()> {
+fn build_overlay_tree() -> UiContainer<OverlayState> {
     let mut root = UiContainer::row();
     root.add_child(OverlayBackground::new(), ContainerSize::Percent(1.));
     root

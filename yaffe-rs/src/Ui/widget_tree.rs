@@ -1,23 +1,31 @@
 use crate::input::Actions;
-use crate::modals::{Modal, update_modal};
-use crate::ui::{AnimationManager, LayoutElement, UiContainer, UiElement, WidgetId};
+use crate::modals::{update_modal, Modal, Toast};
+use crate::ui::{AnimationManager, DeferredAction, LayoutElement, UiContainer, UiElement, WidgetId};
 use std::ops::Deref;
-use std::time::Instant;
 use std::sync::Mutex;
+use std::time::Instant;
 
 /// Container for our widgets that lays them out in the tree
 /// Has higher level management methods to perfrom things
 /// on the entire UI tree
-pub struct WidgetTree<T: 'static, D: 'static> {
-    pub root: UiContainer<T, D>,
+pub struct WidgetTree<T: 'static> {
+    pub root: UiContainer<T>,
     pub focus: Vec<WidgetId>,
     pub data: T,
-    pub modals: Mutex<Vec<Modal<T, D>>>,
+    pub modals: Mutex<Vec<Modal<T>>>, //TODO make private?
+    pub toasts: Vec<Toast>,
     last_focused: Instant,
 }
-impl<T, D> WidgetTree<T, D> {
-    pub fn new(root: UiContainer<T, D>, data: T, initial_focus: WidgetId) -> WidgetTree<T, D> {
-        WidgetTree::<T, D> { root, focus: vec![initial_focus], data, modals: Mutex::new(vec!()), last_focused: Instant::now() }
+impl<T> WidgetTree<T> {
+    pub fn new(root: UiContainer<T>, data: T, initial_focus: WidgetId) -> WidgetTree<T> {
+        WidgetTree::<T> {
+            root,
+            focus: vec![initial_focus],
+            data,
+            modals: Mutex::new(vec![]),
+            toasts: vec![],
+            last_focused: Instant::now(),
+        }
     }
 
     pub fn render(&mut self, graphics: &mut crate::Graphics) {
@@ -26,16 +34,27 @@ impl<T, D> WidgetTree<T, D> {
         self.root.set_layout(graphics.bounds);
         self.root.render(graphics, &self.data, &focused_widget);
 
+        if !self.toasts.is_empty() {
+            // Render calls will modify the bounds, so we must reset it
+            graphics.bounds = old_bounds;
+            crate::modals::render_toasts(&self.toasts, graphics);
+        }
+
         //Render modal last, on top of everything
         let modals = &mut self.modals.lock().unwrap();
         if let Some(m) = modals.last_mut() {
             // Render calls will modify the bounds, so we must reset it
             graphics.bounds = old_bounds;
-            crate::modals::render_modal(m, graphics);
+            crate::modals::render_modal(m, &mut self.data, graphics);
         }
     }
 
-    pub fn action(&mut self, animations: &mut AnimationManager, action: &Actions, handler: &mut D) -> bool {
+    pub fn action(
+        &mut self,
+        animations: &mut AnimationManager,
+        action: &Actions,
+        handler: &mut DeferredAction<T>,
+    ) -> bool {
         //This method can call into display_modal above, which locks the mutex
         //If we lock here that call will wait infinitely
         //We can get_mut here to ensure compile time exclusivity instead of locking
@@ -53,15 +72,16 @@ impl<T, D> WidgetTree<T, D> {
         }
     }
 
+    pub fn display_toast(&mut self, toast: Toast) {
+        self.toasts.push(toast);
+    }
+
     pub fn is_modal_open(&self) -> bool {
         let modals = self.modals.lock().unwrap();
         !modals.is_empty()
     }
 
-    fn current_focus<'a>(
-        focus: &'a [WidgetId],
-        root: &'a mut UiContainer<T, D>,
-    ) -> Option<&'a mut dyn UiElement<T, D>> {
+    fn current_focus<'a>(focus: &'a [WidgetId], root: &'a mut UiContainer<T>) -> Option<&'a mut dyn UiElement<T>> {
         if let Some(last) = focus.last() {
             return root.find_widget_mut(*last);
         }
@@ -105,7 +125,7 @@ impl<T, D> WidgetTree<T, D> {
     }
 }
 
-impl<T, D> Deref for WidgetTree<T, D> {
-    type Target = UiContainer<T, D>;
+impl<T> Deref for WidgetTree<T> {
+    type Target = UiContainer<T>;
     fn deref(&self) -> &Self::Target { &self.root }
 }

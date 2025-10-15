@@ -1,7 +1,7 @@
 use crate::logger::{info, PanicLogEntry};
-use crate::{YaffeState, DeferredAction};
-use crate::ui::WidgetTree;
 use crate::modals::{display_modal_raw, MessageModal, ModalSize};
+use crate::ui::WidgetTree;
+use crate::YaffeState;
 use libloading::Library;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -27,7 +27,7 @@ impl DerefMut for Plugin {
     fn deref_mut(&mut self) -> &mut Box<dyn YaffePlugin> { &mut self.plugin }
 }
 
-fn load(ui: &mut WidgetTree<YaffeState, DeferredAction>, path: &mut PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn load(ui: &mut WidgetTree<YaffeState>, path: &mut PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     unsafe {
         let lib = libloading::Library::new(path.clone())?;
         let create_plugin: libloading::Symbol<unsafe extern "C" fn() -> Box<dyn YaffePlugin>> =
@@ -53,7 +53,7 @@ fn load(ui: &mut WidgetTree<YaffeState, DeferredAction>, path: &mut PathBuf) -> 
     Ok(())
 }
 
-pub fn load_plugins(ui: &mut WidgetTree<YaffeState, DeferredAction>, directory: &str) {
+pub fn load_plugins(ui: &mut WidgetTree<YaffeState>, directory: &str) {
     if !std::path::Path::new(directory).exists() {
         std::fs::create_dir(directory).log_and_panic();
     }

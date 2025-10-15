@@ -2,7 +2,7 @@ use crate::assets::Images;
 use crate::controls::{LABEL_SIZE, MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
 use crate::logger::LogEntry;
 use crate::os::{get_volume, set_volume};
-use crate::ui::{image_fill, AnimationManager, RightAlignment, UiElement, WidgetId, MARGIN};
+use crate::ui::{image_fill, AnimationManager, DeferredAction, RightAlignment, UiElement, WidgetId, MARGIN};
 use crate::{widget, Actions, Graphics, LogicalPosition, LogicalSize, OverlayState, Rect};
 use speedy2d::color::Color;
 
@@ -13,8 +13,14 @@ widget!(
         volume: f32 = 0.
     }
 );
-impl UiElement<OverlayState, ()> for OverlayBackground {
-    fn action(&mut self, _: &mut OverlayState, _: &mut AnimationManager, action: &Actions, _: &mut ()) -> bool {
+impl UiElement<OverlayState> for OverlayBackground {
+    fn action(
+        &mut self,
+        _: &mut OverlayState,
+        _: &mut AnimationManager,
+        action: &Actions,
+        _: &mut DeferredAction<OverlayState>,
+    ) -> bool {
         match action {
             Actions::Left => {
                 self.volume = f32::max(0., self.volume - VOLUME_STEP);

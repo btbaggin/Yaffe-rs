@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-type ServiceResult<T> = Result<T, ServiceError>;
+pub type ServiceResult<T> = Result<T, ServiceError>;
 
 //https://api.thegamesdb.net/
 const GOOGLE_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../google_api_key.txt")) };
@@ -35,7 +35,6 @@ impl ListItem for PlatformScrapeResult {
 
 #[derive(Clone)]
 pub struct ServiceResponse<T> {
-    pub id: u64,
     pub request: String,
     pub count: usize,
     pub exact_index: Option<usize>,
@@ -43,12 +42,12 @@ pub struct ServiceResponse<T> {
 }
 
 impl<T> ServiceResponse<T> {
-    fn new(id: u64, request: String, count: usize, exact_index: Option<usize>) -> ServiceResponse<T> {
-        ServiceResponse { id, request, count, exact_index, results: vec![] }
+    fn new(request: String, count: usize, exact_index: Option<usize>) -> ServiceResponse<T> {
+        ServiceResponse { request, count, exact_index, results: vec![] }
     }
 
-    fn no_results(id: u64) -> ServiceResponse<T> {
-        ServiceResponse { id, request: String::new(), count: 0, exact_index: None, results: vec![] }
+    fn no_results() -> ServiceResponse<T> {
+        ServiceResponse { request: String::new(), count: 0, exact_index: None, results: vec![] }
     }
 
     pub fn get_exact(&self) -> Option<&T> {

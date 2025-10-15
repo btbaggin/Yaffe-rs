@@ -1,6 +1,8 @@
 use super::{draw_label_and_box, LABEL_SIZE};
 use crate::input::InputType;
-use crate::ui::{get_drawable_text, AnimationManager, LayoutElement, UiElement, ValueElement, WidgetId};
+use crate::ui::{
+    get_drawable_text, AnimationManager, DeferredAction, LayoutElement, UiElement, ValueElement, WidgetId,
+};
 use crate::utils::Rect;
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize};
 use copypasta::ClipboardProvider;
@@ -23,7 +25,7 @@ impl TextBox {
         textbox
     }
 }
-impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
+impl<T: 'static> UiElement<T> for TextBox {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize {
         LogicalSize::new(graphics.bounds.width(), graphics.font_size())
     }
@@ -94,7 +96,13 @@ impl<T: 'static, D: 'static> UiElement<T, D> for TextBox {
         }
     }
 
-    fn action(&mut self, _state: &mut T, _: &mut AnimationManager, action: &Actions, _handler: &mut D) -> bool {
+    fn action(
+        &mut self,
+        _state: &mut T,
+        _: &mut AnimationManager,
+        action: &Actions,
+        _handler: &mut DeferredAction<T>,
+    ) -> bool {
         if let Actions::KeyPress(InputType::Key(k, text, mods)) = action {
             match k {
                 KeyCode::Backspace => {

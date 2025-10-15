@@ -1,15 +1,15 @@
 use crate::assets::AssetKey;
 use crate::controls::{Image, Label};
-use crate::ui::{AnimationManager, ContainerSize, UiContainer, UiElement, WidgetId};
+use crate::ui::{AnimationManager, ContainerSize, DeferredAction, UiContainer, UiElement, WidgetId};
 use crate::{widget, Actions, Graphics, LogicalSize};
 
 widget!(
-    pub struct InfoPane<T, D> {
-        container: UiContainer<T, D> = UiContainer::column()
+    pub struct InfoPane<T> {
+        container: UiContainer<T> = UiContainer::column()
     }
 );
-impl<T, D> InfoPane<T, D> {
-    pub fn from(art: AssetKey, overview: String, attributes: Vec<(String, String)>) -> InfoPane<T, D> {
+impl<T> InfoPane<T> {
+    pub fn from(art: AssetKey, overview: String, attributes: Vec<(String, String)>) -> InfoPane<T> {
         let mut pane = InfoPane::new();
         pane.container.add_child(Image::from(art), ContainerSize::Percent(0.25));
         let attribute_container = pane.container.with_child(UiContainer::column(), ContainerSize::Fill);
@@ -21,7 +21,7 @@ impl<T, D> InfoPane<T, D> {
     }
 }
 
-impl<T, D> UiElement<T, D> for InfoPane<T, D> {
+impl<T> UiElement<T> for InfoPane<T> {
     fn calc_size(&mut self, graphics: &mut Graphics) -> LogicalSize { self.container.calc_size(graphics) }
 
     fn render(&mut self, graphics: &mut Graphics, state: &T, current_focus: &WidgetId) {
@@ -33,7 +33,7 @@ impl<T, D> UiElement<T, D> for InfoPane<T, D> {
         _state: &mut T,
         _animations: &mut AnimationManager,
         _action: &Actions,
-        _handler: &mut D,
+        _handler: &mut DeferredAction<T>,
     ) -> bool {
         false
     }

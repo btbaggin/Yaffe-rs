@@ -1,19 +1,19 @@
 use crate::controls::{List, ListItem};
 use crate::input::Actions;
-use crate::modals::{ModalAction, ModalInputHandler, ModalContentElement};
+use crate::modals::{ModalContentElement, ModalInputHandler};
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
 use crate::ui::{AnimationManager, ContainerSize, LayoutElement, UiContainer, UiElement, WidgetId};
 use crate::widgets::InfoPane;
-use crate::{YaffeState, DeferredAction};
+use crate::{DeferredAction, YaffeState};
 
 pub struct ScraperModal<L: ListItem> {
     list_id: WidgetId,
     info_id: WidgetId,
-    build: fn(item: &L) -> InfoPane<(), ModalAction>,
+    build: fn(item: &L) -> InfoPane<YaffeState>,
 }
 
 impl<L: ListItem + 'static> ScraperModal<L> {
-    pub fn from(items: Vec<L>, builder: fn(item: &L) -> InfoPane<(), ModalAction>) -> ModalContentElement {
+    pub fn from(items: Vec<L>, builder: fn(item: &L) -> InfoPane<YaffeState>) -> ModalContentElement<YaffeState> {
         let list = List::from(items);
         let item = list.get_selected();
         let info = builder(item);
@@ -28,16 +28,17 @@ impl<L: ListItem + 'static> ScraperModal<L> {
     }
 }
 
-impl<L: ListItem + 'static> ModalInputHandler for ScraperModal<L> {
+impl<L: ListItem + 'static> ModalInputHandler<YaffeState> for ScraperModal<L> {
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn action(
         &mut self,
+        state: &mut YaffeState,
         animations: &mut AnimationManager,
         action: &Actions,
-        handler: &mut ModalAction,
-        container: &mut UiContainer<(), ModalAction>,
+        handler: &mut DeferredAction<YaffeState>,
+        container: &mut UiContainer<YaffeState>,
     ) -> bool {
-        if container.action(&mut (), animations, action, handler) {
+        if container.action(state, animations, action, handler) {
             let list = crate::convert_to!(container.find_widget(self.list_id).unwrap(), List<L>);
             let item = list.get_selected();
 
@@ -52,7 +53,12 @@ impl<L: ListItem + 'static> ModalInputHandler for ScraperModal<L> {
     }
 }
 
-pub fn on_platform_found_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
+pub fn on_platform_found_close(
+    state: &mut YaffeState,
+    result: bool,
+    content: &ModalContentElement<YaffeState>,
+    _: &mut DeferredAction<YaffeState>,
+) {
     if result {
         let details = content.get_handler::<ScraperModal<PlatformScrapeResult>>();
         let list = crate::convert_to!(content.find_widget(details.list_id).unwrap(), List<PlatformScrapeResult>);
@@ -61,7 +67,12 @@ pub fn on_platform_found_close(state: &mut YaffeState, result: bool, content: &M
     }
 }
 
-pub fn on_game_found_close(state: &mut YaffeState, result: bool, content: &ModalContentElement, _: &mut DeferredAction) {
+pub fn on_game_found_close(
+    state: &mut YaffeState,
+    result: bool,
+    content: &ModalContentElement<YaffeState>,
+    _: &mut DeferredAction<YaffeState>,
+) {
     if result {
         let details = content.get_handler::<ScraperModal<GameScrapeResult>>();
         let list = crate::convert_to!(content.find_widget(details.list_id).unwrap(), List<GameScrapeResult>);
