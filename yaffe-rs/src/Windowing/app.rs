@@ -21,7 +21,7 @@ use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::{Fullscreen, WindowId};
 
-use super::{AnimationManager, InputType, JobResults, WindowHelper, WindowInfo, YaffeWindow};
+use super::{InputType, JobResults, WindowHelper, WindowInfo, YaffeWindow};
 use crate::input::{Actions, ControllerInput, Gamepad, InputMap};
 use crate::job_system::{JobResult, ThreadSafeJobQueue};
 use crate::Graphics;
@@ -158,7 +158,6 @@ impl App {
                     size,
                     handler: info.handler.clone(),
                     graphics: RefCell::new(window_graphics),
-                    animations: RefCell::new(AnimationManager::new()),
                 },
             );
         }
@@ -299,15 +298,13 @@ impl ApplicationHandler for App {
 
             //Raise fixed update every frame so we can do things even if redraws arent happening
             let mut handle = window.handler.borrow_mut();
-            let mut animations = window.animations.borrow_mut();
 
             // Fixed update
             let mut helper = WindowHelper::new();
-            let fixed_update = handle.on_fixed_update(&mut animations, self.delta_time, &mut helper);
+            let fixed_update = handle.on_fixed_update(self.delta_time, &mut helper);
             helper.resolve(&window.window);
 
-            let is_dirty = animations.is_dirty();
-            if fixed_update || jobs_completed || is_dirty {
+            if fixed_update || jobs_completed {
                 window.window.request_redraw();
             }
         }

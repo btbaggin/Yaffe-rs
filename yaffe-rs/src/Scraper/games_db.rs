@@ -7,11 +7,7 @@ use std::path::Path;
 
 const GAMESDB_API_KEY: &str = unsafe { std::str::from_utf8_unchecked(include_bytes!("../../api_key.txt")) };
 
-pub fn search_game(
-    name: &str,
-    exe: String,
-    platform: i64,
-) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
+pub fn search_game(name: &str, exe: String, platform: i64) -> ServiceResult<ServiceResponse<GameScrapeResult>> {
     crate::logger::info!("Searching for game {name}");
 
     let resp = crate::json_request!(
@@ -68,11 +64,7 @@ pub fn search_game(
     Ok(result)
 }
 
-pub fn search_platform(
-    name: &str,
-    path: String,
-    args: String,
-) -> ServiceResult<ServiceResponse<PlatformScrapeResult>> {
+pub fn search_platform(name: &str, path: String, args: String) -> ServiceResult<ServiceResponse<PlatformScrapeResult>> {
     crate::logger::info!("Searching for platform {name}");
 
     let resp = crate::json_request!(

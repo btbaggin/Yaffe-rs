@@ -1,17 +1,13 @@
+use super::{display_modal_raw, ModalContentElement, ModalOnClose, ModalSize, Toast};
+use crate::ui::{DeferredAction, DeferredActionTrait, WidgetTree};
 use std::marker::PhantomData;
-use crate::ui::{WidgetTree, AnimationManager, DeferredAction, DeferredActionTrait};
-use super::{ModalContentElement, ModalOnClose, ModalSize, display_modal_raw, Toast};
 
 pub struct ModalClose<T> {
     close: bool,
     _data: PhantomData<T>,
 }
 impl<T> DeferredActionTrait<T> for ModalClose<T> {
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<T>,
-        _animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<T>> {
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>) -> Option<DeferredAction<T>> {
         let modals = ui.modals.get_mut().unwrap();
         let modal = modals.pop().unwrap();
         if let Some(close) = modal.on_close {
@@ -64,30 +60,17 @@ impl<T> DisplayModal<T> {
             on_close,
         }
     }
-    pub fn display(self, ui: &mut WidgetTree<T>) {
-        display_modal_raw(ui, &self.title, self.confirmation_button.as_deref(), self.content, self.width, self.on_close)
-    }
 }
 
 impl<T> DeferredActionTrait<T> for DisplayModal<T> {
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<T>,
-        _animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<T>> {
-        self.display(ui);
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>) -> Option<DeferredAction<T>> {
+        display_modal_raw(ui, &self.title, self.confirmation_button.as_deref(), self.content, self.width, self.on_close);
         None
     }
 }
 
-
 impl<T> DeferredActionTrait<T> for Toast {
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<T>,
-        _animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<T>> {
-        // TODO
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>) -> Option<DeferredAction<T>> {
         ui.display_toast(*self);
         None
     }

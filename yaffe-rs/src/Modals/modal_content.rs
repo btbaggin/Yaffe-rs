@@ -1,7 +1,7 @@
 use crate::assets::Images;
 use crate::ui::{
-    change_brightness, AnimationManager, DeferredAction, 
-    LayoutElement, RightAlignment, UiContainer, UiElement, WidgetId, MARGIN,
+    change_brightness, AnimationManager, DeferredAction, LayoutElement, RightAlignment, UiContainer, UiElement,
+    WidgetId, MARGIN,
 };
 use crate::{Actions, Graphics, LogicalPosition, LogicalSize, Rect};
 use std::marker::PhantomData;

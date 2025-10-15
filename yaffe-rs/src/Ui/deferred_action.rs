@@ -1,10 +1,9 @@
 use crate::modals::{display_error, DisplayModal, Toast};
 use crate::state::{GroupType, YaffeState};
-use crate::ui::{AnimationManager, WidgetId, WidgetTree};
+use crate::ui::{WidgetId, WidgetTree};
 
 pub trait DeferredActionTrait<T> {
-    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>, animations: &mut AnimationManager)
-        -> Option<DeferredAction<T>>;
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>) -> Option<DeferredAction<T>>;
 }
 
 pub struct DeferredAction<T> {
@@ -22,19 +21,15 @@ impl<T: 'static> DeferredAction<T> {
         self.actions.push(Box::new(DisplayMessageAction { message }));
     }
 
-    pub fn display_modal(&mut self, modal: DisplayModal<T>) {
-        self.actions.push(Box::new(modal));
-    }
+    pub fn display_modal(&mut self, modal: DisplayModal<T>) { self.actions.push(Box::new(modal)); }
 
-    pub fn display_toast(&mut self, message: &str, time: f32) {
-        self.actions.push(Box::new(Toast::new(message, time)))
-    }
+    pub fn display_toast(&mut self, message: &str, time: f32) { self.actions.push(Box::new(Toast::new(message, time))) }
 
-    pub fn resolve(self, ui: &mut WidgetTree<T>, animations: &mut AnimationManager) {
+    pub fn resolve(self, ui: &mut WidgetTree<T>) {
         let mut queue = self.actions;
 
         while let Some(action) = queue.pop() {
-            if let Some(mut new_actions) = action.resolve(ui, animations) {
+            if let Some(mut new_actions) = action.resolve(ui) {
                 // Prepend new actions to process them next
                 queue.append(&mut new_actions.actions);
             }
@@ -48,12 +43,8 @@ struct FocusWidgetAction {
 }
 
 impl<T> DeferredActionTrait<T> for FocusWidgetAction {
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<T>,
-        animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<T>> {
-        ui.focus(self.id, animations);
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>) -> Option<DeferredAction<T>> {
+        ui.focus(self.id);
         None
     }
 }
@@ -62,11 +53,7 @@ pub struct RevertFocusAction;
 
 impl DeferredActionTrait<YaffeState> for RevertFocusAction {
     // TODO can focus move to widgettree?
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<YaffeState>,
-        animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<YaffeState>> {
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<YaffeState>) -> Option<DeferredAction<YaffeState>> {
         let state = &mut ui.data;
         if state.navigation_stack.borrow_mut().pop().is_some() {
             state.selected.tile_index = 0;
@@ -78,7 +65,7 @@ impl DeferredActionTrait<YaffeState> for RevertFocusAction {
                 }
             }
         } else {
-            ui.revert_focus(animations);
+            ui.revert_focus();
         }
         None
     }
@@ -87,11 +74,7 @@ impl DeferredActionTrait<YaffeState> for RevertFocusAction {
 pub struct LoadPluginAction(pub bool);
 
 impl DeferredActionTrait<YaffeState> for LoadPluginAction {
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<YaffeState>,
-        _animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<YaffeState>> {
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<YaffeState>) -> Option<DeferredAction<YaffeState>> {
         let state = &mut ui.data;
         let group = &mut state.groups[state.selected.group_index()];
         if let GroupType::Plugin(index) = group.kind {
@@ -111,11 +94,7 @@ struct DisplayMessageAction {
 }
 
 impl<T> DeferredActionTrait<T> for DisplayMessageAction {
-    fn resolve(
-        self: Box<Self>,
-        ui: &mut WidgetTree<T>,
-        _animations: &mut AnimationManager,
-    ) -> Option<DeferredAction<T>> {
+    fn resolve(self: Box<Self>, ui: &mut WidgetTree<T>) -> Option<DeferredAction<T>> {
         display_error(ui, self.message);
         None
     }

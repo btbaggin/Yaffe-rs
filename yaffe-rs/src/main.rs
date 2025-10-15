@@ -9,11 +9,10 @@ use std::rc::Rc;
  * Search bar doesnt work well on plugins
  * allow generic search filter
  * allow reloading plugins?
- * have toasts be time based
- * can all "overlay" type things be combined? (modals and toast)
 */
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+const OVERLAY_ID: WidgetId = WidgetId::static_id(1);
 const PLATFORM_LIST_ID: WidgetId = WidgetId::static_id(2);
 const APP_LIST_ID: WidgetId = WidgetId::static_id(3);
 const SEARCH_BAR_ID: WidgetId = WidgetId::static_id(4);
@@ -85,7 +84,7 @@ fn main() {
     let yaffe_state = YaffeState::new(process.clone(), settings.clone(), queue.clone());
     let overlay_state = OverlayState::new(process.clone(), settings.clone());
 
-    let overlay = ui::WidgetTree::<OverlayState>::new(build_overlay_tree(), overlay_state, WidgetId::static_id(1));
+    let overlay = ui::WidgetTree::<OverlayState>::new(build_overlay_tree(), overlay_state, OVERLAY_ID);
     let mut ui = ui::WidgetTree::<YaffeState>::new(build_main_tree(), yaffe_state, PLATFORM_LIST_ID);
 
     plugins::load_plugins(&mut ui, "./plugins");

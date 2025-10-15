@@ -1,6 +1,6 @@
 use crate::logger::PanicLogEntry;
 use crate::state::{GroupType, Tile, TileGroup};
-use crate::{YaffeState, DeferredAction};
+use crate::{DeferredAction, YaffeState};
 use std::path::{Path, PathBuf};
 
 pub fn get_database_info(state: &mut YaffeState) {
@@ -43,11 +43,8 @@ pub fn scan_new_files(state: &mut YaffeState, handler: &mut DeferredAction<Yaffe
                         let name = name.trim();
 
                         crate::logger::info!("{name} not found in database, performing search");
-                        let job = crate::Job::SearchGame {
-                            exe: file.to_string(),
-                            name: name.to_string(),
-                            platform: p.id,
-                        };
+                        let job =
+                            crate::Job::SearchGame { exe: file.to_string(), name: name.to_string(), platform: p.id };
                         state.queue.start_job(job);
 
                         count += 1;

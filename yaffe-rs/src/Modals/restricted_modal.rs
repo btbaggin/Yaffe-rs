@@ -17,7 +17,7 @@ impl SetRestrictedModal {
         let pass = PassBox::new();
         let pass_id = pass.get_id();
         modal.add_child(pass, ContainerSize::Shrink);
-            modal.focus(pass_id);
+        modal.focus(pass_id);
         modal
     }
 }

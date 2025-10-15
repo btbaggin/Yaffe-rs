@@ -2,7 +2,6 @@ use crate::{
     graphics::Graphics,
     input::InputType,
     job_system::{Job, JobResult, JobResults, ThreadSafeJobQueue},
-    ui::AnimationManager,
     PhysicalSize,
 };
 use std::cell::RefCell;
@@ -50,20 +49,10 @@ impl WindowHelper {
 }
 
 pub(crate) trait WindowHandler {
-    fn on_fixed_update(
-        &mut self,
-        animations: &mut AnimationManager,
-        delta_time: f32,
-        helper: &mut WindowHelper,
-    ) -> bool;
+    fn on_fixed_update(&mut self, delta_time: f32, helper: &mut WindowHelper) -> bool;
     fn on_frame_begin(&mut self, _: &mut Graphics, _: Vec<JobResult>) {}
     fn on_frame(&mut self, graphics: &mut Graphics) -> bool;
-    fn on_input(
-        &mut self,
-        animations: &mut AnimationManager,
-        helper: &mut WindowHelper,
-        action: &crate::Actions,
-    ) -> bool;
+    fn on_input(&mut self, helper: &mut WindowHelper, action: &crate::Actions) -> bool;
     fn on_init(&mut self, graphics: &mut Graphics);
     fn on_stop(&mut self) {}
 }
@@ -76,7 +65,6 @@ struct YaffeWindow {
     size: PhysicalSize,
     handler: std::rc::Rc<RefCell<dyn WindowHandler + 'static>>,
     graphics: RefCell<Graphics>,
-    animations: RefCell<AnimationManager>,
 }
 
 pub struct WindowInfo {
@@ -105,10 +93,9 @@ pub fn run_app(queue: ThreadSafeJobQueue, window_infos: Vec<WindowInfo>, job_res
 fn handle_action(window: &mut YaffeWindow, action: &crate::Actions) -> bool {
     let mut helper = WindowHelper::new();
     let mut handle = window.handler.borrow_mut();
-    let mut animations = window.animations.borrow_mut();
 
     //Send an action, if its handled remove it so a different window doesnt respond to it
-    let result = handle.on_input(&mut animations, &mut helper, action);
+    let result = handle.on_input(&mut helper, action);
     if result {
         //If the window responded to the action, set it to redraw
         window.window.request_redraw();

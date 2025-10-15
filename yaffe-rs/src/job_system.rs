@@ -1,4 +1,3 @@
-use rand::Rng;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::{
@@ -68,12 +67,12 @@ fn poll_pending_jobs(queue: spmc::Receiver<(Option<WindowId>, Job)>, notify: Sen
             Job::SearchPlatform { name, path, args } => {
                 let result = search_platform(&name, path, args);
                 send_reply(window_id, JobResult::SearchPlatform(result));
-            },
+            }
 
             Job::SearchGame { exe, name, platform } => {
                 let result = search_game(&name, exe, platform);
                 send_reply(window_id, JobResult::SearchGame(result));
-            },
+            }
 
             Job::CheckUpdates => {
                 let applied = crate::scraper::check_for_updates().log("Error checking for updates");

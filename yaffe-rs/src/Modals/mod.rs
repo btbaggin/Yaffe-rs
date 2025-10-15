@@ -1,42 +1,45 @@
 use crate::controls::{MODAL_BACKGROUND, MODAL_OVERLAY_COLOR};
 use crate::ui::{
-    AnimationManager, ContainerSize, DeferredAction, DeferredActionTrait, Justification,
-    LayoutElement, UiContainer, UiElement, WidgetTree, MARGIN,
+    AnimationManager, ContainerSize, DeferredAction, Justification, LayoutElement, UiContainer, UiElement, WidgetTree,
+    MARGIN,
 };
 use crate::{Actions, LogicalPosition, LogicalSize, Rect};
-use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 mod info_modal;
 mod list_modal;
 mod message_modal;
+mod modal_content;
+mod modal_deferred_actions;
 mod platform_detail_modal;
 mod restricted_modal;
 mod scraper_modal;
 mod settings_modal;
-mod modal_content;
-mod modal_deferred_actions;
 
 pub use info_modal::InfoModal;
 pub use list_modal::ListModal;
 pub use message_modal::MessageModal;
+pub use modal_content::ModalContentElement;
+pub use modal_deferred_actions::{DisplayModal, ModalClose};
 pub use platform_detail_modal::{on_add_platform_close, on_update_platform_close, PlatformDetailModal};
 pub use restricted_modal::{on_restricted_modal_close, verify_restricted_action, RestrictedMode, SetRestrictedModal};
 pub use scraper_modal::{on_game_found_close, on_platform_found_close, ScraperModal};
 pub use settings_modal::{on_settings_close, SettingsModal};
-pub use modal_content::ModalContentElement;
-pub use modal_deferred_actions::{ModalClose, DisplayModal};
 
-use modal_content::{ModalToolbar, ModalTitlebar};
+use modal_content::{ModalTitlebar, ModalToolbar};
 
 pub struct Toast {
     message: String,
     time: f32,
 }
 impl Toast {
-    pub fn new(message: &str, time: f32) -> Toast {
-        Toast { message: message.to_string(), time }
+    pub fn new(message: &str, time: f32) -> Toast { Toast { message: message.to_string(), time } }
+
+    pub fn process_toast(toasts: &mut Vec<Toast>, delta_time: f32) {
+        toasts.retain(|t| t.time > 0.);
+        for t in toasts.iter_mut() {
+            t.time -= delta_time;
+        }
     }
 }
 
@@ -116,15 +119,10 @@ pub fn display_modal_raw<T>(
     modals.push(m);
 }
 
-pub fn update_modal<T>(
-    ui: &mut WidgetTree<T>,
-    animations: &mut AnimationManager,
-    action: &Actions,
-    handler: &mut DeferredAction<T>,
-) -> bool {
+pub fn update_modal<T>(ui: &mut WidgetTree<T>, action: &Actions, handler: &mut DeferredAction<T>) -> bool {
     let modals = ui.modals.get_mut().unwrap();
     if let Some(modal) = modals.last_mut() {
-        modal.content.action(&mut ui.data, animations, action, handler);
+        modal.content.action(&mut ui.data, &mut ui.animations, action, handler);
         true
     } else {
         false

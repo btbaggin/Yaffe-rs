@@ -1,4 +1,6 @@
-use crate::ui::WidgetId;
+use crate::modals::Modal;
+use crate::ui::{UiContainer, WidgetId};
+use std::sync::Mutex;
 
 pub type FieldOffset = usize;
 
@@ -75,13 +77,18 @@ impl AnimationManager {
 
     /// Processes any widgets that have running animations
     /// Currently only position animations are allowed
-    pub fn process<T: 'static>(&mut self, tree: &mut crate::ui::WidgetTree<T>, delta_time: f32) {
+    pub fn process<T: 'static>(
+        &mut self,
+        root: &mut UiContainer<T>,
+        modals: &mut Mutex<Vec<Modal<T>>>,
+        delta_time: f32,
+    ) {
         //We do this at the beginning because we need animations to persist 1 fram longer than they go
         //This is because we only redraw the screen if animations are playing
         //If we removed them at the end we wouldn't redraw the last frame of the animation
         self.animations.retain(|a| a.remaining > 0.);
 
-        let modals = tree.modals.get_mut().unwrap();
+        let modals = modals.get_mut().unwrap();
         //Run animations, if it completes, mark it for removal
         for animation in self.animations.iter_mut() {
             animation.remaining -= delta_time;
@@ -93,7 +100,7 @@ impl AnimationManager {
                 }
             }
 
-            if let Some(widget) = tree.root.find_widget_mut(animation.widget) {
+            if let Some(widget) = root.find_widget_mut(animation.widget) {
                 Self::apply_animation(animation, widget, delta_time);
                 continue;
             }

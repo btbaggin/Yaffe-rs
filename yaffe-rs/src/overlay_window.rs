@@ -2,7 +2,7 @@ use crate::input::Actions;
 use crate::job_system::JobResult;
 use crate::logger::LogEntry;
 use crate::overlay_state::OverlayState;
-use crate::ui::{AnimationManager, DeferredAction, WidgetTree};
+use crate::ui::{DeferredAction, WidgetTree};
 use crate::windowing::WindowHelper;
 use crate::Graphics;
 
@@ -17,17 +17,13 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState> {
         true
     }
 
-    fn on_fixed_update(
-        &mut self,
-        animations: &mut AnimationManager,
-        delta_time: f32,
-        helper: &mut WindowHelper,
-    ) -> bool {
-        animations.process(self, delta_time);
-        self.data.process_is_running(helper)
+    fn on_fixed_update(&mut self, delta_time: f32, helper: &mut WindowHelper) -> bool {
+        let fixed = self.fixed_update(delta_time);
+        let running = self.data.process_is_running(helper);
+        fixed || running
     }
 
-    fn on_input(&mut self, animations: &mut AnimationManager, helper: &mut WindowHelper, action: &Actions) -> bool {
+    fn on_input(&mut self, helper: &mut WindowHelper, action: &Actions) -> bool {
         if self.data.process.borrow().is_none() {
             return false;
         }
@@ -39,8 +35,8 @@ impl crate::windowing::WindowHandler for WidgetTree<OverlayState> {
             _ => {
                 if self.data.showing {
                     let mut handler = DeferredAction::new();
-                    self.action(animations, action, &mut handler);
-                    handler.resolve(self, animations);
+                    self.action(action, &mut handler);
+                    handler.resolve(self);
 
                     if let Actions::Accept = action {
                         let mut process = self.data.process.borrow_mut();
