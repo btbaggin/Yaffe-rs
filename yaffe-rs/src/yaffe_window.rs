@@ -2,12 +2,8 @@ use crate::assets::AssetKey;
 use crate::graphics::Graphics;
 use crate::input::Actions;
 use crate::job_system::JobResult;
-use crate::logger::{LogEntry, UserMessage};
-use crate::modals::{
-    display_error, display_modal_raw, on_add_platform_close, on_restricted_modal_close, on_settings_close,
-    DisplayModal, ModalContentElement, ModalSize, PlatformDetailModal, RestrictedMode, ScraperModal,
-    SetRestrictedModal, SettingsModal,
-};
+use crate::logger::LogEntry;
+use crate::modals::{display_error, display_modal_raw, ModalSize, RestrictedMode, ScraperModal};
 use crate::scraper::{GameScrapeResult, PlatformScrapeResult};
 use crate::ui::{DeferredAction, WidgetTree};
 use crate::widgets::InfoPane;
@@ -65,8 +61,8 @@ impl WindowHandler for WidgetTree<YaffeState> {
                         "Shut Down".to_string(),
                     ];
 
-                    let list = crate::modals::ListModal::from(items);
-                    crate::modals::display_modal_raw(self, "Menu", None, list, ModalSize::Third, Some(on_menu_close));
+                    let list = crate::modals::MenuModal::from(items);
+                    crate::modals::display_modal_raw(self, "Menu", None, list, ModalSize::Third);
                     true
                 } else {
                     false
@@ -87,59 +83,6 @@ impl WindowHandler for WidgetTree<YaffeState> {
     fn on_stop(&mut self) { crate::plugins::unload(&mut self.data.plugins); }
 }
 
-fn on_menu_close(
-    state: &mut YaffeState,
-    result: bool,
-    content: &ModalContentElement<YaffeState>,
-    handler: &mut DeferredAction<YaffeState>,
-) {
-    if result {
-        let elements = crate::convert_to!(content.get_child(0), crate::controls::List<String>);
-        let selected = elements.get_selected().as_str();
-
-        match selected {
-            "Add Emulator" => {
-                let content = PlatformDetailModal::emulator();
-                handler.display_modal(DisplayModal::new(
-                    "New Emulator",
-                    Some("Confirm"),
-                    content,
-                    ModalSize::Third,
-                    Some(on_add_platform_close),
-                ));
-            }
-            "Settings" => {
-                let content = SettingsModal::from(&state.settings);
-                handler.display_modal(DisplayModal::new(
-                    "Settings",
-                    Some("Confirm"),
-                    content,
-                    ModalSize::Third,
-                    Some(on_settings_close),
-                ));
-            }
-            "Disable Restricted Mode" | "Enable Restricted Mode" => {
-                let content = SetRestrictedModal::new();
-                handler.display_modal(DisplayModal::new(
-                    "Restricted Mode",
-                    Some("Set passcode"),
-                    content,
-                    ModalSize::Third,
-                    Some(on_restricted_modal_close),
-                ));
-            }
-            "Scan For New Roms" => crate::platform::scan_new_files(state, handler),
-            "Exit Yaffe" => state.exit(),
-            "Shut Down" => {
-                if crate::os::shutdown().display_failure("Failed to shut down", handler).is_some() {
-                    state.exit();
-                }
-            }
-            _ => panic!("Unknown menu option"),
-        }
-    }
-}
-
 fn process_jobs(ui: &mut WidgetTree<YaffeState>, graphics: &mut Graphics, job_results: Vec<JobResult>) {
     for r in job_results {
         match r {
@@ -154,14 +97,13 @@ fn process_jobs(ui: &mut WidgetTree<YaffeState>, graphics: &mut Graphics, job_re
                         crate::platform::insert_game(&mut ui.data, &game.info, game.boxart.clone());
                     } else if result.count > 0 {
                         let items = result.results;
-                        let content = ScraperModal::from(items, build_game_info);
+                        let content = ScraperModal::from(items, false, build_game_info);
                         display_modal_raw(
                             ui,
                             &format!("Select Game: {}", result.request),
                             None,
                             content,
                             ModalSize::Half,
-                            Some(crate::modals::on_game_found_close),
                         );
                     }
                 }
@@ -173,15 +115,8 @@ fn process_jobs(ui: &mut WidgetTree<YaffeState>, graphics: &mut Graphics, job_re
                         crate::platform::insert_platform(&mut ui.data, &platform.info);
                     } else if result.count > 0 {
                         let items = result.results;
-                        let content = ScraperModal::from(items, build_platform_info);
-                        display_modal_raw(
-                            ui,
-                            "Select Platform",
-                            None,
-                            content,
-                            ModalSize::Half,
-                            Some(crate::modals::on_platform_found_close),
-                        );
+                        let content = ScraperModal::from(items, true, build_platform_info);
+                        display_modal_raw(ui, "Select Platform", None, content, ModalSize::Half);
                     }
                 }
                 Err(e) => display_error(ui, format!("Error occured while searching platforms: {e:?}")),

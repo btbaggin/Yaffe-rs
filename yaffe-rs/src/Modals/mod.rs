@@ -7,7 +7,7 @@ use crate::{Actions, LogicalPosition, LogicalSize, Rect};
 use std::ops::{Deref, DerefMut};
 
 mod info_modal;
-mod list_modal;
+mod menu_modal;
 mod message_modal;
 mod modal_content;
 mod modal_deferred_actions;
@@ -17,14 +17,14 @@ mod scraper_modal;
 mod settings_modal;
 
 pub use info_modal::InfoModal;
-pub use list_modal::ListModal;
+pub use menu_modal::MenuModal;
 pub use message_modal::MessageModal;
 pub use modal_content::ModalContentElement;
 pub use modal_deferred_actions::{DisplayModal, ModalClose};
-pub use platform_detail_modal::{on_add_platform_close, on_update_platform_close, PlatformDetailModal};
-pub use restricted_modal::{on_restricted_modal_close, verify_restricted_action, RestrictedMode, SetRestrictedModal};
-pub use scraper_modal::{on_game_found_close, on_platform_found_close, ScraperModal};
-pub use settings_modal::{on_settings_close, SettingsModal};
+pub use platform_detail_modal::PlatformDetailModal;
+pub use restricted_modal::{verify_restricted_action, RestrictedMode, SetRestrictedModal};
+pub use scraper_modal::ScraperModal;
+pub use settings_modal::SettingsModal;
 
 use modal_content::{ModalTitlebar, ModalToolbar};
 
@@ -63,12 +63,12 @@ pub trait ModalInputHandler<T> {
     ) -> bool {
         false
     }
+    fn validate(&self, _accept: bool, _content: &UiContainer<T>) -> bool { true }
+    fn on_close(&self, state: &mut T, accept: bool, container: &UiContainer<T>, handler: &mut DeferredAction<T>);
 }
 
-pub type ModalOnClose<T> = fn(&mut T, bool, &ModalContentElement<T>, &mut DeferredAction<T>);
 pub struct Modal<T: 'static> {
     content: Box<UiContainer<T>>,
-    on_close: Option<ModalOnClose<T>>,
     width: ModalSize,
 }
 impl<T: 'static> Deref for Modal<T> {
@@ -99,7 +99,7 @@ fn build_modal<T>(
 
 pub fn display_error<T>(ui: &mut WidgetTree<T>, message: String) {
     let message = MessageModal::from(&message);
-    display_modal_raw(ui, "Error", None, message, ModalSize::Half, None);
+    display_modal_raw(ui, "Error", None, message, ModalSize::Half);
 }
 
 pub fn display_modal_raw<T>(
@@ -108,12 +108,11 @@ pub fn display_modal_raw<T>(
     confirmation_button: Option<&str>,
     content: ModalContentElement<T>,
     width: ModalSize,
-    on_close: Option<ModalOnClose<T>>,
 ) {
     let confirm = confirmation_button.map(String::from);
 
     let content = build_modal(String::from(title), confirm, content);
-    let m = Modal { content: Box::new(content), on_close, width };
+    let m = Modal { content: Box::new(content), width };
 
     let mut modals = ui.modals.lock().unwrap();
     modals.push(m);

@@ -1,7 +1,7 @@
 use crate::modals::{ModalContentElement, ModalInputHandler};
 use crate::ui::{ContainerSize, UiContainer};
 use crate::widgets::InfoPane;
-use crate::{Tile, YaffeState};
+use crate::{DeferredAction, Tile, YaffeState};
 
 pub struct InfoModal;
 
@@ -21,4 +21,6 @@ impl InfoModal {
 
 impl ModalInputHandler<YaffeState> for InfoModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn on_close(&self, _: &mut YaffeState, _: bool, _: &UiContainer<YaffeState>, _: &mut DeferredAction<YaffeState>) {}
 }

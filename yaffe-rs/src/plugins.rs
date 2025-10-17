@@ -43,7 +43,7 @@ fn load(ui: &mut WidgetTree<YaffeState>, path: &mut PathBuf) -> Result<(), Box<d
             .initialize(&settings)
             .map_err(|e| {
                 let message = MessageModal::from(&format!("Unable to load plugin {plugin_name}: {e:?}"));
-                display_modal_raw(ui, "Error", None, message, ModalSize::Half, None);
+                display_modal_raw(ui, "Error", None, message, ModalSize::Half);
                 e
             })
             .unwrap_or_default();
@@ -69,7 +69,7 @@ pub fn load_plugins(ui: &mut WidgetTree<YaffeState>, directory: &str) {
                 info!("Found plugin {}", path.display());
                 let _ = load(ui, &mut path).map_err(|e| {
                     let message = MessageModal::from(&format!("Failed to load plugin {path:?}: {e:?}"));
-                    display_modal_raw(ui, "Error", None, message, ModalSize::Half, None);
+                    display_modal_raw(ui, "Error", None, message, ModalSize::Half);
                     e
                 });
             }

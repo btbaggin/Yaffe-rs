@@ -47,7 +47,7 @@ pub struct ModalContentElement<T: 'static> {
     id: WidgetId,
     focus_group: bool,
     focus: Option<WidgetId>,
-    handler: Box<dyn ModalInputHandler<T>>,
+    pub handler: Box<dyn ModalInputHandler<T>>,
     container: UiContainer<T>,
 }
 impl<T: 'static> LayoutElement for ModalContentElement<T> {
@@ -75,6 +75,8 @@ impl<T: 'static> ModalContentElement<T> {
     pub fn get_handler<H: 'static>(&self) -> &H { crate::convert_to!(&self.handler, H) }
 
     pub fn focus(&mut self, id: WidgetId) { self.focus = Some(id); }
+
+    pub fn focus_first(&mut self) { self.focus = self.container.move_focus(None, true); }
 }
 impl<T: 'static> Deref for ModalContentElement<T> {
     type Target = UiContainer<T>;
@@ -106,6 +108,7 @@ impl<T: 'static> UiElement<T> for ModalContentElement<T> {
         action: &Actions,
         handler: &mut DeferredAction<T>,
     ) -> bool {
+        // TODO required fields?
         // See if we should close
         if ModalClose::close_if_accept(action, handler) {
             return true;

@@ -91,7 +91,7 @@ pub fn load_image_async(key: &AssetKey, path: std::path::PathBuf) -> Option<(Vec
         }
     };
 
-    let mut reader = image::io::Reader::new(std::io::Cursor::new(data));
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(data));
     reader = reader.with_guessed_format().log_and_panic();
 
     match reader.decode() {

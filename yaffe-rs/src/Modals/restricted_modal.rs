@@ -1,6 +1,6 @@
 use crate::controls::{PassBox, RestrictedPasscode};
 use crate::modals::{ModalContentElement, ModalInputHandler};
-use crate::ui::{ContainerSize, LayoutElement, ValueElement};
+use crate::ui::{ContainerSize, LayoutElement, UiContainer, ValueElement};
 use crate::{DeferredAction, YaffeState};
 
 pub enum RestrictedMode {
@@ -24,28 +24,29 @@ impl SetRestrictedModal {
 
 impl ModalInputHandler<YaffeState> for SetRestrictedModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
-}
 
-pub fn on_restricted_modal_close(
-    state: &mut YaffeState,
-    result: bool,
-    content: &ModalContentElement<YaffeState>,
-    _: &mut DeferredAction<YaffeState>,
-) {
-    if result {
-        let content = crate::convert_to!(content.get_child(0), PassBox);
-        let pass = content.value();
+    fn on_close(
+        &self,
+        state: &mut YaffeState,
+        result: bool,
+        content: &UiContainer<YaffeState>,
+        _: &mut DeferredAction<YaffeState>,
+    ) {
+        if result {
+            let content = crate::convert_to!(content.get_child(0), PassBox);
+            let pass = content.value();
 
-        match state.restricted_mode {
-            RestrictedMode::On(p) => {
-                if pass == p {
-                    state.restricted_mode = RestrictedMode::Off;
-                } else {
-                    // state.display_toast(0, );
-                    // TODO toast?
+            match state.restricted_mode {
+                RestrictedMode::On(p) => {
+                    if pass == p {
+                        state.restricted_mode = RestrictedMode::Off;
+                    } else {
+                        // state.display_toast(0, );
+                        // TODO toast?
+                    }
                 }
+                RestrictedMode::Off => state.restricted_mode = RestrictedMode::On(pass),
             }
-            RestrictedMode::Off => state.restricted_mode = RestrictedMode::On(pass),
         }
     }
 }

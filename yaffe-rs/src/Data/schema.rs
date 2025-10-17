@@ -1,5 +1,6 @@
 use super::{execute_select, execute_update, QueryResult, YaffeConnection};
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 pub struct ColumnInfo {
     name: String,
@@ -37,14 +38,12 @@ macro_rules! table_struct {
     };
 }
 
-lazy_static::lazy_static! {
-    static ref TYPE_MAPPING: HashMap<&'static str, &'static str> = {
-        let mut m = HashMap::new();
-        m.insert("string", "TEXT");
-        m.insert("i64", "INTEGER");
-        m
-    };
-}
+static TYPE_MAPPING: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert("string", "TEXT");
+    m.insert("i64", "INTEGER");
+    m
+});
 
 pub fn create_schema(table: &str, data: impl Schema) -> QueryResult<()> {
     let columns = data.get_columns();

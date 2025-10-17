@@ -29,6 +29,7 @@ impl<L: ListItem> List<L> {
         let item_size = self.size.y / self.items.len() as f32;
         self.index = new_index;
 
+        // TODO need font size because using self.size.y doesnt work if we arent shrink
         animations
             .animate(self, crate::offset_of!(List<L> => highlight_offset), item_size * self.index as f32)
             .duration(0.1)

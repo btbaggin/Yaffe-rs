@@ -1,5 +1,5 @@
 use crate::controls::MENU_BACKGROUND;
-use crate::modals::{on_update_platform_close, DisplayModal, PlatformDetailModal};
+use crate::modals::{DisplayModal, PlatformDetailModal};
 use crate::ui::{AnimationManager, LayoutElement, LoadPluginAction, UiElement, WidgetId, MARGIN};
 use crate::{
     state::GroupType, widget, Actions, DeferredAction, LogicalPosition, LogicalSize, Rect, ScaleFactor, YaffeState,
@@ -40,7 +40,6 @@ impl UiElement<YaffeState> for PlatformList {
                         Some("Save"),
                         modal,
                         crate::modals::ModalSize::Third,
-                        Some(on_update_platform_close),
                     ));
                 }
                 true

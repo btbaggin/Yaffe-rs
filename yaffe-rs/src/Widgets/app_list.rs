@@ -63,7 +63,7 @@ impl UiElement<YaffeState> for AppList {
             Actions::Info => {
                 if let Some(exe) = state.get_selected_tile() {
                     let info = InfoModal::from(exe);
-                    handler.display_modal(DisplayModal::new(&exe.name.clone(), None, info, ModalSize::Half, None));
+                    handler.display_modal(DisplayModal::new(&exe.name.clone(), None, info, ModalSize::Half));
                 }
                 true
             }
