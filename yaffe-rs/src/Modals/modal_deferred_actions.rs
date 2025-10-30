@@ -1,4 +1,4 @@
-use super::{display_modal_raw, ModalContentElement, ModalSize, Toast};
+use super::{display_modal_raw, ModalContentElement, ModalSize, ModalValidationResult, Toast};
 use crate::ui::{DeferredAction, DeferredActionTrait, WidgetTree};
 use std::marker::PhantomData;
 
@@ -12,13 +12,17 @@ impl<T> DeferredActionTrait<T> for ModalClose<T> {
         let modal = modals.last().unwrap();
         // Content will always be second (after title, before buttons)
         let content = crate::convert_to!(modal.content.get_child(1).as_ref(), ModalContentElement<T>);
-        if content.handler.validate(self.close, content) {
-            let mut new_actions = DeferredAction::new();
-            content.handler.on_close(&mut ui.data, self.close, content, &mut new_actions);
-            modals.pop();
-            return Some(new_actions);
+        let result = if self.close { content.handler.validate(content) } else { ModalValidationResult::Ok };
+
+        let mut new_actions = DeferredAction::new();
+        match result {
+            ModalValidationResult::Ok => {
+                content.handler.on_close(&mut ui.data, self.close, content, &mut new_actions);
+                modals.pop();
+            }
+            ModalValidationResult::Cancel(message) => new_actions.display_toast(&message, 1.),
         }
-        None
+        Some(new_actions)
     }
 }
 impl<T: 'static> ModalClose<T> {

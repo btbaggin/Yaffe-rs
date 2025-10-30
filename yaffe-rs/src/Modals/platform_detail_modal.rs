@@ -1,6 +1,6 @@
 use crate::controls::TextBox;
 use crate::logger::{PanicLogEntry, UserMessage};
-use crate::modals::{ModalContentElement, ModalInputHandler};
+use crate::modals::{ModalContentElement, ModalInputHandler, ModalValidationResult};
 use crate::ui::{ContainerSize, LayoutElement, UiContainer, ValueElement, WidgetId};
 use crate::{DeferredAction, YaffeState};
 use std::collections::HashMap;
@@ -46,18 +46,28 @@ impl PlatformDetailModal {
 impl ModalInputHandler<YaffeState> for PlatformDetailModal {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn validate(&self, accept: bool, content: &UiContainer<YaffeState>) -> bool {
-        if !accept {
-            false
-        } else {
-            let name = self.control_map["Name"];
-            let exe = self.control_map["Executable"];
-            let args = self.control_map["Args"];
-            let name = crate::convert_to!(content.find_widget(name).unwrap(), TextBox);
-            let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
-            let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
+    fn validate(&self, content: &UiContainer<YaffeState>) -> ModalValidationResult {
+        let name = self.control_map["Name"];
+        let exe = self.control_map["Executable"];
+        let args = self.control_map["Args"];
+        let name = crate::convert_to!(content.find_widget(name).unwrap(), TextBox);
+        let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
+        let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
 
-            !name.value().is_empty() && !exe.value().is_empty() && !args.value().is_empty()
+        let mut validation = vec![];
+        if name.value().is_empty() {
+            validation.push("Name is required");
+        }
+        if exe.value().is_empty() {
+            validation.push("Executable is required")
+        }
+        if args.value().is_empty() {
+            validation.push("Args is required");
+        }
+        if validation.is_empty() {
+            ModalValidationResult::Ok
+        } else {
+            ModalValidationResult::Cancel(validation.join("\n"))
         }
     }
 
@@ -79,7 +89,7 @@ impl ModalInputHandler<YaffeState> for PlatformDetailModal {
             let args = self.control_map["Args"];
             let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
             let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
-            crate::data::PlatformInfo::update(self.platform_id, exe.value().trim(), args.value().trim())
+            crate::data::PlatformInfo::update(self.platform_id, &exe.value(), &args.value())
                 .display_failure("Unable to update platform", handler);
         }
         let name = self.control_map["Name"];
@@ -88,11 +98,7 @@ impl ModalInputHandler<YaffeState> for PlatformDetailModal {
         let name = crate::convert_to!(content.find_widget(name).unwrap(), TextBox);
         let exe = crate::convert_to!(content.find_widget(exe).unwrap(), TextBox);
         let args = crate::convert_to!(content.find_widget(args).unwrap(), TextBox);
-        let job = crate::Job::SearchPlatform {
-            name: name.value().trim().to_string(),
-            path: exe.value().trim().to_string(),
-            args: args.value().trim().to_string(),
-        };
+        let job = crate::Job::SearchPlatform { name: name.value(), path: exe.value(), args: args.value() };
         state.queue.start_job(job);
 
         handler.display_toast("Searching for platform information...", 2.);

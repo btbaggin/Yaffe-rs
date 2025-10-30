@@ -108,7 +108,6 @@ impl<T: 'static> UiElement<T> for ModalContentElement<T> {
         action: &Actions,
         handler: &mut DeferredAction<T>,
     ) -> bool {
-        // TODO required fields?
         // See if we should close
         if ModalClose::close_if_accept(action, handler) {
             return true;

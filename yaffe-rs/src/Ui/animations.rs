@@ -95,7 +95,7 @@ impl AnimationManager {
 
             if let Some(modal) = modals.last_mut() {
                 if let Some(widget) = modal.find_widget_mut(animation.widget) {
-                    Self::apply_animation(animation, widget, delta_time); // TODO can i remove the type arg?
+                    Self::apply_animation(animation, widget, delta_time);
                     continue;
                 }
             }

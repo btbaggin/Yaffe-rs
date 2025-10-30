@@ -30,7 +30,7 @@ impl ModalInputHandler<YaffeState> for SetRestrictedModal {
         state: &mut YaffeState,
         result: bool,
         content: &UiContainer<YaffeState>,
-        _: &mut DeferredAction<YaffeState>,
+        handler: &mut DeferredAction<YaffeState>,
     ) {
         if result {
             let content = crate::convert_to!(content.get_child(0), PassBox);
@@ -41,8 +41,7 @@ impl ModalInputHandler<YaffeState> for SetRestrictedModal {
                     if pass == p {
                         state.restricted_mode = RestrictedMode::Off;
                     } else {
-                        // state.display_toast(0, );
-                        // TODO toast?
+                        handler.display_toast("Incorrect passcode", 1.);
                     }
                 }
                 RestrictedMode::Off => state.restricted_mode = RestrictedMode::On(pass),

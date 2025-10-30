@@ -52,7 +52,6 @@ impl<T> DeferredActionTrait<T> for FocusWidgetAction {
 pub struct RevertFocusAction;
 
 impl DeferredActionTrait<YaffeState> for RevertFocusAction {
-    // TODO can focus move to widgettree?
     fn resolve(self: Box<Self>, ui: &mut WidgetTree<YaffeState>) -> Option<DeferredAction<YaffeState>> {
         let state = &mut ui.data;
         if state.navigation_stack.borrow_mut().pop().is_some() {

@@ -51,6 +51,11 @@ pub enum ModalSize {
     Full,
 }
 
+pub enum ModalValidationResult {
+    Ok,
+    Cancel(String),
+}
+
 pub trait ModalInputHandler<T> {
     fn as_any(&self) -> &dyn std::any::Any;
     fn action(
@@ -63,7 +68,7 @@ pub trait ModalInputHandler<T> {
     ) -> bool {
         false
     }
-    fn validate(&self, _accept: bool, _content: &UiContainer<T>) -> bool { true }
+    fn validate(&self, _content: &UiContainer<T>) -> ModalValidationResult { ModalValidationResult::Ok }
     fn on_close(&self, state: &mut T, accept: bool, container: &UiContainer<T>, handler: &mut DeferredAction<T>);
 }
 
@@ -146,22 +151,18 @@ pub fn render_modal<T>(modal: &mut Modal<T>, data: &mut T, graphics: &mut crate:
     modal.content.render(graphics, data, &modal.content.get_id());
 }
 
-pub fn render_toasts(toasts: &Vec<Toast>, graphics: &mut crate::Graphics) {
-    let count = toasts.len();
+pub fn render_toasts(toasts: &[Toast], graphics: &mut crate::Graphics) {
+    const MAX_WIDTH: f32 = 500.;
+
+    let message = toasts.iter().map(|t| t.message.as_str()).collect::<Vec<_>>().join("\n");
+    let text = crate::ui::get_drawable_text(graphics, graphics.font_size(), &message);
+    let height = text.height() + MARGIN * 2.;
+    let width = f32::max(text.width() + MARGIN * 2., MAX_WIDTH);
+
     let x = (graphics.bounds.right() + graphics.bounds.left()) / 2.;
     let y = graphics.bounds.bottom();
 
-    const WIDTH: f32 = 500.;
-    let font_size = graphics.font_size();
-    let height = font_size * count as f32 + MARGIN * 2.;
-
-    let rect = Rect::point_and_size(LogicalPosition::new(x - WIDTH / 2., y - height), LogicalSize::new(WIDTH, height));
+    let rect = Rect::point_and_size(LogicalPosition::new(x - width / 2., y - height), LogicalSize::new(width, height));
     graphics.draw_rectangle(rect, MODAL_BACKGROUND);
-
-    let mut curr_y = rect.top() + MARGIN;
-    for toast in toasts {
-        let text = crate::ui::get_drawable_text(graphics, graphics.font_size(), &toast.message);
-        graphics.draw_text(LogicalPosition::new(x - text.width() / 2., curr_y), graphics.font_color(), &text);
-        curr_y += font_size;
-    }
+    graphics.draw_text(LogicalPosition::new(x - text.width() / 2., rect.top() + MARGIN), graphics.font_color(), &text);
 }

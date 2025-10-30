@@ -13,6 +13,7 @@ crate::widget!(
     pub struct List<L: ListItem> {
         pub items: Vec<L> = vec!(),
         index: usize = 0,
+        item_size: f32 = 0.,
         highlight_offset: f32 = 0.
     }
 );
@@ -26,12 +27,10 @@ impl<L: ListItem> List<L> {
     pub fn get_selected(&self) -> &L { &self.items[self.index] }
 
     fn move_index(&mut self, new_index: usize, animations: &mut AnimationManager) {
-        let item_size = self.size.y / self.items.len() as f32;
         self.index = new_index;
 
-        // TODO need font size because using self.size.y doesnt work if we arent shrink
         animations
-            .animate(self, crate::offset_of!(List<L> => highlight_offset), item_size * self.index as f32)
+            .animate(self, crate::offset_of!(List<L> => highlight_offset), self.item_size * self.index as f32)
             .duration(0.1)
             .start();
     }
@@ -74,6 +73,7 @@ impl<T: 'static, L: ListItem> UiElement<T> for List<L> {
         let rect = self.layout();
         let mut pos = *rect.top_left();
         let font_size = graphics.font_size();
+        self.item_size = font_size;
 
         let rect = Rect::point_and_size(
             LogicalPosition::new(pos.x, pos.y + self.highlight_offset),

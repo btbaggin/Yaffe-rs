@@ -186,7 +186,7 @@ impl<T: 'static> UiElement<T> for TextBox {
     }
 }
 impl ValueElement<String> for TextBox {
-    fn value(&self) -> String { self.text.clone() }
+    fn value(&self) -> String { self.text.trim().to_string() }
 }
 impl TextBox {
     fn insert_text(&mut self, text: &str) {

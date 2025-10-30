@@ -1,7 +1,7 @@
 use crate::DeferredAction;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::sync::{Mutex, LazyLock};
+use std::sync::{LazyLock, Mutex};
 
 #[allow(unused_imports)]
 pub use log::{debug, error, info, trace, warn};
@@ -38,9 +38,8 @@ pub fn set_log_level(level: &str) {
 }
 
 static LOGGER: YaffeLogger = YaffeLogger;
-pub static FILE: LazyLock<Mutex<File>> = LazyLock::new(|| {
-    Mutex::new(OpenOptions::new().write(true).create(true).truncate(true).open("./log.txt").unwrap())
-});
+pub static FILE: LazyLock<Mutex<File>> =
+    LazyLock::new(|| Mutex::new(OpenOptions::new().write(true).create(true).truncate(true).open("./log.txt").unwrap()));
 
 pub fn init() {
     log::set_logger(&LOGGER).unwrap();

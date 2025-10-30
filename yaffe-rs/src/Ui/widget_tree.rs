@@ -9,12 +9,12 @@ use std::time::Instant;
 /// Has higher level management methods to perfrom things
 /// on the entire UI tree
 pub struct WidgetTree<T: 'static> {
-    pub root: UiContainer<T>,
-    pub focus: Vec<WidgetId>,
+    root: UiContainer<T>,
+    focus: Vec<WidgetId>,
     pub data: T,
     pub animations: AnimationManager,
     pub modals: Mutex<Vec<Modal<T>>>, //TODO make private?
-    pub toasts: Vec<Toast>,
+    toasts: Vec<Toast>,
     last_focused: Instant,
 }
 impl<T> WidgetTree<T> {
@@ -36,18 +36,18 @@ impl<T> WidgetTree<T> {
         self.root.set_layout(graphics.bounds);
         self.root.render(graphics, &self.data, &focused_widget);
 
-        if !self.toasts.is_empty() {
-            // Render calls will modify the bounds, so we must reset it
-            graphics.bounds = old_bounds;
-            crate::modals::render_toasts(&self.toasts, graphics);
-        }
-
         //Render modal last, on top of everything
         let modals = &mut self.modals.lock().unwrap();
         if let Some(m) = modals.last_mut() {
             // Render calls will modify the bounds, so we must reset it
             graphics.bounds = old_bounds;
             crate::modals::render_modal(m, &mut self.data, graphics);
+        }
+
+        if !self.toasts.is_empty() {
+            // Render calls will modify the bounds, so we must reset it
+            graphics.bounds = old_bounds;
+            crate::modals::render_toasts(&self.toasts, graphics);
         }
     }
 
